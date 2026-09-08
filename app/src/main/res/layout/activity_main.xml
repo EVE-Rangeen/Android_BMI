@@ -52,7 +52,7 @@
         android:text="BMI"
         android:textSize="24sp"
         android:textStyle="bold"
-        app:layout_constraintBottom_toTopOf="@+id/height_input"
+        app:layout_constraintBottom_toTopOf="@+id/heightET"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -64,34 +64,32 @@
         android:text="@string/bmi_btn"
         android:textSize="12sp"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="@+id/weight_input"
-        app:layout_constraintTop_toBottomOf="@+id/weight_input" />
+        app:layout_constraintStart_toStartOf="@+id/weightET"
+        app:layout_constraintTop_toBottomOf="@+id/weightET" />
 
     <EditText
-        android:id="@+id/height_input"
+        android:id="@+id/heightET"
         android:layout_width="228dp"
         android:layout_height="49dp"
         android:layout_marginEnd="2dp"
         android:layout_marginBottom="38dp"
         android:ems="10"
         android:inputType="numberDecimal"
-        android:text="@string/bmi_height"
-        app:layout_constraintBottom_toTopOf="@+id/weight_input"
-        app:layout_constraintEnd_toEndOf="@+id/weight_input"
+        app:layout_constraintBottom_toTopOf="@+id/weightET"
+        app:layout_constraintEnd_toEndOf="@+id/weightET"
         app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="@+id/textView7"
         app:layout_constraintTop_toBottomOf="@+id/textView" />
 
     <EditText
-        android:id="@+id/weight_input"
+        android:id="@+id/weightET"
         android:layout_width="232dp"
         android:layout_height="62dp"
         android:layout_marginBottom="25dp"
         android:ems="10"
         android:inputType="numberDecimal"
-        android:text="@string/bmi_weight"
         app:layout_constraintBottom_toTopOf="@+id/reportBtn"
         app:layout_constraintStart_toStartOf="@+id/textView2"
-        app:layout_constraintTop_toBottomOf="@+id/height_input" />
+        app:layout_constraintTop_toBottomOf="@+id/heightET" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
