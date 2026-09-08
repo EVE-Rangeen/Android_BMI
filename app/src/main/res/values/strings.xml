@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">BMI</string>
+    <string name="bmi_height">Height(cm)</string>
+    <string name="bmi_weight">Weight(kg)</string>
+    <string name="bmi_btn">See BMI report now</string>
+    <string name="bmi_result">Your BMI value is</string>
+    <string name="bmi_warning">Height and weight cannot be empty!</string>
+    <string name="advice_light">You need more calories!</string>
+    <string name="advice_average">You looks great!</string>
+    <string name="advice_heavy">You should be on diet!</string>
+</resources>
