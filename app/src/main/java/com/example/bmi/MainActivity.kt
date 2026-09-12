@@ -13,11 +13,23 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        heightET = findViewById<EditText>(R.id.height_input)
+        weightET = findViewById<EditText>(R.id.weight_input)
+
+        val reportBtn : Button = findViewById<Button>(R.id.reportBtn)
+
+        reportBtn.setOnClickListener {
+            val height = heightET.text.toString()
+            val weight = weightET.text.toString()
+
+            val intent = Intent(applicationContext, ReportActivity::class.java)
+            val bundle = Bundle()
+            bundle.putString("height", height)
+            bundle.putString("weight", weight)
+            intent.putExtras(bundle)
+            startActivity(intent)
+
     }
 
-    val heightET = findViewById<EditText>(R.id.height_input)
-    val weightET = findViewById<EditText>(R.id.weight_input)
-
-    val reportBtn : Buttom = findViewById<Button>(R.id.reportBtn)
 
 }
