@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
+import android.widget.Spinner
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.snackbar.Snackbar
 
@@ -13,6 +14,8 @@ class MainActivity : AppCompatActivity() {
 
     lateinit var heightET: EditText
     lateinit var weightET: EditText
+    lateinit var ageET: EditText
+    lateinit var genderSpinner: Spinner
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -20,14 +23,18 @@ class MainActivity : AppCompatActivity() {
 
         heightET = findViewById(R.id.heightET)
         weightET = findViewById(R.id.weightET)
+        ageET = findViewById(R.id.ageET)
+        genderSpinner = findViewById(R.id.genderSpinner)
         val reportBtn: Button = findViewById<Button>(R.id.reportBtn)
 
         reportBtn.setOnClickListener(object : View.OnClickListener {
             override fun onClick(v: View?) {
                 val height = heightET.text.toString()
                 val weight = weightET.text.toString()
+                val age = ageET.text.toString()
+                val gender = genderSpinner.selectedItem.toString()
 
-                if (height == "" || weight == "") {
+                if (height == "" || weight == "" || age == "") {
                     Snackbar.make(
                         findViewById<View>(android.R.id.content),
                         R.string.bmi_warning,
@@ -38,6 +45,8 @@ class MainActivity : AppCompatActivity() {
                     val bundle = Bundle()
                     bundle.putString("height", height)
                     bundle.putString("weight", weight)
+                    bundle.putString("gender", gender)
+                    bundle.putString("age", age)
                     intent.putExtras(bundle)
                     startActivity(intent)
                 }
