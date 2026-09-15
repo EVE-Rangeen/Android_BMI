@@ -41,8 +41,8 @@ class ReportActivity : AppCompatActivity() {
             fatLimit = limits.second
         } else {
             // Adult
-            thinLimit = 20.0
-            fatLimit = 25.0
+            thinLimit = 18.5
+            fatLimit = 22.9
         }
 
         if (bmi < thinLimit) {
