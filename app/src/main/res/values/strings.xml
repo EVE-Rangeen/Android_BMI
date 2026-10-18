@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">BMI</string>
-    <string name="bmi_height">Height(cm)</string>
-    <string name="bmi_weight">Weight(kg)</string>
+    <string name="bmi_height">Height (cm)</string>
+    <string name="bmi_weight">Weight (kg)</string>
     <string name="bmi_age">Age</string>
     <string name="bmi_gender">Gender</string>
     <string name="bmi_btn">See BMI Report Now</string>
@@ -11,9 +11,17 @@
     <string name="advice_average">You look great!</string>
     <string name="advice_heavy">You should be on diet!</string>
     <string name="about_button">About BMI</string>
-    <string name="about_msg">BMI = Mass Body Index = Height (m) / Weight (kg)^2; BMI between 18.5 and 22.9 is fit.</string>
+    <string name="about_msg">BMI = Body Mass Index = Weight (kg) / Height (m)^2; a BMI between 20 and 25 means ideal weight.</string>
+    <string name="menu_wiki">BMI Wiki</string>
+    <string name="menu_exit">Exit</string>
+    <string name="button_ok">OK</string>
+    <string name="no_browser">No browser app found.</string>
+    <string name="bmi_icon">BMI icon</string>
+    <string name="gender_male">Male</string>
+    <string name="gender_female">Female</string>
+    <string name="wiki_url" translatable="false">https://en.m.wikipedia.org/wiki/Body_mass_index</string>
     <string-array name="gender">
-        <item>Male</item>
-        <item>Female</item>
+        <item>@string/gender_male</item>
+        <item>@string/gender_female</item>
     </string-array>
 </resources>

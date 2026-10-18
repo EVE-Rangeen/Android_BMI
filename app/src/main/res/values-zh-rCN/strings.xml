@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">BMI</string>
+    <string name="bmi_height">高度（cm）</string>
+    <string name="bmi_weight">重量（kg）</string>
+    <string name="bmi_age">年龄</string>
+    <string name="bmi_gender">性别</string>
+    <string name="bmi_btn">选择BMI立即报告</string>
+    <string name="bmi_result">你的BMI指数是</string>
+    <string name="bmi_warning">高度/重量不能为空。</string>
+    <string name="advice_light">你需要更多卡路里！</string>
+    <string name="advice_average">你的体重非常好！</string>
+    <string name="advice_heavy">你应该节食！</string>
+    <string name="about_button">关于BMI</string>
+    <string name="about_msg">BMI = 身体质量指数 = 重量（kg）/ 高度（m）^2；BMI在20至25表示体重理想。</string>
+    <string name="menu_wiki">BMI 维基</string>
+    <string name="menu_exit">离开</string>
+    <string name="button_ok">确定</string>
+    <string name="no_browser">未找到可用的浏览器。</string>
+    <string name="bmi_icon">BMI图标</string>
+    <string name="gender_male">男</string>
+    <string name="gender_female">女</string>
+    <string-array name="gender">
+        <item>@string/gender_male</item>
+        <item>@string/gender_female</item>
+    </string-array>
+</resources>

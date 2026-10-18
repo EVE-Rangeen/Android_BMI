@@ -19,12 +19,14 @@ class ReportActivity : AppCompatActivity() {
         val bundle = intent.extras
         val height = bundle!!.getString("height")!!.toDouble() / 100
         val weight = bundle.getString("weight")!!.toDouble()
-        val gender = bundle.getString("gender")!!
+        // 0 = male, 1 = female. The index is language independent, so the
+        // child cut points stay correct in every locale.
+        val gender = bundle.getInt("gender", 0)
         val age = bundle.getString("age")!!.toInt()
         val bmi = weight / (height * height)
         val nf = DecimalFormat("0.00")
 
-        resultTV.text = "Your BMI value is " + nf.format(bmi)
+        resultTV.text = getString(R.string.bmi_result) + " " + nf.format(bmi)
 
         // Two cut points are enough to pick the advice:
         //   bmi <  thinLimit -> underweight
@@ -36,7 +38,7 @@ class ReportActivity : AppCompatActivity() {
             // Child: the cut points come from the BMI-for-age percentile table,
             // where "acceptable weight" starts at the 5th percentile and
             // "overweight" starts at the 90th percentile.
-            val limits = if (gender == "Male") boyLimits(age) else girlLimits(age)
+            val limits = if (gender == 0) boyLimits(age) else girlLimits(age)
             thinLimit = limits.first
             fatLimit = limits.second
         } else {
