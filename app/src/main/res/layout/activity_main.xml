@@ -24,7 +24,7 @@
         android:layout_marginTop="24dp"
         android:ems="10"
         android:inputType="numberDecimal"
-        android:text="@string/bmi_weight"
+        android:hint="@string/bmi_weight"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/textView2" />
 
@@ -36,7 +36,7 @@
         android:layout_marginTop="24dp"
         android:ems="10"
         android:inputType="numberDecimal"
-        android:text="@string/bmi_height"
+        android:hint="@string/bmi_height"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/textView7" />
 
@@ -113,6 +113,17 @@
         android:text="@string/bmi_btn"
         android:textSize="12sp"
         app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/weightET" />
+
+    <Button
+        android:id="@+id/aboutBtn"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="36dp"
+        android:text="@string/about_button"
+        android:textSize="12sp"
+        app:layout_constraintStart_toEndOf="@+id/reportBtn"
         app:layout_constraintTop_toBottomOf="@+id/weightET" />
 
     <Spinner

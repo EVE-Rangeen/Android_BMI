@@ -7,7 +7,9 @@ import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Spinner
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 
 class MainActivity : AppCompatActivity() {
@@ -54,11 +56,26 @@ class MainActivity : AppCompatActivity() {
                 savePreferences(height, weight)
             }
         })
+
+        val aboutBtn: Button = findViewById(R.id.aboutBtn)
+        aboutBtn.setOnClickListener {
+            about_BMI_Dialog()
+        }
     }
 
     override fun onStart() {
         super.onStart()
         loadPreferences()
+    }
+
+    fun about_BMI_Dialog() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.about_button)
+            .setMessage(R.string.about_msg)
+            .setPositiveButton("OK") { dialog, which ->
+                Toast.makeText(this@MainActivity, "OK", Toast.LENGTH_SHORT).show()
+            }
+            .show()
     }
 
     fun savePreferences(h: String, w: String) {

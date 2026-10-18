@@ -10,6 +10,8 @@
     <string name="advice_light">You need more calories!</string>
     <string name="advice_average">You look great!</string>
     <string name="advice_heavy">You should be on diet!</string>
+    <string name="about_button">About BMI</string>
+    <string name="about_msg">BMI = Mass Body Index = Height (m) / Weight (kg)^2; BMI between 18.5 and 22.9 is fit.</string>
     <string-array name="gender">
         <item>Male</item>
         <item>Female</item>
