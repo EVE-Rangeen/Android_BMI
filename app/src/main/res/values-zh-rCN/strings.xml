@@ -20,6 +20,13 @@
     <string name="bmi_icon">BMI图标</string>
     <string name="gender_male">男</string>
     <string name="gender_female">女</string>
+    <string name="report_ai_title">AI 健康建议</string>
+    <string name="llm_loading">正在向 AI 获取建议…</string>
+    <string name="llm_retry">重试</string>
+    <string name="llm_error_missing_key">未配置 API Key。请在 local.properties 中添加 deepseek.apiKey 后重新构建应用。</string>
+    <string name="llm_error_network">无法连接 AI 服务，请检查网络后点击重试。</string>
+    <string name="llm_error_api">AI 服务返回错误，请点击重试。</string>
+    <string name="llm_error_unknown">出现未知错误，请点击重试。</string>
     <string-array name="gender">
         <item>@string/gender_male</item>
         <item>@string/gender_female</item>

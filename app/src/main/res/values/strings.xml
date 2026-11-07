@@ -20,6 +20,13 @@
     <string name="gender_male">Male</string>
     <string name="gender_female">Female</string>
     <string name="wiki_url" translatable="false">https://en.m.wikipedia.org/wiki/Body_mass_index</string>
+    <string name="report_ai_title">AI health suggestions</string>
+    <string name="llm_loading">Asking the AI for suggestions…</string>
+    <string name="llm_retry">Retry</string>
+    <string name="llm_error_missing_key">API key is missing. Add deepseek.apiKey to local.properties and rebuild the app.</string>
+    <string name="llm_error_network">Cannot reach the AI service. Check your network and tap Retry.</string>
+    <string name="llm_error_api">The AI service returned an error. Tap Retry.</string>
+    <string name="llm_error_unknown">Something went wrong. Tap Retry.</string>
     <string-array name="gender">
         <item>@string/gender_male</item>
         <item>@string/gender_female</item>
