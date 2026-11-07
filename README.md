@@ -83,9 +83,37 @@ git merge main
 | 冲突文件 | 处理方式 |
 | --- | --- |
 | `build.gradle` | 用 `cityu_lab` 的（必须保持 AGP 8.13.0 / Kotlin 2.2.20） |
-| `app/build.gradle` | `plugins`、`android {}` 用 `cityu_lab` 的；`dependencies {}` 里 `main` 新加的库要保留 |
+| `app/build.gradle` | `plugins`、`android {}`（含 `buildFeatures { buildConfig = true }`）用 `cityu_lab` 的；`defaultConfig` 里的两行 `buildConfigField` 必须留着；`dependencies {}` 里 `main` 新加的库要保留 |
 | `settings.gradle` | 用 `cityu_lab` 的（镜像仓库配置） |
 | `.gitignore`、`gradle/wrapper/*`、`gradlew*` | 用 `cityu_lab` 的 |
+
+assignment04 之后，合并时特别注意 `app/build.gradle` 里的这几行不能丢：
+
+```groovy
+buildFeatures {
+    buildConfig = true          // AGP 8.x 默认不生成 BuildConfig
+}
+...
+defaultConfig {
+    buildConfigField "String", "DEEPSEEK_API_KEY", "\"${deepSeekApiKey}\""
+    buildConfigField "String", "DEEPSEEK_BASE_URL", "\"https://api.deepseek.com\""
+}
+```
+
+丢了 `buildFeatures` 会直接编译失败；丢了 `buildConfigField` 则 AI 建议区域会一直
+提示“未配置 API Key”。
+
+### 学校电脑上的 API Key
+
+`local.properties` 不会提交到仓库，所以换电脑后要在学校的机器上补一行：
+
+```properties
+deepseek.apiKey=sk-xxxxxxxxxxxxxxxxxxxx
+```
+
+然后 Sync + Run（key 是在编译时写进 `BuildConfig` 的，改完必须重新编译）。
+没有 key 时 App 仍能正常计算 BMI，只是 AI 建议区域会显示配置提示。
+详细说明见 `docs/llm-setup.md`。
 
 源码、布局、`strings.xml` 这些业务文件两个分支本来就一样，正常都会自动合并，
 不需要处理。
