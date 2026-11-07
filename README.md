@@ -59,6 +59,60 @@ gradlew.bat assembleDebug
 
 生成的文件在 `app/build/outputs/apk/debug/app-debug.apk`。
 
+## 分支工作流（main → cityu_lab）
+
+`main` 是日常开发分支，保持原来的旧工具链（AGP 7.3.1），可以继续在本地旧版
+Android Studio 里打开；`cityu_lab` 只负责“学校电脑上能跑”的适配，**不要直接
+在这个分支上写业务代码**，否则以后每次合并都会更麻烦。
+
+每做完一次作业，按这个顺序操作：
+
+```bat
+git checkout main
+git add -A
+git commit -m "assignment04"
+git push origin main
+
+git checkout cityu_lab
+git pull
+git merge main
+```
+
+合并时可能冲突的只有构建配置文件，处理规则如下：
+
+| 冲突文件 | 处理方式 |
+| --- | --- |
+| `build.gradle` | 用 `cityu_lab` 的（必须保持 AGP 8.13.0 / Kotlin 2.2.20） |
+| `app/build.gradle` | `plugins`、`android {}` 用 `cityu_lab` 的；`dependencies {}` 里 `main` 新加的库要保留 |
+| `settings.gradle` | 用 `cityu_lab` 的（镜像仓库配置） |
+| `.gitignore`、`gradle/wrapper/*`、`gradlew*` | 用 `cityu_lab` 的 |
+
+源码、布局、`strings.xml` 这些业务文件两个分支本来就一样，正常都会自动合并，
+不需要处理。
+
+新作业如果加了新依赖，需要注意：
+
+- 要求 compileSdk 33 ~ 36 的库：没问题（这里已经是 36）
+- 要求更高 minSdk（例如 24）的库：把 `android { defaultConfig { minSdk } }`
+  一起改掉
+- 要求 compileSdk 37 或 AGP 9.x 的库：学校那台 Studio 2025.2.1 不支持
+  （它最高只到 AGP 8.13 / API 36.1），需要换一个低版本的库
+
+合并完成后，先本地验证一次再推送（本地旧版 Studio 打不开这个分支，用命令行）：
+
+```bat
+set JAVA_HOME=<本机 JDK 17 或更高的路径>
+gradlew.bat assembleDebug
+```
+
+成功之后推送：
+
+```bat
+git push origin cityu_lab
+```
+
+学校电脑上只需要在 `cityu_lab` 分支上 `git pull`，然后 Sync + Run 即可。
+
 ## 已知限制
 
 - 本项目使用的是 AGP 8.13，只能由 Android Studio 2025.2.1 或更新的版本打开。
