@@ -1,5 +1,10 @@
 pluginManagement {
     repositories {
+        // If your campus network cannot reach google()/mavenCentral(),
+        // uncomment the Aliyun mirrors below and put them first.
+        // maven { url 'https://maven.aliyun.com/repository/google' }
+        // maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+        // maven { url 'https://maven.aliyun.com/repository/public' }
         gradlePluginPortal()
         google()
         mavenCentral()
@@ -8,6 +13,9 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
+        // Same mirrors as above, for the app's libraries.
+        // maven { url 'https://maven.aliyun.com/repository/google' }
+        // maven { url 'https://maven.aliyun.com/repository/public' }
         google()
         mavenCentral()
     }
