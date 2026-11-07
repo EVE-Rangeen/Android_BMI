@@ -3,6 +3,16 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
+// Reads the DeepSeek API key from local.properties so that the real key is
+// never committed to git. Add this line to local.properties:
+//     deepseek.apiKey=sk-xxxxxxxxxxxxxxxx
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withInputStream { stream -> localProperties.load(stream) }
+}
+def deepSeekApiKey = localProperties.getProperty('deepseek.apiKey') ?: ''
+
 android {
     namespace = 'com.example.bmi'
     // compileSdk 36 is the API level Android Studio 2025.2.1 (Otter) installs by default.
@@ -18,6 +28,10 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Injected into BuildConfig at build time.
+        buildConfigField "String", "DEEPSEEK_API_KEY", "\"${deepSeekApiKey}\""
+        buildConfigField "String", "DEEPSEEK_BASE_URL", "\"https://api.deepseek.com\""
     }
 
     buildTypes {
@@ -26,7 +40,11 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
-
+    buildFeatures {
+        // Kept explicit so the same file works on new AGP versions, where
+        // BuildConfig generation is off by default.
+        buildConfig = true
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -45,6 +63,14 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.7.0'
     implementation 'com.google.android.material:material:1.12.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+
+    // MVVM: ViewModel + LiveData + viewModelScope
+    implementation 'androidx.activity:activity-ktx:1.5.1'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.5.1'
+    implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.5.1'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.5.1'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'
+
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'

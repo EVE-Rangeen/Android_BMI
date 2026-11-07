@@ -12,5 +12,7 @@ local.properties
 /.kotlin
 .externalNativeBuild
 .cxx
+# Local screenshots made with the emulator
+screenshots
 *.pdf
 *.zip
