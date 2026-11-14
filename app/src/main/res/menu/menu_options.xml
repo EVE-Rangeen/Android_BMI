@@ -10,6 +10,11 @@
         app:showAsAction="always" />
 
     <item
+        android:id="@+id/menu_trend"
+        android:title="@string/menu_trend"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/menu_wiki"
         android:title="@string/menu_wiki"
         app:showAsAction="never" />

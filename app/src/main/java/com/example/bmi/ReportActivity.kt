@@ -10,7 +10,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.os.ConfigurationCompat
 import androidx.core.view.isVisible
 import com.example.bmi.data.AppLanguage
+import com.example.bmi.data.BmiDates
+import com.example.bmi.data.BmiHistoryRepository
 import com.example.bmi.data.BmiProfile
+import com.example.bmi.data.BmiRecord
 import com.example.bmi.data.Gender
 import com.example.bmi.ui.report.AdviceRequest
 import com.example.bmi.ui.report.AdviceUiState
@@ -28,6 +31,7 @@ import java.util.Locale
 class ReportActivity : AppCompatActivity() {
 
     private val viewModel: ReportViewModel by viewModels()
+    private val historyRepository by lazy { BmiHistoryRepository(this) }
 
     private lateinit var resultTV: TextView
     private lateinit var adviceTV: TextView
@@ -49,6 +53,11 @@ class ReportActivity : AppCompatActivity() {
 
         val profile = readProfile() ?: return
         showLocalResult(profile)
+
+        // Save one point per day; a second report on the same day replaces it.
+        if (savedInstanceState == null) {
+            saveToHistory(profile)
+        }
 
         llmRetry.setOnClickListener { viewModel.retry() }
         viewModel.adviceState.observe(this) { state -> renderLlmState(state) }
@@ -75,6 +84,22 @@ class ReportActivity : AppCompatActivity() {
             bmi = weightKg / (heightMeters * heightMeters),
             age = age,
             gender = gender
+        )
+    }
+
+    /** Stores today's BMI so the trend screen can chart it. */
+    private fun saveToHistory(profile: BmiProfile) {
+        val heightCm = intent.getStringExtra("height")?.toDoubleOrNull() ?: return
+        val weightKg = intent.getStringExtra("weight")?.toDoubleOrNull() ?: return
+        historyRepository.saveRecord(
+            BmiRecord(
+                date = BmiDates.today(),
+                bmi = profile.bmi,
+                heightCm = heightCm,
+                weightKg = weightKg,
+                age = profile.age,
+                gender = profile.gender
+            )
         )
     }
 

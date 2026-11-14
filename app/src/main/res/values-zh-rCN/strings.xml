@@ -14,7 +14,14 @@
     <string name="about_button">关于BMI</string>
     <string name="about_msg">BMI = 身体质量指数 = 重量（kg）/ 高度（m）^2；BMI在20至25表示体重理想。</string>
     <string name="menu_wiki">BMI 维基</string>
+    <string name="menu_trend">BMI 趋势</string>
     <string name="menu_exit">离开</string>
+    <string name="trend_title">BMI 趋势</string>
+    <string name="trend_range">最近 30 天</string>
+    <string name="trend_summary">共 %1$d 条记录 · 最新BMI %2$.1f</string>
+    <string name="trend_empty">暂无BMI记录。\n先生成一次BMI报告来开始记录趋势。</string>
+    <string name="trend_legend">每个点表示当天最后一次记录的BMI。</string>
+    <string name="trend_chart_description">BMI趋势图，共%1$d条记录，最新BMI %2$.1f</string>
     <string name="button_ok">确定</string>
     <string name="no_browser">未找到可用的浏览器。</string>
     <string name="bmi_icon">BMI图标</string>

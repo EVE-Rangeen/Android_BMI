@@ -13,7 +13,14 @@
     <string name="about_button">About BMI</string>
     <string name="about_msg">BMI = Body Mass Index = Weight (kg) / Height (m)^2; a BMI between 20 and 25 means ideal weight.</string>
     <string name="menu_wiki">BMI Wiki</string>
+    <string name="menu_trend">BMI Trend</string>
     <string name="menu_exit">Exit</string>
+    <string name="trend_title">BMI Trend</string>
+    <string name="trend_range">Last 30 days</string>
+    <string name="trend_summary">%1$d records · latest BMI %2$.1f</string>
+    <string name="trend_empty">No BMI records yet.\nGenerate a BMI report to start your trend.</string>
+    <string name="trend_legend">Each point is the latest BMI recorded on that day.</string>
+    <string name="trend_chart_description">BMI trend chart with %1$d records; latest BMI %2$.1f</string>
     <string name="button_ok">OK</string>
     <string name="no_browser">No browser app found.</string>
     <string name="bmi_icon">BMI icon</string>

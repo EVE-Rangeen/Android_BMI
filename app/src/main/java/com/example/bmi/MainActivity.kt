@@ -1,7 +1,6 @@
 package com.example.bmi
 
 import android.content.ActivityNotFoundException
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -15,6 +14,7 @@ import android.widget.ImageView
 import android.widget.Spinner
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.example.bmi.data.BmiPreferences
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 
@@ -25,10 +25,13 @@ class MainActivity : AppCompatActivity() {
     lateinit var ageET: EditText
     lateinit var genderSpinner: Spinner
     lateinit var bmiImage: ImageView
+    private lateinit var preferences: BmiPreferences
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        preferences = BmiPreferences(this)
 
         heightET = findViewById(R.id.heightET)
         weightET = findViewById(R.id.weightET)
@@ -49,13 +52,21 @@ class MainActivity : AppCompatActivity() {
                 // so the gender logic still works when the app is in Chinese.
                 val gender = genderSpinner.selectedItemPosition
 
-                if (height.isBlank() || weight.isBlank() || age.isBlank()) {
+                val heightValue = height.toDoubleOrNull()
+                val weightValue = weight.toDoubleOrNull()
+                val ageValue = age.toIntOrNull()
+                if (heightValue == null || weightValue == null || ageValue == null ||
+                    heightValue <= 0 || weightValue <= 0 || ageValue < 0
+                ) {
                     Snackbar.make(
                         findViewById<View>(android.R.id.content),
                         R.string.bmi_warning,
                         Snackbar.LENGTH_SHORT
                     ).show()
                 } else {
+                    // Remember the profile so it is filled in next time.
+                    preferences.save(height, weight, age, gender)
+
                     val intent = Intent(applicationContext, ReportActivity::class.java)
                     val bundle = Bundle()
                     bundle.putString("height", height)
@@ -65,8 +76,6 @@ class MainActivity : AppCompatActivity() {
                     intent.putExtras(bundle)
                     startActivity(intent)
                 }
-
-                savePreferences(height, weight)
             }
         })
 
@@ -74,11 +83,24 @@ class MainActivity : AppCompatActivity() {
         aboutBtn.setOnClickListener {
             about_BMI_Dialog()
         }
+
+        // Auto-fill what was remembered last time. On a rotation the framework
+        // restores the fields itself, so the saved copy is only applied on the
+        // first creation of the screen and never overwrites unsaved edits.
+        if (savedInstanceState == null) {
+            restoreProfile()
+        }
     }
 
-    override fun onStart() {
-        super.onStart()
-        loadPreferences()
+    private fun restoreProfile() {
+        heightET.setText(preferences.height())
+        weightET.setText(preferences.weight())
+        ageET.setText(preferences.age())
+        if (genderSpinner.adapter.count > 0) {
+            genderSpinner.setSelection(
+                preferences.gender().coerceIn(0, genderSpinner.adapter.count - 1)
+            )
+        }
     }
 
     // ---------- Options menu (action bar) ----------
@@ -99,6 +121,10 @@ class MainActivity : AppCompatActivity() {
             }
             R.id.menu_wiki -> {
                 openWebpage(getString(R.string.wiki_url))
+                return true
+            }
+            R.id.menu_trend -> {
+                startActivity(Intent(this, TrendActivity::class.java))
                 return true
             }
             R.id.menu_exit -> {
@@ -131,6 +157,10 @@ class MainActivity : AppCompatActivity() {
                 openWebpage(getString(R.string.wiki_url))
                 return true
             }
+            R.id.menu_item_trend -> {
+                startActivity(Intent(this, TrendActivity::class.java))
+                return true
+            }
             else -> return super.onContextItemSelected(item)
         }
     }
@@ -161,17 +191,5 @@ class MainActivity : AppCompatActivity() {
                 ).show()
             }
             .show()
-    }
-
-    fun savePreferences(h: String, w: String) {
-        val pref = getSharedPreferences("BMI", Context.MODE_PRIVATE)
-        pref.edit().putString("height", h).apply()
-        pref.edit().putString("weight", w).apply()
-    }
-
-    fun loadPreferences() {
-        val pref = getSharedPreferences("BMI", Context.MODE_PRIVATE)
-        heightET.setText(pref.getString("height", ""))
-        weightET.setText(pref.getString("weight", ""))
     }
 }
