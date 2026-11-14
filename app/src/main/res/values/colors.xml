@@ -1,10 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  ============================================================================
+  colors.xml —— 定义 App 用到的颜色
+  ============================================================================
+  颜色用 #AARRGGBB 表示（8 位十六进制）：
+    AA = 透明度（FF 表示完全不透明），RR = 红，GG = 绿，BB = 蓝。
+  例如 #FF6200EE：不透明，红 0x62、绿 0x00、蓝 0xEE（紫色）。
+  在代码或布局里用 @color/purple_500 引用。
+-->
 <resources>
-    <color name="purple_200">#FFBB86FC</color>
-    <color name="purple_500">#FF6200EE</color>
-    <color name="purple_700">#FF3700B3</color>
-    <color name="teal_200">#FF03DAC5</color>
-    <color name="teal_700">#FF018786</color>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
+    <color name="purple_200">#FFBB86FC</color>  <!-- 浅紫，深色模式下更醒目的主色 -->
+    <color name="purple_500">#FF6200EE</color>  <!-- 主品牌色（紫色） -->
+    <color name="purple_700">#FF3700B3</color>  <!-- 深紫，主色的“深色变体” -->
+    <color name="teal_200">#FF03DAC5</color>    <!-- 青色，次要品牌色 -->
+    <color name="teal_700">#FF018786</color>    <!-- 深青，次要色的深色变体 -->
+    <color name="black">#FF000000</color>       <!-- 黑 -->
+    <color name="white">#FFFFFFFF</color>       <!-- 白 -->
 </resources>

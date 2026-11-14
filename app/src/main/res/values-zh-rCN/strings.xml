@@ -1,4 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  ============================================================================
+  strings.xml（中文版，位于 values-zh-rCN/）
+  ============================================================================
+  【这个目录的作用】
+    手机系统语言为中文（zh-CN）时，Android 会优先用这个目录里的资源；
+    没有对应的再回落到 res/values/ 里的默认值。
+    所以这里必须保持和 res/values/strings.xml 完全相同的 name（key），
+    只是把 value 换成中文。
+-->
 <resources>
     <string name="app_name">BMI</string>
     <string name="bmi_height">高度（cm）</string>
@@ -27,6 +37,7 @@
     <string name="bmi_icon">BMI图标</string>
     <string name="gender_male">男</string>
     <string name="gender_female">女</string>
+
     <string name="report_ai_title">AI 健康建议</string>
     <string name="llm_loading">正在向 AI 获取建议…</string>
     <string name="llm_retry">重试</string>
@@ -34,6 +45,7 @@
     <string name="llm_error_network">无法连接 AI 服务，请检查网络后点击重试。</string>
     <string name="llm_error_api">AI 服务返回错误，请点击重试。</string>
     <string name="llm_error_unknown">出现未知错误，请点击重试。</string>
+
     <string-array name="gender">
         <item>@string/gender_male</item>
         <item>@string/gender_female</item>

@@ -1,16 +1,23 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
+    <!--
+      ============================================================================
+      themes.xml —— 应用主题（深色/夜间模式）
+      ============================================================================
+      这个目录（values-night/）在手机开启“深色模式”时自动生效。
+      它定义了一个和 values/themes.xml 同名（Theme.BMI）的 style，
+      只是把颜色换成更适合深色背景的浅色系（比如主色用浅紫 purple_200）。
+      系统会用它覆盖浅色版，从而实现“白天一个配色、晚上另一个配色”。
+    -->
     <style name="Theme.BMI" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
-        <!-- Primary brand color. -->
+        <!-- 深色模式下用更亮的浅紫作为主色 -->
         <item name="colorPrimary">@color/purple_200</item>
         <item name="colorPrimaryVariant">@color/purple_700</item>
         <item name="colorOnPrimary">@color/black</item>
-        <!-- Secondary brand color. -->
+
         <item name="colorSecondary">@color/teal_200</item>
         <item name="colorSecondaryVariant">@color/teal_200</item>
         <item name="colorOnSecondary">@color/black</item>
-        <!-- Status bar color. -->
+
         <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
-        <!-- Customize your theme here. -->
     </style>
 </resources>

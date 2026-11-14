@@ -1,9 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  ============================================================================
+  AndroidManifest.xml —— 应用的“身份证 + 总目录”
+  ============================================================================
+  【这个文件是干什么的（考试高频考点）】
+    每个 Android 项目都必须有 AndroidManifest.xml，它是给系统看的“清单”，
+    告诉系统：
+      1. 这个 App 叫什么名字、用什么图标、用什么主题（<application>）；
+      2. 有哪些屏幕（Activity），每个 Activity 叫什么类、是否对外开放（<activity>）；
+      3. 需要哪些权限（<uses-permission>），比如联网。
+
+  【android:exported 是什么】
+    表示“这个 Activity 能不能被别的 App 启动”。
+      - 主界面 MainActivity 设 true（它是入口，桌面图标点它就启动它）；
+      - 其它页面设 false（只允许本 App 内部跳转过去），更安全。
+
+  【哪个是启动页】
+    看 <intent-filter> 里有没有 MAIN + LAUNCHER：
+      有 → 它就是“点桌面图标后第一个打开的页面”。
+-->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- 联网权限：AI 建议功能要访问 DeepSeek 接口，必须有这个权限。 -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!--
+      application 是应用的全局配置：
+        android:icon       = 桌面图标；
+        android:label      = 应用名（引用 strings.xml 里的 app_name）；
+        android:theme      = 使用的主题（引用 themes.xml 里的 Theme.BMI）；
+        android:supportsRtl = 是否支持从右到左的语言（阿拉伯语等）。
+    -->
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -14,6 +42,8 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.BMI"
         tools:targetApi="31">
+
+        <!-- 趋势页（不对外开放，只能 App 内部跳转）。 -->
         <activity
             android:name=".TrendActivity"
             android:exported="false"
@@ -22,6 +52,8 @@
                 android:name="android.app.lib_name"
                 android:value="" />
         </activity>
+
+        <!-- 报告页（不对外开放）。 -->
         <activity
             android:name=".ReportActivity"
             android:exported="false">
@@ -29,12 +61,14 @@
                 android:name="android.app.lib_name"
                 android:value="" />
         </activity>
+
+        <!-- 主界面（入口页，对外开放）。 -->
         <activity
             android:name=".MainActivity"
             android:exported="true">
+            <!-- 这个 intent-filter 让它成为“点图标就启动”的入口页。 -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 

@@ -7,17 +7,33 @@ import androidx.lifecycle.MutableLiveData
 import com.example.bmi.data.BmiHistoryRepository
 import com.example.bmi.data.BmiRecord
 
-/**
- * Loads the last month of BMI records for [TrendActivity]. The query is done
- * off the ViewModel's state, so rotating the trend screen does not lose data.
+/*
+ * ============================================================================
+ * TrendViewModel.kt —— 趋势页的 ViewModel
+ * ============================================================================
+ * 【这个文件是干什么的】
+ *   从数据库读最近 30 天记录，放到 LiveData 里供 TrendActivity 观察。
+ *
+ * 【为什么用 AndroidViewModel 而不是普通 ViewModel】
+ *   因为要拿到 Application（上下文）去创建 BmiHistoryRepository（数据库），
+ *   AndroidViewModel 构造时会把 Application 传给我们。
+ *
+ * 【数据流】
+ *   TrendActivity.load() → 本类 load() → Repository.recentRecords(30)
+ *                        → 结果放进 records（LiveData）→ Activity 收到并画图。
  */
 class TrendViewModel(application: Application) : AndroidViewModel(application) {
 
+    // 用 Application 创建仓库（仓库内部会 new 一个 SQLite 助手）。
     private val repository = BmiHistoryRepository(application)
 
+    // 内部可写、外部只读的 LiveData。
     private val _records = MutableLiveData<List<BmiRecord>>()
     val records: LiveData<List<BmiRecord>> = _records
 
+    /**
+     * 加载最近 30 天的记录。
+     */
     fun load() {
         _records.value = repository.recentRecords(BmiHistoryRepository.DEFAULT_DAYS)
     }

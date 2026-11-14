@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  ============================================================================
+  activity_trend.xml（横屏版，layout-land/）
+  ============================================================================
+  与竖屏同样的控件 id，横屏时标题与摘要并排放在顶部，图表占满下方。
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -8,6 +14,7 @@
     android:padding="12dp"
     tools:context=".TrendActivity">
 
+    <!-- 顶部一行：标题 + 摘要。 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -32,6 +39,7 @@
             tools:text="5 records · latest BMI 24.2" />
     </LinearLayout>
 
+    <!-- 图表 + 空状态叠放。 -->
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -65,6 +73,7 @@
             android:visibility="gone" />
     </FrameLayout>
 
+    <!-- 图例说明。 -->
     <TextView
         android:id="@+id/trend_legend"
         android:layout_width="match_parent"

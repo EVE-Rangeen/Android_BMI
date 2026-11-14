@@ -1,4 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  ============================================================================
+  activity_trend.xml —— 趋势页布局（竖屏）
+  ============================================================================
+  【这个文件是干什么的】
+    定义 TrendActivity 的界面：标题、摘要、折线图卡片、空状态提示、图例。
+
+  【控件 id 与代码的对应关系】
+    trend_chart   → 自定义的折线图控件 BmiTrendChartView
+    trend_summary → “共 N 条记录 · 最新BMI x.x” 摘要
+    trend_empty   → 没有记录时显示的空状态提示
+    trend_legend  → 图例说明
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -8,6 +21,7 @@
     android:padding="16dp"
     tools:context=".TrendActivity">
 
+    <!-- 标题：最近 30 天 -->
     <TextView
         android:id="@+id/trend_range"
         android:layout_width="wrap_content"
@@ -16,6 +30,7 @@
         android:textSize="18sp"
         android:textStyle="bold" />
 
+    <!-- 摘要（记录数 + 最新 BMI）。 -->
     <TextView
         android:id="@+id/trend_summary"
         android:layout_width="match_parent"
@@ -25,12 +40,17 @@
         android:textSize="13sp"
         tools:text="5 records · latest BMI 24.2" />
 
+    <!--
+      FrameLayout：用来把“图表卡片”和“空状态提示”叠在同一个位置。
+      有数据时显示卡片、隐藏提示；没数据时反过来（由 TrendActivity 控制）。
+    -->
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_marginTop="12dp"
         android:layout_weight="1">
 
+        <!-- 图表外层的卡片（MaterialCardView = 带圆角和阴影的卡片）。 -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="match_parent"
@@ -39,6 +59,7 @@
             app:strokeColor="#1F000000"
             app:strokeWidth="1dp">
 
+            <!-- 真正画折线图的自定义控件。 -->
             <com.example.bmi.ui.trend.BmiTrendChartView
                 android:id="@+id/trend_chart"
                 android:layout_width="match_parent"
@@ -46,6 +67,11 @@
                 android:padding="8dp" />
         </com.google.android.material.card.MaterialCardView>
 
+        <!--
+          空状态提示。android:elevation="4dp" 比上面的卡片更高，
+          保证在“没有数据、卡片还没被隐藏”时它也能显示在卡片上面。
+          默认 gone（隐藏），没有记录时由代码设为可见。
+        -->
         <TextView
             android:id="@+id/trend_empty"
             android:layout_width="match_parent"
@@ -58,6 +84,7 @@
             android:visibility="gone" />
     </FrameLayout>
 
+    <!-- 图例说明。 -->
     <TextView
         android:id="@+id/trend_legend"
         android:layout_width="match_parent"

@@ -1,4 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  ============================================================================
+  activity_main.xml —— 主界面布局（竖屏）
+  ============================================================================
+  【这个文件是干什么的】
+    定义 MainActivity 这个屏幕长什么样：哪里放图标、输入框、按钮、下拉框。
+
+  【布局里最重要的两件事】
+    1. android:id="@+id/xxx"：给控件起一个名字，代码里用 findViewById(R.id.xxx) 找到它。
+       例如 heightET 这个输入框，代码里就是 findViewById(R.id.heightET)。
+    2. app:layout_constraintXXX：约束布局（ConstraintLayout）用“约束”决定控件位置，
+       比如“这个控件在哪个控件的下面、离左边多远”。
+
+  【根布局是 ConstraintLayout】
+    它是“约束布局”，通过 app:layout_constraintStart_toStartOf 等属性把控件
+    相对父容器或其它控件“钉”住，比 LinearLayout 更适合做这种自由摆放的界面。
+-->
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -6,6 +23,11 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
+    <!--
+      BMI 图标（ImageView 显示图片）。
+      id = imageView，代码里 findViewById(R.id.imageView)。
+      它还被注册了“长按菜单”，长按它会弹出菜单。
+    -->
     <ImageView
         android:id="@+id/imageView"
         android:layout_width="wrap_content"
@@ -17,6 +39,12 @@
         app:layout_constraintTop_toTopOf="parent"
         app:srcCompat="@drawable/icon_128" />
 
+    <!--
+      体重输入框（EditText）。
+      id = weightET，代码里 findViewById(R.id.weightET)。
+      android:inputType="numberDecimal"：只能输入小数（带小数点）。
+      android:hint：输入框为空时显示的灰色提示文字。
+    -->
     <EditText
         android:id="@+id/weightET"
         android:layout_width="232dp"
@@ -29,6 +57,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/textView2" />
 
+    <!-- 身高输入框，id = heightET，只能输入小数。 -->
     <EditText
         android:id="@+id/heightET"
         android:layout_width="228dp"
@@ -41,6 +70,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/textView7" />
 
+    <!-- 年龄输入框，id = ageET，只能输入整数（inputType="number"）。 -->
     <EditText
         android:id="@+id/ageET"
         android:layout_width="234dp"
@@ -52,6 +82,8 @@
         android:hint="@string/bmi_age"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/textView3" />
+
+    <!-- 下面几个 TextView 是各个输入框旁边的“说明文字”（体重/身高/性别/年龄标签）。 -->
 
     <TextView
         android:id="@+id/textView2"
@@ -105,6 +137,10 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.389" />
 
+    <!--
+      “查看报告”按钮。id = reportBtn。
+      代码里 reportBtn.setOnClickListener 给它绑定点击事件。
+    -->
     <Button
         android:id="@+id/reportBtn"
         android:layout_width="wrap_content"
@@ -116,6 +152,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/weightET" />
 
+    <!-- “关于”按钮，id = aboutBtn。 -->
     <Button
         android:id="@+id/aboutBtn"
         android:layout_width="wrap_content"
@@ -127,6 +164,12 @@
         app:layout_constraintStart_toEndOf="@+id/reportBtn"
         app:layout_constraintTop_toBottomOf="@+id/weightET" />
 
+    <!--
+      性别下拉框（Spinner）。id = genderSpinner。
+      android:entries="@array/gender"：选项来自 strings.xml 里的 <string-array name="gender">
+      （第 0 项“男”，第 1 项“女”）。
+      代码里 genderSpinner.selectedItemPosition 拿到选中的位置序号。
+    -->
     <Spinner
         android:id="@+id/genderSpinner"
         android:layout_width="210dp"

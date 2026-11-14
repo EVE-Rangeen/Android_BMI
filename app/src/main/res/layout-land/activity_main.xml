@@ -1,4 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  ============================================================================
+  activity_main.xml（横屏版，放在 layout-land/ 目录）
+  ============================================================================
+  【为什么有 layout-land 这个目录】
+    Android 会根据屏幕方向自动选择布局：
+      - 竖屏 → 用 res/layout/activity_main.xml；
+      - 横屏 → 用 res/layout-land/activity_main.xml（就是本文件）。
+    两个文件的控件 id 必须完全一样（heightET、weightET、ageET、genderSpinner、reportBtn…），
+    这样 MainActivity 里的 findViewById(R.id.xxx) 在横竖屏都能找到同一个控件。
+
+  【本布局用 LinearLayout（线性布局）】
+    横屏时屏幕更宽，适合把“图标”放在左边、把“表单”放右边，所以这里用
+    LinearLayout + orientation="horizontal"（水平排列）来左右分栏。
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -9,6 +24,7 @@
     android:padding="16dp"
     tools:context=".MainActivity">
 
+    <!-- 左边：BMI 图标（id 与竖屏一致：imageView）。 -->
     <ImageView
         android:id="@+id/imageView"
         android:layout_width="wrap_content"
@@ -18,11 +34,17 @@
         android:contentDescription="@string/bmi_icon"
         app:srcCompat="@drawable/icon_128" />
 
+    <!--
+      右边：竖排的表单。
+      layout_width="0dp" + layout_weight="1" 表示“占满图标之外的所有剩余宽度”。
+    -->
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:orientation="vertical">
+
+        <!-- 每一行 = 一个水平 LinearLayout：左边标签 + 右边输入框。 -->
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -37,6 +59,7 @@
                 android:text="@string/bmi_height"
                 android:textSize="16sp" />
 
+            <!-- 身高输入框，id 与竖屏一致：heightET。 -->
             <EditText
                 android:id="@+id/heightET"
                 android:layout_width="0dp"
@@ -60,6 +83,7 @@
                 android:text="@string/bmi_weight"
                 android:textSize="16sp" />
 
+            <!-- 体重输入框，id：weightET。 -->
             <EditText
                 android:id="@+id/weightET"
                 android:layout_width="0dp"
@@ -83,6 +107,7 @@
                 android:text="@string/bmi_age"
                 android:textSize="16sp" />
 
+            <!-- 年龄输入框，id：ageET。 -->
             <EditText
                 android:id="@+id/ageET"
                 android:layout_width="0dp"
@@ -106,6 +131,7 @@
                 android:text="@string/bmi_gender"
                 android:textSize="16sp" />
 
+            <!-- 性别下拉框，id：genderSpinner。 -->
             <Spinner
                 android:id="@+id/genderSpinner"
                 android:layout_width="0dp"
@@ -121,6 +147,7 @@
             android:layout_marginTop="12dp"
             android:orientation="horizontal">
 
+            <!-- “查看报告”按钮，id：reportBtn。 -->
             <Button
                 android:id="@+id/reportBtn"
                 android:layout_width="wrap_content"
@@ -128,6 +155,7 @@
                 android:text="@string/bmi_btn"
                 android:textSize="12sp" />
 
+            <!-- “关于”按钮，id：aboutBtn。 -->
             <Button
                 android:id="@+id/aboutBtn"
                 android:layout_width="wrap_content"
