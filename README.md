@@ -103,6 +103,16 @@ defaultConfig {
 丢了 `buildFeatures` 会直接编译失败；丢了 `buildConfigField` 则 AI 建议区域会一直
 提示“未配置 API Key”。
 
+assignment07（SharedPreferences 记住资料 + SQLite 每日记录 + 趋势折线图）之后：
+
+- 没有新增第三方依赖。趋势图是自定义 View（`ui/trend/BmiTrendChartView.kt`），
+  没有用 MPAndroidChart，所以 `dependencies {}` 不需要跟着改
+- 数据库用的是系统自带的 `android.database.sqlite`，不需要额外配置或权限
+- 新增的 `TrendActivity`、`BmiDbHelper`、`BmiPreferences` 等业务文件两个分支一致，
+  合并时自动处理
+- 冲突范围不变，仍然只有 `build.gradle`、`app/build.gradle`、`settings.gradle`
+  三个文件，按上面表格处理即可
+
 ### 学校电脑上的 API Key
 
 `local.properties` 不会提交到仓库，所以换电脑后要在学校的机器上补一行：
