@@ -1,24 +1,36 @@
+// ============================================================================
+// settings.gradle —— 项目设置
+// ============================================================================
+// 告诉 Gradle：这个项目叫什么名字、由哪些模块组成、去哪里下载依赖。
+
 pluginManagement {
+    // pluginManagement 只管“插件的下载仓库”。
     repositories {
-        // If your campus network cannot reach google()/mavenCentral(),
-        // uncomment the Aliyun mirrors below and put them first.
+        // 如果校园网连不上 google() / mavenCentral()，把下面三行阿里云镜像
+        // 取消注释并放到最前面，再重新 Sync。
         // maven { url 'https://maven.aliyun.com/repository/google' }
         // maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
         // maven { url 'https://maven.aliyun.com/repository/public' }
-        gradlePluginPortal()
-        google()
-        mavenCentral()
+        gradlePluginPortal()  // Gradle 官方插件仓库
+        google()              // Google 的仓库（Android 相关）
+        mavenCentral()        // Maven 中央仓库（通用开源库）
     }
 }
+
 dependencyResolutionManagement {
+    // 依赖也从这些仓库下载。
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
-        // Same mirrors as above, for the app's libraries.
+        // 同上，应用依赖的阿里云镜像。
         // maven { url 'https://maven.aliyun.com/repository/google' }
         // maven { url 'https://maven.aliyun.com/repository/public' }
         google()
         mavenCentral()
     }
 }
+
+// 项目名
 rootProject.name = "BMI"
+
+// 声明这个项目里包含哪些模块。这里只有一个 app 模块。
 include ':app'

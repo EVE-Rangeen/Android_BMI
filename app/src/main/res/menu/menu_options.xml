@@ -1,19 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  ============================================================================
+  menu_options.xml —— 右上角“选项菜单”里有哪些菜单项
+  ============================================================================
+  【菜单机制】
+    MainActivity 里 onCreateOptionsMenu() 把这个文件 inflate 进右上角菜单，
+    用户点某一项时 onOptionsItemSelected() 根据 item 的 id 处理。
+
+  【showAsAction 属性】
+    app:showAsAction="always"：一直显示在标题栏上（比如“关于”）。
+    app:showAsAction="never"：收进右上角三个点的“溢出菜单”里。
+-->
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     tools:context=".MainActivity">
 
+    <!-- 关于：一直显示在标题栏。 -->
     <item
         android:id="@+id/menu_about"
         android:title="@string/about_button"
         app:showAsAction="always" />
 
+    <!-- BMI 趋势：收进溢出菜单。 -->
+    <item
+        android:id="@+id/menu_trend"
+        android:title="@string/menu_trend"
+        app:showAsAction="never" />
+
+    <!-- BMI 维基百科：收进溢出菜单。 -->
     <item
         android:id="@+id/menu_wiki"
         android:title="@string/menu_wiki"
         app:showAsAction="never" />
 
+    <!-- 退出：收进溢出菜单。 -->
     <item
         android:id="@+id/menu_exit"
         android:title="@string/menu_exit"
