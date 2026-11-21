@@ -33,6 +33,14 @@ import java.util.Locale
  *
  * 【谁在用这个文件】
  *   TrendActivity 调用 setRecords(...) 传入数据，然后控件自己 invalidate() 重画。
+ *
+ * ────────────────────────────────────────────────────────────────────────────
+ * 【依赖关系】（考试删文件前先看这里）
+ *   本文件依赖：BmiRecord、BmiDates，以及资源 R.color.*（取主题色）。
+ *   谁依赖本文件：TrendActivity（以及 activity_trend.xml 里直接引用本类）。
+ *   删除指引：BmiTrendChartView 只服务于“画折线图”，属于【趋势/历史】功能；
+ *             砍掉趋势时连同本文件 + activity_trend.xml 一起删。
+ * ────────────────────────────────────────────────────────────────────────────
  */
 class BmiTrendChartView @JvmOverloads constructor(
     context: Context,

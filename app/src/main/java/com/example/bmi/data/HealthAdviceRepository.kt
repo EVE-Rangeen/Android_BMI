@@ -19,6 +19,15 @@ import kotlinx.coroutines.withContext
  *
  * 【谁在用这个文件】
  *   ReportViewModel 的 loadAdvice() 调用 fetchAdvice()。
+ *
+ * ────────────────────────────────────────────────────────────────────────────
+ * 【依赖关系】（考试删文件前先看这里）
+ *   本文件依赖：DeepSeekClient、PromptBuilder、BmiProfile、AppLanguage。
+ *   谁依赖本文件：ReportViewModel。
+ *   删除指引：本文件是“AI 建议”的对外入口，属于【AI 建议】功能；
+ *             砍掉 AI 时连同 DeepSeekClient、PromptBuilder、AppLanguage、
+ *             AdviceUiState、ReportViewModel 一起删。
+ * ────────────────────────────────────────────────────────────────────────────
  */
 class HealthAdviceRepository(
     // API key 默认从 BuildConfig 读（编译期注入，见 app/build.gradle）。

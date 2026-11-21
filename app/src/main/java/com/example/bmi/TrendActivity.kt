@@ -19,6 +19,15 @@ import com.example.bmi.ui.trend.TrendViewModel
  * 【这个页面没有 Intent 传值】
  *   因为它不需要 MainActivity 给它数据，而是自己从 SQLite 数据库里读历史。
  *   这正是“持久化存储”的意义：数据存在数据库里，任何页面都能随时读取。
+ *
+ * ────────────────────────────────────────────────────────────────────────────
+ * 【依赖关系】（考试删文件前先看这里）
+ *   本文件依赖：BmiTrendChartView、TrendViewModel（都在 ui/trend/ 下）。
+ *   谁依赖本文件：MainActivity（菜单里跳转到本页）。
+ *   删除指引：TrendActivity 就是“趋势页”，属于【趋势/历史】功能。
+ *             砍掉趋势时：删本文件 + ui/trend/ 整个目录 + activity_trend.xml
+ *             + AndroidManifest 里的 TrendActivity 注册 + MainActivity 里跳转入口。
+ * ────────────────────────────────────────────────────────────────────────────
  */
 class TrendActivity : AppCompatActivity() {
 

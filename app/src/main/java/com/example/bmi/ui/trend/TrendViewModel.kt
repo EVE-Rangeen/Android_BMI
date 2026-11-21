@@ -21,6 +21,14 @@ import com.example.bmi.data.BmiRecord
  * 【数据流】
  *   TrendActivity.load() → 本类 load() → Repository.recentRecords(30)
  *                        → 结果放进 records（LiveData）→ Activity 收到并画图。
+ *
+ * ────────────────────────────────────────────────────────────────────────────
+ * 【依赖关系】（考试删文件前先看这里）
+ *   本文件依赖：BmiHistoryRepository、BmiRecord。
+ *   谁依赖本文件：TrendActivity。
+ *   删除指引：TrendViewModel 只服务于“趋势页读数据库”，属于【趋势/历史】功能；
+ *             砍掉趋势时连同本文件一起删。
+ * ────────────────────────────────────────────────────────────────────────────
  */
 class TrendViewModel(application: Application) : AndroidViewModel(application) {
 

@@ -19,6 +19,14 @@ import java.util.Locale
  *
  * 【谁在用这个文件】
  *   HealthAdviceRepository 在发请求前调用这两个方法拿到提示词。
+ *
+ * ────────────────────────────────────────────────────────────────────────────
+ * 【依赖关系】（考试删文件前先看这里）
+ *   本文件依赖：BmiProfile、Gender、AppLanguage（都在同目录 data/ 下）。
+ *   谁依赖本文件：HealthAdviceRepository。
+ *   删除指引：PromptBuilder 只服务于“给 AI 拼提示词”，属于【AI 建议】功能；
+ *             砍掉 AI 时连同本文件一起删。
+ * ────────────────────────────────────────────────────────────────────────────
  */
 object PromptBuilder {
 

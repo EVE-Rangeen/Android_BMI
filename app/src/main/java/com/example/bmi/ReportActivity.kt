@@ -38,6 +38,17 @@ import java.util.Locale
  *   Activity 只做两件事：
  *     - 调 viewModel.loadAdvice(...) 发起请求；
  *     - observe（观察）viewModel.adviceState 并照着渲染界面。
+ *
+ * ────────────────────────────────────────────────────────────────────────────
+ * 【依赖关系】（考试删文件前先看这里）
+ *   本文件依赖（功能拆成两块）：
+ *     · 报告页本体：BmiProfile、Gender、BmiHistoryRepository、BmiRecord、BmiDates；
+ *     · AI 建议：AdviceRequest、AdviceUiState、ReportViewModel、AppLanguage。
+ *   谁依赖本文件：MainActivity（按钮跳转到本页）。
+ *   删除指引：ReportActivity 是“报告页”。考试若只要“输入→计算→显示”，
+ *             可整个删掉本页（含 AI 部分），把计算逻辑直接写进 MainActivity，
+ *             并删 AndroidManifest 里的 ReportActivity 注册 + 相关布局/图片。
+ * ────────────────────────────────────────────────────────────────────────────
  */
 class ReportActivity : AppCompatActivity() {
 

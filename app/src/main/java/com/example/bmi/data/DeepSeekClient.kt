@@ -24,6 +24,14 @@ import java.net.URL
  *   如果放在主线程（UI 线程）会触发 NetworkOnMainThreadException 并卡界面。
  *   所以它一定是在 HealthAdviceRepository 里通过 withContext(Dispatchers.IO)
  *   切到子线程去执行的（见 HealthAdviceRepository.kt）。
+ *
+ * ────────────────────────────────────────────────────────────────────────────
+ * 【依赖关系】（考试删文件前先看这里）
+ *   本文件依赖：无（只 import BuildConfig 里的密钥，不依赖其它源码文件）。
+ *   谁依赖本文件：HealthAdviceRepository。
+ *   删除指引：DeepSeekClient 只服务于“调用 DeepSeek 接口”，属于【AI 建议】功能；
+ *             砍掉 AI 时连同本文件一起删。
+ * ────────────────────────────────────────────────────────────────────────────
  */
 
 /** API key 没配置时抛出的异常（BuildConfig 里是空字符串）。 */

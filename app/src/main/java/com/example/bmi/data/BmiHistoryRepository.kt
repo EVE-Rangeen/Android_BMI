@@ -19,6 +19,14 @@ import android.content.Context
  * 【谁在用这个文件】
  *   - ReportActivity：saveRecord(...) 保存当天记录；
  *   - TrendViewModel：recentRecords(...) 读取最近 30 天。
+ *
+ * ────────────────────────────────────────────────────────────────────────────
+ * 【依赖关系】（考试删文件前先看这里）
+ *   本文件依赖：BmiDbHelper、BmiRecord。
+ *   谁依赖本文件：ReportActivity（存记录）、TrendViewModel（读记录）。
+ *   删除指引：本文件是“SQLite 历史”的对外入口，属于【趋势/历史】功能；
+ *             砍掉该功能时和 BmiDbHelper 等一起删。
+ * ────────────────────────────────────────────────────────────────────────────
  */
 class BmiHistoryRepository(context: Context) {
 
