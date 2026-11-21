@@ -22,6 +22,14 @@ import com.example.bmi.data.BmiProfile
  * 【谁在用这个文件】
  *   - ReportViewModel 创建这些状态；
  *   - ReportActivity 观察这些状态并渲染。
+ *
+ * ────────────────────────────────────────────────────────────────────────────
+ * 【依赖关系】（考试删文件前先看这里）
+ *   本文件依赖：BmiProfile、AppLanguage，以及资源 R.string.*（错误文案）。
+ *   谁依赖本文件：ReportActivity、ReportViewModel。
+ *   删除指引：AdviceUiState 只描述“AI 建议的加载状态”，属于【AI 建议】功能；
+ *             砍掉 AI 时连同本文件一起删。
+ * ────────────────────────────────────────────────────────────────────────────
  */
 
 /**

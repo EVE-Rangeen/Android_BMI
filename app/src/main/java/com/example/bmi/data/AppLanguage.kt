@@ -18,6 +18,14 @@ package com.example.bmi.data
  *   2. PromptBuilder 用它决定“给 AI 的提示词用中文还是英文写”；
  *   3. 界面上的字符串（“高度”“Height”）不是这个文件负责的，那是 Android 的资源系统
  *      根据 values/ 和 values-zh-rCN/ 两个目录自动切换的。
+ *
+ * ────────────────────────────────────────────────────────────────────────────
+ * 【依赖关系】（考试删文件前先看这里）
+ *   本文件依赖：无（不 import 任何本项目内的类）。
+ *   谁依赖本文件：ReportActivity、PromptBuilder、HealthAdviceRepository、AdviceUiState。
+ *   删除指引：AppLanguage 只服务于“AI 回答用中文还是英文”。
+ *             砍掉 AI 功能时，连同本文件一起删。
+ * ────────────────────────────────────────────────────────────────────────────
  */
 enum class AppLanguage {
 

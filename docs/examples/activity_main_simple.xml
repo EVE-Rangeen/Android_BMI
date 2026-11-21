@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ============================================================================
+  activity_main_simple.xml —— 最简版主界面布局（配套 MainActivitySimple.kt）
+  ============================================================================
+  【这是什么】
+    考试用最简版的布局：两个输入框 + 一个按钮 + 一个结果显示文字。
+    只用 LinearLayout（线性布局），比 ConstraintLayout 更简单直观。
+
+  【控件 id 与代码对应】
+    heightET → findViewById(R.id.heightET)  身高输入框
+    weightET → findViewById(R.id.weightET)  体重输入框
+    calcBtn  → findViewById(R.id.calcBtn)   计算按钮
+    resultTV → findViewById(R.id.resultTV)  结果显示
+
+  【改造成温度转换器】
+    把两个 EditText 换成一个 EditText + 一个 Spinner，结果换成两个 TextView 即可。
+    完整代码见 MainActivitySimple.kt 末尾的【改编模板】。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <!-- 身高输入框：inputType="numberDecimal" 表示只能输入小数。 -->
+    <EditText
+        android:id="@+id/heightET"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="身高 (cm)"
+        android:inputType="numberDecimal" />
+
+    <!-- 体重输入框。 -->
+    <EditText
+        android:id="@+id/weightET"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:hint="体重 (kg)"
+        android:inputType="numberDecimal" />
+
+    <!-- 计算按钮。 -->
+    <Button
+        android:id="@+id/calcBtn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="计算 BMI" />
+
+    <!-- 结果显示：textSize=20sp 让结果大一点、看得清。 -->
+    <TextView
+        android:id="@+id/resultTV"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:textSize="20sp" />
+</LinearLayout>

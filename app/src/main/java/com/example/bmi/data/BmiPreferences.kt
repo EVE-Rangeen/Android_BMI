@@ -24,6 +24,15 @@ import android.content.Context
  *   MainActivity 在：
  *     1. 点“查看报告”按钮时调用 save(...) 保存；
  *     2. 首次打开时调用 height()/weight()/age()/gender() 自动填充。
+ *
+ * ────────────────────────────────────────────────────────────────────────────
+ * 【依赖关系】（考试删文件前先看这里）
+ *   本文件依赖：无（只用 Android 自带的 Context / SharedPreferences）。
+ *   谁依赖本文件：MainActivity。
+ *   删除指引：BmiPreferences 是“记住上次输入”的可选功能，完全独立。
+ *             如果考试不需要自动填充，可删本文件，并删 MainActivity 里所有
+ *             preferences 相关的代码（见 MainActivity 里的【可删功能】标注）。
+ * ────────────────────────────────────────────────────────────────────────────
  */
 class BmiPreferences(context: Context) {
 

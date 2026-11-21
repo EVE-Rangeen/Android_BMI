@@ -16,38 +16,24 @@ package com.example.bmi.data
  * 【data class 是什么】
  *   data class 会自动生成 equals / hashCode / toString / copy 等方法，
  *   非常适合“只用来装数据”的类。
- */
-
-/**
- * 用户的性别。
  *
- * 注意：性别是从 MainActivity 的下拉框（Spinner）里选出来的，
- * 下拉框只给了我们一个“位置序号”（0 或 1），
- * 这里把它翻译成有明确含义的 MALE / FEMALE。
+ * ────────────────────────────────────────────────────────────────────────────
+ * 【依赖关系】（考试删文件前先看这里）
+ *   本文件依赖：Gender（同目录 Gender.kt）。
+ *   谁依赖本文件：ReportActivity、ReportViewModel、HealthAdviceRepository、
+ *                 PromptBuilder、AdviceUiState。
+ *   删除指引：BmiProfile 只被“报告页 + AI 建议”用到，主界面和趋势图不用它。
+ *             如果你砍掉报告页 / AI 功能，可以连同本文件一起删（Gender 是否保留，
+ *             取决于趋势/SQLite 功能还在不在，见 Gender.kt 的说明）。
+ * ────────────────────────────────────────────────────────────────────────────
  */
-enum class Gender {
-    MALE,    // 男
-    FEMALE;  // 女
-
-    companion object {
-        /**
-         * 把下拉框的位置序号转换成 Gender。
-         *
-         * 下拉框的数据来自 res/values/strings.xml 里的 <string-array name="gender">，
-         * 第 0 项是“男”，第 1 项是“女”。
-         * 因此：位置 1 是女性，其余情况一律按男性处理（防御性写法，避免越界出错）。
-         */
-        fun fromSpinnerPosition(position: Int): Gender =
-            if (position == 1) FEMALE else MALE
-    }
-}
 
 /**
  * 一次 BMI 计算所需的全部个人信息。
  *
  * @property bmi    已经算好的 BMI 数值（体重 / 身高²），由 ReportActivity 计算。
  * @property age    年龄（整数）。
- * @property gender 性别。
+ * @property gender 性别（见同目录 Gender.kt）。
  */
 data class BmiProfile(
     val bmi: Double,

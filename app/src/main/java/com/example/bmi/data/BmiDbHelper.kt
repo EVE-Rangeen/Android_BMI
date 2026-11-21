@@ -30,6 +30,15 @@ import java.util.Locale
  * 【谁在用这个文件】
  *   BmiHistoryRepository 通过它 save(...) 写记录、recentRecords(...) 读记录；
  *   ReportActivity 保存记录时，最终也是走到这里。
+ *
+ * ────────────────────────────────────────────────────────────────────────────
+ * 【依赖关系】（考试删文件前先看这里）
+ *   本文件依赖：BmiRecord、Gender、BmiDates（都在同目录 data/ 下）。
+ *   谁依赖本文件：BmiHistoryRepository。
+ *   删除指引：BmiDbHelper 是“SQLite 存历史”的核心，属于【趋势/历史】功能。
+ *             砍掉该功能时，连同 BmiRecord、BmiDates、Gender、BmiHistoryRepository
+ *             一起删（并删 TrendActivity / 趋势相关布局与菜单入口）。
+ * ────────────────────────────────────────────────────────────────────────────
  */
 class BmiDbHelper(context: Context) : SQLiteOpenHelper(
     context.applicationContext,  // 用 applicationContext，理由同 BmiPreferences

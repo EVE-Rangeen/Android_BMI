@@ -42,6 +42,19 @@ import com.google.android.material.snackbar.Snackbar
  *   5. Intent + Bundle 在页面之间传数据；
  *   6. 菜单（选项菜单 OptionsMenu + 上下文菜单 ContextMenu）；
  *   7. 对话框（MaterialAlertDialogBuilder）。
+ *
+ * ────────────────────────────────────────────────────────────────────────────
+ * 【依赖关系】（考试删文件前先看这里）
+ *   本文件依赖：
+ *     · 自动填充：BmiPreferences；
+ *     · 跳转：ReportActivity、TrendActivity；
+ *     · 菜单：res/menu/menu_options.xml、res/menu/menu_context.xml；
+ *     · 界面库：Material（MaterialAlertDialogBuilder、Snackbar）。
+ *   谁依赖本文件：无（它是 App 入口，点图标先启动它）。
+ *   删除指引：MainActivity 是必留的主界面，永远保留。
+ *             但考试若要做“最简版”，可按文件里【可删功能】标注，逐块删掉
+ *             自动填充 / 跳转 / 菜单，把计算逻辑直接写在按钮点击里（见开发指南.md）。
+ * ────────────────────────────────────────────────────────────────────────────
  */
 class MainActivity : AppCompatActivity() {
 

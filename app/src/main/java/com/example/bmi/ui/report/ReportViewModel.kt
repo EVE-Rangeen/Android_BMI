@@ -29,6 +29,14 @@ import java.io.IOException
  *   只要数据变了，观察者就会自动收到新数据并刷新界面。
  *   - MutableLiveData：可以修改的 LiveData（内部用）；
  *   - LiveData：只读的 LiveData（对外暴露，防止外部乱改）。
+ *
+ * ────────────────────────────────────────────────────────────────────────────
+ * 【依赖关系】（考试删文件前先看这里）
+ *   本文件依赖：HealthAdviceRepository、AdviceUiState。
+ *   谁依赖本文件：ReportActivity。
+ *   删除指引：ReportViewModel 只负责“发 AI 请求 + 重试”，属于【AI 建议】功能；
+ *             砍掉 AI 时连同本文件一起删（并删 ReportActivity 里所有 viewModel 代码）。
+ * ────────────────────────────────────────────────────────────────────────────
  */
 class ReportViewModel(
     // 数据来源。默认 new 一个真的 Repository；测试时可以传“假的”。
