@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ============================================================================
+  item_wellness.xml —— ListView 里“一行记录”的布局
+  ============================================================================
+  【这个文件是干什么的】
+    定义历史列表每一行长什么样：第一行“日期 · 身体状况”，第二行“步数 · 备注”。
+    HistoryActivity 用 SimpleAdapter 把数据填进 itemTitle / itemSubtitle 两个控件。
+
+  【为什么单独一个文件】
+    ListView 的每一行都需要一个布局。如果直接用系统自带的 simple_list_item_1，
+    只有一行文字、样式也改不了；自定义这个文件后，一行可以显示两行文字。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingStart="8dp"
+    android:paddingTop="12dp"
+    android:paddingEnd="8dp"
+    android:paddingBottom="12dp">
+
+    <!-- 第一行：日期 · 身体状况（加粗、稍大）。 -->
+    <TextView
+        android:id="@+id/itemTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="?android:attr/textColorPrimary"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        tools:text="2026-11-26 · Good" />
+
+    <!-- 第二行：步数 · 备注（灰色、稍小，最多两行，超出显示省略号）。 -->
+    <TextView
+        android:id="@+id/itemSubtitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:ellipsize="end"
+        android:maxLines="2"
+        android:textColor="?android:attr/textColorSecondary"
+        android:textSize="14sp"
+        tools:text="8200 steps · Slept well" />
+
+</LinearLayout>

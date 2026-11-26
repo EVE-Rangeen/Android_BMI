@@ -1,184 +1,135 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   ============================================================================
-  activity_main.xml —— 主界面布局（竖屏）
+  activity_main.xml —— 健康日志主界面
   ============================================================================
   【这个文件是干什么的】
-    定义 MainActivity 这个屏幕长什么样：哪里放图标、输入框、按钮、下拉框。
+    定义 MainActivity 的界面：显示今天日期，选择身体状况，填步数和备注，
+    底部两个按钮：保存、查看历史。
 
-  【布局里最重要的两件事】
-    1. android:id="@+id/xxx"：给控件起一个名字，代码里用 findViewById(R.id.xxx) 找到它。
-       例如 heightET 这个输入框，代码里就是 findViewById(R.id.heightET)。
-    2. app:layout_constraintXXX：约束布局（ConstraintLayout）用“约束”决定控件位置，
-       比如“这个控件在哪个控件的下面、离左边多远”。
+  【为什么换成 LinearLayout】
+    作业原版用 ConstraintLayout，适合“自由摆放”的复杂界面，但要写很多约束属性。
+    这个页面就是从上到下排一列控件，用 LinearLayout（orientation="vertical"）
+    最简单：谁写在前面谁在上面，加 layout_marginTop 控制间距即可。
+    外面再套一层 ScrollView，保证小屏幕或弹出键盘时内容可以滚动。
 
-  【根布局是 ConstraintLayout】
-    它是“约束布局”，通过 app:layout_constraintStart_toStartOf 等属性把控件
-    相对父容器或其它控件“钉”住，比 LinearLayout 更适合做这种自由摆放的界面。
+  【控件 id 与代码的对应关系】
+    dateTV            → 显示“今天：2026-11-26”
+    conditionSpinner  → 身体状况下拉框（良好/一般/较差）
+    stepsET           → 步数输入框
+    noteET            → 备注输入框
+    saveBtn           → 保存按钮
+    historyBtn        → 查看历史按钮
 -->
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:fillViewport="true"
     tools:context=".MainActivity">
 
-    <!--
-      BMI 图标（ImageView 显示图片）。
-      id = imageView，代码里 findViewById(R.id.imageView)。
-      它还被注册了“长按菜单”，长按它会弹出菜单。
-    -->
-    <ImageView
-        android:id="@+id/imageView"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="150dp"
-        android:layout_marginTop="20dp"
-        android:contentDescription="@string/bmi_icon"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:srcCompat="@drawable/icon_128" />
+        android:orientation="vertical"
+        android:padding="24dp">
 
-    <!--
-      体重输入框（EditText）。
-      id = weightET，代码里 findViewById(R.id.weightET)。
-      android:inputType="numberDecimal"：只能输入小数（带小数点）。
-      android:hint：输入框为空时显示的灰色提示文字。
-    -->
-    <EditText
-        android:id="@+id/weightET"
-        android:layout_width="232dp"
-        android:layout_height="62dp"
-        android:layout_marginStart="52dp"
-        android:layout_marginTop="24dp"
-        android:ems="10"
-        android:inputType="numberDecimal"
-        android:hint="@string/bmi_weight"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/textView2" />
+        <!-- 当天日期。文字由 MainActivity 用 getString(..., BmiDates.today()) 填进来。 -->
+        <TextView
+            android:id="@+id/dateTV"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            tools:text="Today: 2026-11-26" />
 
-    <!-- 身高输入框，id = heightET，只能输入小数。 -->
-    <EditText
-        android:id="@+id/heightET"
-        android:layout_width="228dp"
-        android:layout_height="49dp"
-        android:layout_marginStart="52dp"
-        android:layout_marginTop="24dp"
-        android:ems="10"
-        android:inputType="numberDecimal"
-        android:hint="@string/bmi_height"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/textView7" />
+        <!-- 身体状况标签。 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="@string/wellness_condition_label"
+            android:textSize="16sp" />
 
-    <!-- 年龄输入框，id = ageET，只能输入整数（inputType="number"）。 -->
-    <EditText
-        android:id="@+id/ageET"
-        android:layout_width="234dp"
-        android:layout_height="53dp"
-        android:layout_marginStart="52dp"
-        android:layout_marginTop="20dp"
-        android:ems="10"
-        android:inputType="number"
-        android:hint="@string/bmi_age"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/textView3" />
+        <!--
+          身体状况下拉框。
+          android:entries="@array/wellness_condition" 表示选项来自 strings.xml 里的数组，
+          代码里用 conditionSpinner.selectedItemPosition 拿到 0/1/2。
+        -->
+        <Spinner
+            android:id="@+id/conditionSpinner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:entries="@array/wellness_condition"
+            android:minHeight="48dp"
+            android:spinnerMode="dropdown" />
 
-    <!-- 下面几个 TextView 是各个输入框旁边的“说明文字”（体重/身高/性别/年龄标签）。 -->
+        <!-- 步数标签。 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/wellness_steps_label"
+            android:textSize="16sp" />
 
-    <TextView
-        android:id="@+id/textView2"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/bmi_weight"
-        android:textSize="16sp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.152"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.722" />
+        <!--
+          步数输入框。
+          inputType="number" 会弹出数字键盘，并且只允许输入整数（不允许小数点/字母）。
+          注意：它只是“限制键盘”，代码里仍然要用 toIntOrNull() 做一次校验。
+        -->
+        <EditText
+            android:id="@+id/stepsET"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:hint="@string/wellness_steps_hint"
+            android:importantForAutofill="no"
+            android:inputType="number"
+            android:maxLength="7"
+            android:minHeight="48dp" />
 
-    <TextView
-        android:id="@+id/textView7"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/bmi_height"
-        android:textSize="16sp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.154"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.569" />
+        <!-- 备注标签。 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/wellness_note_label"
+            android:textSize="16sp" />
 
-    <TextView
-        android:id="@+id/textView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/bmi_gender"
-        android:textSize="16sp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.141"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.208" />
+        <!--
+          备注输入框。
+          textMultiLine 允许换行；gravity="top" 让光标从左上角开始（默认是垂直居中）。
+        -->
+        <EditText
+            android:id="@+id/noteET"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="top|start"
+            android:hint="@string/wellness_note_hint"
+            android:importantForAutofill="no"
+            android:inputType="textMultiLine|textCapSentences"
+            android:minLines="3" />
 
-    <TextView
-        android:id="@+id/textView3"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/bmi_age"
-        android:textSize="16sp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.135"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.389" />
+        <!-- 保存按钮：点击后写数据库。 -->
+        <Button
+            android:id="@+id/saveBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="@string/wellness_save"
+            android:textSize="16sp" />
 
-    <!--
-      “查看报告”按钮。id = reportBtn。
-      代码里 reportBtn.setOnClickListener 给它绑定点击事件。
-    -->
-    <Button
-        android:id="@+id/reportBtn"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="52dp"
-        android:layout_marginTop="36dp"
-        android:text="@string/bmi_btn"
-        android:textSize="12sp"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/weightET" />
+        <!-- 查看历史按钮：用“描边按钮”和主按钮区分层级。 -->
+        <Button
+            android:id="@+id/historyBtn"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/wellness_view_history"
+            android:textSize="16sp" />
 
-    <!-- “关于”按钮，id = aboutBtn。 -->
-    <Button
-        android:id="@+id/aboutBtn"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="20dp"
-        android:layout_marginTop="36dp"
-        android:text="@string/about_button"
-        android:textSize="12sp"
-        app:layout_constraintStart_toEndOf="@+id/reportBtn"
-        app:layout_constraintTop_toBottomOf="@+id/weightET" />
-
-    <!--
-      性别下拉框（Spinner）。id = genderSpinner。
-      android:entries="@array/gender"：选项来自 strings.xml 里的 <string-array name="gender">
-      （第 0 项“男”，第 1 项“女”）。
-      代码里 genderSpinner.selectedItemPosition 拿到选中的位置序号。
-    -->
-    <Spinner
-        android:id="@+id/genderSpinner"
-        android:layout_width="210dp"
-        android:layout_height="62dp"
-        android:layout_marginStart="52dp"
-        android:layout_marginTop="20dp"
-        android:entries="@array/gender"
-        android:spinnerMode="dropdown"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/textView" />
-
-</androidx.constraintlayout.widget.ConstraintLayout>
+    </LinearLayout>
+</ScrollView>

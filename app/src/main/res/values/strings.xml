@@ -19,7 +19,7 @@
     代码里用 getString(R.string.trend_summary, 5, 24.8) 把真实值填进去。
 -->
 <resources>
-    <string name="app_name">BMI</string>
+    <string name="app_name">Wellness Tracker</string>
     <string name="bmi_height">Height (cm)</string>
     <string name="bmi_weight">Weight (kg)</string>
     <string name="bmi_age">Age</string>
@@ -68,5 +68,32 @@
     <string-array name="gender">
         <item>@string/gender_male</item>
         <item>@string/gender_female</item>
+    </string-array>
+
+    <!-- ==================== Wellness Tracker（健康日志）==================== -->
+    <string name="wellness_today">Today: %1$s</string>
+    <string name="wellness_condition_label">How do you feel today?</string>
+    <string name="wellness_condition_good">Good</string>
+    <string name="wellness_condition_fair">Fair</string>
+    <string name="wellness_condition_poor">Poor</string>
+    <string name="wellness_steps_label">Steps today</string>
+    <string name="wellness_steps_hint">e.g. 8000</string>
+    <string name="wellness_note_label">Notes (optional)</string>
+    <string name="wellness_note_hint">Sleep, mood, symptoms…</string>
+    <string name="wellness_save">Save today\'s record</string>
+    <string name="wellness_view_history">View history</string>
+    <string name="wellness_saved">Saved for today.</string>
+    <string name="wellness_steps_warning">Please enter a valid step count.</string>
+    <string name="wellness_history_title">History</string>
+    <string name="wellness_history_empty">No records yet.\nSave today to start your log.</string>
+    <string name="wellness_history_summary">%1$d days recorded · average %2$d steps</string>
+    <string name="wellness_history_title_row">%1$s · %2$s</string>
+    <string name="wellness_history_steps">%1$d steps</string>
+
+    <!-- 身体状况下拉框的选项，顺序必须和代码里的 0/1/2 对应。 -->
+    <string-array name="wellness_condition">
+        <item>@string/wellness_condition_good</item>
+        <item>@string/wellness_condition_fair</item>
+        <item>@string/wellness_condition_poor</item>
     </string-array>
 </resources>

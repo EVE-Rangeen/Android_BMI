@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ============================================================================
+  activity_history.xml —— 历史记录页布局
+  ============================================================================
+  【这个文件是干什么的】
+    上面一行统计（记录天数 + 平均步数），下面一个 ListView 显示每条记录。
+    没有记录时隐藏列表，显示中间的提示文字。
+
+  【控件 id 与代码的对应关系】
+    historySummary → 统计文字
+    historyEmpty   → 空状态提示
+    historyList    → 记录列表
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    tools:context=".HistoryActivity">
+
+    <TextView
+        android:id="@+id/historySummary"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        tools:text="3 days recorded · average 6500 steps" />
+
+    <!--
+      空状态提示。默认 gone，由代码在没有记录时设为 visible。
+      layout_weight="1" 让它占满剩余空间，文字才能垂直居中。
+    -->
+    <TextView
+        android:id="@+id/historyEmpty"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:padding="24dp"
+        android:text="@string/wellness_history_empty"
+        android:textSize="16sp"
+        android:visibility="gone" />
+
+    <!--
+      ListView：Android 最基础的滚动列表控件。
+      只需要给它设置一个 Adapter（这里用 SimpleAdapter），它就会自动显示每一行。
+    -->
+    <ListView
+        android:id="@+id/historyList"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="8dp"
+        android:layout_weight="1"
+        android:divider="?android:attr/listDivider"
+        android:dividerHeight="1dp" />
+
+</LinearLayout>

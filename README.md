@@ -1,5 +1,12 @@
 # BMI
 
+> **`wellness_tracker` 分支（考试练习）**：本分支已把项目改造成考试练习题
+> “Wellness Tracker（健康日志）”——每天记录身体状况、步数、备注，保存后可查看历史。
+> 改造说明见 [`docs/wellness-tracker.md`](docs/wellness-tracker.md)，
+> 可迁移到同类题目的考场教程见 [`docs/exam-playbook.md`](docs/exam-playbook.md)，
+> 补丁文件见 `patch/wellness-tracker.patch`。
+> 下面关于 `cityu_lab` / BMI 的说明仍然适用于工具链部分。
+
 一个 Android BMI 计算小应用（作业项目）。本分支 `cityu_lab` 已调整为可直接在
 **学校的 Android Studio 2025.2.1 Patch 1（Otter）** 上打开并运行。
 

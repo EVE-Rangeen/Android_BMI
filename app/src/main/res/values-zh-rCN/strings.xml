@@ -10,7 +10,7 @@
     只是把 value 换成中文。
 -->
 <resources>
-    <string name="app_name">BMI</string>
+    <string name="app_name">健康日志</string>
     <string name="bmi_height">高度（cm）</string>
     <string name="bmi_weight">重量（kg）</string>
     <string name="bmi_age">年龄</string>
@@ -49,5 +49,31 @@
     <string-array name="gender">
         <item>@string/gender_male</item>
         <item>@string/gender_female</item>
+    </string-array>
+
+    <!-- ==================== Wellness Tracker（健康日志）==================== -->
+    <string name="wellness_today">今天：%1$s</string>
+    <string name="wellness_condition_label">今天的身体状况</string>
+    <string name="wellness_condition_good">良好</string>
+    <string name="wellness_condition_fair">一般</string>
+    <string name="wellness_condition_poor">较差</string>
+    <string name="wellness_steps_label">今日步数</string>
+    <string name="wellness_steps_hint">例如 8000</string>
+    <string name="wellness_note_label">备注（可选）</string>
+    <string name="wellness_note_hint">睡眠、心情、身体不适…</string>
+    <string name="wellness_save">保存今天的记录</string>
+    <string name="wellness_view_history">查看历史</string>
+    <string name="wellness_saved">已保存今天的记录。</string>
+    <string name="wellness_steps_warning">请输入有效的步数。</string>
+    <string name="wellness_history_title">历史记录</string>
+    <string name="wellness_history_empty">暂无记录。\n保存今天的健康日志后，这里就会显示历史。</string>
+    <string name="wellness_history_summary">已记录 %1$d 天 · 平均 %2$d 步</string>
+    <string name="wellness_history_title_row">%1$s · %2$s</string>
+    <string name="wellness_history_steps">%1$d 步</string>
+
+    <string-array name="wellness_condition">
+        <item>@string/wellness_condition_good</item>
+        <item>@string/wellness_condition_fair</item>
+        <item>@string/wellness_condition_poor</item>
     </string-array>
 </resources>

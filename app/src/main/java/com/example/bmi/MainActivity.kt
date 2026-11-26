@@ -1,372 +1,119 @@
 package com.example.bmi
 
-import android.content.ActivityNotFoundException
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
-import android.view.ContextMenu
-import android.view.Menu
-import android.view.MenuItem
-import android.view.View
 import android.widget.Button
 import android.widget.EditText
-import android.widget.ImageView
 import android.widget.Spinner
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.example.bmi.data.BmiPreferences
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.snackbar.Snackbar
+import com.example.bmi.data.BmiDates
+import com.example.bmi.data.WellnessDbHelper
+import com.example.bmi.data.WellnessRecord
 
 /*
  * ============================================================================
- * MainActivity.kt —— 主界面（输入身高/体重/年龄/性别）
+ * MainActivity.kt —— 健康日志主界面（记录今天）
  * ============================================================================
  * 【这个文件是干什么的】
- *   App 启动后的第一个界面。用户在这里输入身高、体重、年龄，选择性别，
- *   点“See BMI Report Now”后把数据打包，跳转到 ReportActivity 去计算结果。
+ *   用户在这里选择今天的身体状况、填步数和备注，点“保存”写进 SQLite；
+ *   点“查看历史”跳到 HistoryActivity 看所有记录。
  *
- * 【一句话看懂整个流程】
- *   用户输入 → 点按钮 → 校验输入合法 → 用 SharedPreferences 记住输入
- *           → 用 Intent + Bundle 把数据带到 ReportActivity → 跳转。
+ * 【从作业的 BMI 版改过来时，这个文件改了哪些地方】
+ *   1. 输入项：身高/体重/年龄/性别 → 身体状况/步数/备注；
+ *   2. 按钮行为：计算 BMI 并跳转报告页 → 直接写数据库（不再需要第二个页面算结果）；
+ *   3. 删掉了 SharedPreferences 自动填充、选项菜单、上下文菜单、对话框
+ *      —— 这些都不是本题必需，属于“可以不要的冗余功能”。
  *
- * 【Activity 是什么】
- *   Activity 是 Android 的“一个屏幕”。onCreate() 是这个屏幕刚创建时调用的方法，
- *   相当于“构造函数 + 初始化入口”。所有控件的查找、点击事件都在这里设置。
- *
- * 【本文件用到哪些考试常考知识点】
- *   1. findViewById：根据布局里的 id 拿到控件对象；
- *   2. 从 EditText 读取用户输入（text 属性）；
- *   3. 字符串转数字并校验（toDoubleOrNull / toIntOrNull）；
- *   4. SharedPreferences 保存/读取（自动填充）；
- *   5. Intent + Bundle 在页面之间传数据；
- *   6. 菜单（选项菜单 OptionsMenu + 上下文菜单 ContextMenu）；
- *   7. 对话框（MaterialAlertDialogBuilder）。
+ * 【本文件对应的考试知识点】
+ *   · findViewById 找控件；
+ *   · EditText 读取输入 + toIntOrNull() 校验；
+ *   · Spinner 读取 selectedItemPosition；
+ *   · SQLite 保存（通过 WellnessDbHelper）；
+ *   · Intent 跳转到另一个 Activity；
+ *   · Toast 提示。
  *
  * ────────────────────────────────────────────────────────────────────────────
- * 【依赖关系】（考试删文件前先看这里）
- *   本文件依赖：
- *     · 自动填充：BmiPreferences；
- *     · 跳转：ReportActivity、TrendActivity；
- *     · 菜单：res/menu/menu_options.xml、res/menu/menu_context.xml；
- *     · 界面库：Material（MaterialAlertDialogBuilder、Snackbar）。
- *   谁依赖本文件：无（它是 App 入口，点图标先启动它）。
- *   删除指引：MainActivity 是必留的主界面，永远保留。
- *             但考试若要做“最简版”，可按文件里【可删功能】标注，逐块删掉
- *             自动填充 / 跳转 / 菜单，把计算逻辑直接写在按钮点击里（见开发指南.md）。
+ * 【依赖关系】
+ *   本文件依赖：WellnessDbHelper、WellnessRecord、BmiDates（日期工具）、
+ *               HistoryActivity、activity_main.xml、strings.xml。
+ *   谁依赖本文件：无（它是桌面图标启动的入口页）。
  * ────────────────────────────────────────────────────────────────────────────
  */
 class MainActivity : AppCompatActivity() {
 
-    /*
-     * 下面是“控件引用”。lateinit 表示“稍后再初始化”（在 onCreate 里用 findViewById 赋值）。
-     * 有了这些变量，之后点按钮时就能直接读写界面上的输入框。
-     */
-    lateinit var heightET: EditText    // 身高输入框
-    lateinit var weightET: EditText    // 体重输入框
-    lateinit var ageET: EditText       // 年龄输入框
-    lateinit var genderSpinner: Spinner// 性别下拉框
-    lateinit var bmiImage: ImageView   // BMI 图标
-    private lateinit var preferences: BmiPreferences  // SharedPreferences 封装
+    // 数据库助手：Activity 创建时初始化，后面保存记录时直接用。
+    private lateinit var db: WellnessDbHelper
 
-    /**
-     * 屏幕创建时调用。整个界面的初始化都发生在这里。
-     */
+    // 界面控件。
+    private lateinit var dateTV: TextView        // 显示“今天日期”
+    private lateinit var conditionSpinner: Spinner
+    private lateinit var stepsET: EditText
+    private lateinit var noteET: EditText
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // 把 res/layout/activity_main.xml 这个布局“贴”到屏幕上。
         setContentView(R.layout.activity_main)
 
-        // 创建 SharedPreferences 封装（用来记住用户上次输入的内容）。
-        preferences = BmiPreferences(this)
+        // 创建数据库助手（此时不会真的建库，第一次读写时才创建 wellness.db）。
+        db = WellnessDbHelper(this)
 
+        dateTV = findViewById(R.id.dateTV)
+        conditionSpinner = findViewById(R.id.conditionSpinner)
+        stepsET = findViewById(R.id.stepsET)
+        noteET = findViewById(R.id.noteET)
+        val saveBtn: Button = findViewById(R.id.saveBtn)
+        val historyBtn: Button = findViewById(R.id.historyBtn)
+
+        // 把“今天”的日期显示在标题下面，让用户知道这条记录属于哪一天。
+        // BmiDates 是作业里现成的日期工具，虽然名字带 Bmi，但内容只是通用的日期格式化。
+        dateTV.text = getString(R.string.wellness_today, BmiDates.today())
+
+        // 保存按钮：校验 → 写数据库 → 提示。
+        saveBtn.setOnClickListener {
+            saveTodayRecord()
+        }
+
+        // 历史按钮：打开历史页（不需要传数据，历史页自己从数据库读）。
+        historyBtn.setOnClickListener {
+            startActivity(Intent(this, HistoryActivity::class.java))
+        }
+    }
+
+    /**
+     * 读取界面输入，校验后保存“今天”的记录。
+     *
+     * 注意：日期不是让用户手填的，而是直接用 BmiDates.today() 取系统日期，
+     * 这样既符合“每天记录一次”的需求，也避免用户输错日期格式。
+     */
+    private fun saveTodayRecord() {
         /*
-         * findViewById<T>(R.id.xxx)：根据布局里某个控件的 android:id，拿到它的对象。
-         * R.id.heightET 就是 activity_main.xml 里 <EditText android:id="@+id/heightET"> 的那个控件。
+         * toIntOrNull()：能转成整数就返回数字，转不了（空、字母、小数）返回 null。
+         * 用 trim() 去掉首尾空格，避免 " 8000 " 这种输入被判为非法。
          */
-        heightET = findViewById(R.id.heightET)
-        weightET = findViewById(R.id.weightET)
-        ageET = findViewById(R.id.ageET)
-        genderSpinner = findViewById(R.id.genderSpinner)
-        bmiImage = findViewById(R.id.imageView)
-        val reportBtn: Button = findViewById<Button>(R.id.reportBtn)
+        val steps = stepsET.text.toString().trim().toIntOrNull()
 
-        // 给 BMI 图标注册“长按弹出菜单”（ContextMenu）。
-        registerForContextMenu(bmiImage)
-
-        /*
-         * ────────────────────────────────────────────────────────────────────
-         * 【重点】如何从表单读取用户输入
-         * ────────────────────────────────────────────────────────────────────
-         * 点击“查看报告”按钮时，做下面几件事：
-         *   1. 从三个 EditText 读字符串；
-         *   2. 从 Spinner 读选中的位置序号；
-         *   3. 把字符串转成数字并校验；
-         *   4. 校验通过 → 保存 + 打包 → 跳转。
-         * ────────────────────────────────────────────────────────────────────
-         */
-        reportBtn.setOnClickListener(object : View.OnClickListener {
-            override fun onClick(v: View?) {
-                /*
-                 * 【读取 EditText 的内容】
-                 * heightET 是 EditText（输入框），它的 text 属性是 Editable 类型，
-                 * 调用 .toString() 才能变成普通 String。
-                 * 注意：用户没输入时，text 是空字符串 ""，不是 null。
-                 *
-                 * 另一种等价写法：heightET.editableText.toString()
-                 * （Editable 本质上也是 CharSequence，两种写法结果一样。）
-                 */
-                val height = heightET.text.toString()
-                val weight = weightET.text.toString()
-                val age = ageET.text.toString()
-
-                /*
-                 * 【读取 Spinner 的选中项】
-                 * genderSpinner.selectedItemPosition 返回选中的“位置序号”（从 0 开始）。
-                 * 这里故意传“位置”而不是传“男/女文字”，
-                 * 因为文字会跟着语言变（中文“男”、英文“Male”），
-                 * 而位置 0/1 永远不变，后面的逻辑不会受语言影响。
-                 */
-                val gender = genderSpinner.selectedItemPosition
-
-                /*
-                 * 【字符串转数字 + 校验】
-                 * toDoubleOrNull()：能转成小数就返回数值，转不了（比如输入了字母）就返回 null。
-                 * 这样就不用手写 try-catch，也不怕用户输入非法内容导致崩溃。
-                 * toIntOrNull() 同理（年龄是整数）。
-                 */
-                val heightValue = height.toDoubleOrNull()
-                val weightValue = weight.toDoubleOrNull()
-                val ageValue = age.toIntOrNull()
-
-                /*
-                 * 校验：任何一个没输入（null）、小于等于 0（年龄允许 0 也算非法）都算无效。
-                 * 无效时用 Snackbar（屏幕底部弹出的小提示条）提示，不跳转。
-                 */
-                if (heightValue == null || weightValue == null || ageValue == null ||
-                    heightValue <= 0 || weightValue <= 0 || ageValue < 0
-                ) {
-                    Snackbar.make(
-                        findViewById<View>(android.R.id.content),  // 挂在根布局上
-                        R.string.bmi_warning,                       // 提示文案（多语言）
-                        Snackbar.LENGTH_SHORT                       // 显示时长：短
-                    ).show()
-                } else {
-                    // ── 校验通过：先记住这次输入（下次自动填充）──
-                    preferences.save(height, weight, age, gender)
-
-                    /*
-                     * ─────────────────────────────────────────────────────────
-                     * 【重点】用 Intent 把数据从 MainActivity 传到 ReportActivity
-                     * ─────────────────────────────────────────────────────────
-                     * Intent = 意图，用来“启动另一个界面 / 在界面间传数据”。
-                     * Bundle = 一个“键值对袋子”，能装多组数据一起带过去。
-                     *
-                     * 传什么：身高、体重、年龄、性别位置（都是字符串/整数）。
-                     * 怎么取：在 ReportActivity 里用 intent.getStringExtra("height") 等取回。
-                     * ─────────────────────────────────────────────────────────
-                     */
-                    val intent = Intent(applicationContext, ReportActivity::class.java)
-                    val bundle = Bundle()
-                    bundle.putString("height", height)   // key="height" 存身高
-                    bundle.putString("weight", weight)   // key="weight" 存体重
-                    bundle.putInt("gender", gender)      // key="gender" 存性别位置
-                    bundle.putString("age", age)         // key="age" 存年龄
-                    intent.putExtras(bundle)             // 把整个袋子塞进 Intent
-                    startActivity(intent)                // 跳转
-                }
-
-                /*
-                 * ── 【考点 / 备用方案】传值的另外两种常见写法 ─────────────────
-                 * （把上面 else 块替换成下面任一种都可以，效果几乎一样）
-                 *
-                 * 方案 B：不包 Bundle，直接 putExtra：
-                 *   val intent = Intent(this, ReportActivity::class.java)
-                 *   intent.putExtra("height", height)
-                 *   intent.putExtra("weight", weight)
-                 *   intent.putExtra("age", age)
-                 *   intent.putExtra("gender", gender)
-                 *   startActivity(intent)
-                 *
-                 * 方案 C：用 companion object 的静态变量传值（不推荐，但考试偶尔考到）：
-                 *   在 ReportActivity 里写：
-                 *       companion object { var height: String = "" ; var weight = "" ... }
-                 *   这里写：
-                 *       ReportActivity.height = height
-                 *       ReportActivity.weight = weight
-                 *       startActivity(Intent(this, ReportActivity::class.java))
-                 *   （缺点：全局变量容易造成状态混乱，仅用于理解“静态变量”这个概念。）
-                 * ────────────────────────────────────────────────────────────────────
-                 */
-            }
-        })
-
-        // “关于 BMI”按钮：弹一个对话框。
-        val aboutBtn: Button = findViewById(R.id.aboutBtn)
-        aboutBtn.setOnClickListener {
-            about_BMI_Dialog()
+        // 步数必须是非负整数。非法时只提示，不写数据库。
+        if (steps == null || steps < 0) {
+            Toast.makeText(this, R.string.wellness_steps_warning, Toast.LENGTH_SHORT).show()
+            return
         }
 
         /*
-         * 【自动填充】
-         * savedInstanceState 是 Android 在“旋转屏幕 / 系统回收界面”时保存下来的现场。
-         * 如果它是 null，说明这是“第一次创建界面”（不是旋转后的重建），
-         * 此时才用 SharedPreferences 把上次输入的内容填回去。
-         *
-         * 为什么只在这一步填，而不在 onStart() 里每次填？
-         * 因为旋转屏幕时 Android 会自动帮 EditText 恢复它自己输入的内容；
-         * 如果我们在 onStart 里又用旧数据覆盖一次，用户旋转前刚改、还没提交的内容就丢了。
+         * Spinner 的 selectedItemPosition 就是选中的序号（0/1/2），
+         * 刚好对应 strings.xml 里 wellness_condition 数组的三项。
          */
-        if (savedInstanceState == null) {
-            restoreProfile()
-        }
-    }
+        val record = WellnessRecord(
+            date = BmiDates.today(),
+            condition = conditionSpinner.selectedItemPosition,
+            steps = steps,
+            note = noteET.text.toString().trim()
+        )
 
-    /**
-     * 把 SharedPreferences 里记住的内容填回输入框。
-     * 首次打开 App 时，这里就是“自动填充上次输入”的地方。
-     */
-    private fun restoreProfile() {
-        // setText 会把字符串填进输入框；preferences.height() 返回上次保存的身高。
-        heightET.setText(preferences.height())
-        weightET.setText(preferences.weight())
-        ageET.setText(preferences.age())
+        // 同一天重复保存会覆盖旧记录（数据库里 date 是主键 + CONFLICT_REPLACE）。
+        db.save(record)
 
-        /*
-         * 恢复下拉框选中项：
-         * genderSpinner.adapter.count 是下拉框里一共有几项（这里是 2）。
-         * preferences.gender() 是上次保存的位置；coerceIn(0, count-1) 把它限制在合法范围，
-         * 防止保存值越界导致崩溃。
-         */
-        if (genderSpinner.adapter.count > 0) {
-            genderSpinner.setSelection(
-                preferences.gender().coerceIn(0, genderSpinner.adapter.count - 1)
-            )
-        }
-    }
-
-    // ===================== 选项菜单（右上角三个点）=====================
-
-    /**
-     * 创建右上角的选项菜单。inflate 就是把 res/menu/menu_options.xml 里定义的
-     * 菜单项“加载”进 menu 对象。
-     */
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menuInflater.inflate(R.menu.menu_options, menu)
-        return super.onCreateOptionsMenu(menu)
-    }
-
-    /**
-     * 用户点击某个菜单项时回调。根据 itemId 判断点了哪一个。
-     */
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        when (item.itemId) {
-            R.id.menu_about -> {
-                about_BMI_Dialog()
-                return true
-            }
-            R.id.menu_wiki -> {
-                openWebpage(getString(R.string.wiki_url))
-                return true
-            }
-            R.id.menu_trend -> {
-                // 打开趋势页（不传数据，因为趋势页自己从数据库读历史）。
-                startActivity(Intent(this, TrendActivity::class.java))
-                return true
-            }
-            R.id.menu_exit -> {
-                finish()   // 结束当前 Activity，回到桌面/上一层
-                return true
-            }
-        }
-        return super.onOptionsItemSelected(item)
-    }
-
-    // ===================== 上下文菜单（长按 BMI 图标）=====================
-
-    /**
-     * 创建“长按”菜单。必须配合 onCreate 里的 registerForContextMenu(图片) 使用。
-     */
-    override fun onCreateContextMenu(
-        menu: ContextMenu,
-        v: View,
-        menuInfo: ContextMenu.ContextMenuInfo?
-    ) {
-        super.onCreateContextMenu(menu, v, menuInfo)
-        menuInflater.inflate(R.menu.menu_context, menu)
-    }
-
-    /** 处理长按菜单的点击。 */
-    override fun onContextItemSelected(item: MenuItem): Boolean {
-        when (item.itemId) {
-            R.id.menu_item_about -> {
-                about_BMI_Dialog()
-                return true
-            }
-            R.id.menu_item_wiki -> {
-                openWebpage(getString(R.string.wiki_url))
-                return true
-            }
-            R.id.menu_item_trend -> {
-                startActivity(Intent(this, TrendActivity::class.java))
-                return true
-            }
-            else -> return super.onContextItemSelected(item)
-        }
-    }
-
-    /**
-     * 用系统浏览器打开一个网址。
-     * ACTION_VIEW 表示“查看某样东西”，配合一个 Uri 就是“打开网页”。
-     */
-    private fun openWebpage(url: String) {
-        val webpage = Uri.parse(url)   // 字符串 → Uri 对象
-        val intent = Intent(Intent.ACTION_VIEW, webpage)
-        try {
-            startActivity(intent)
-        } catch (e: ActivityNotFoundException) {
-            // 万一手机上没有浏览器，捕获异常并提示，避免崩溃。
-            Snackbar.make(
-                findViewById<View>(android.R.id.content),
-                R.string.no_browser,
-                Snackbar.LENGTH_SHORT
-            ).show()
-        }
-    }
-
-    /**
-     * 弹出“关于 BMI”对话框。
-     * 这里用 MaterialAlertDialogBuilder（Material 组件库的对话框）。
-     */
-    fun about_BMI_Dialog() {
-        MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.about_button)          // 标题
-            .setMessage(R.string.about_msg)           // 正文
-            .setPositiveButton(R.string.button_ok) { dialog, which ->
-                // 点“确定”后弹一个 Toast（短暂的小提示）。
-                Toast.makeText(
-                    this@MainActivity,
-                    getString(R.string.button_ok),
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-            .show()
-
-        /*
-         * ── 【考点 / 备用方案】用系统自带 AlertDialog 代替 Material 对话框 ──
-         * 如果考试环境没有 Material 依赖，或老师要求用最基础的 AlertDialog：
-         * 把上面 about_BMI_Dialog 换成下面这段即可（并 import android.app.AlertDialog）：
-         *
-         *   fun about_BMI_Dialog() {
-         *       AlertDialog.Builder(this)
-         *           .setTitle(R.string.about_button)
-         *           .setMessage(R.string.about_msg)
-         *           .setPositiveButton(R.string.button_ok, null)   // null = 点击后直接关闭
-         *           .setNegativeButton(R.string.button_ok, null)   // 也可以加“取消”按钮
-         *           .show()
-         *   }
-         * ────────────────────────────────────────────────────────────────────
-         */
+        Toast.makeText(this, R.string.wellness_saved, Toast.LENGTH_SHORT).show()
     }
 }
