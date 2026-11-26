@@ -1,0 +1,2386 @@
+diff --git a/README.md b/README.md
+index dc0aa70..9629456 100644
+--- a/README.md
++++ b/README.md
+@@ -1,5 +1,12 @@
+ # BMI
+ 
++> **`wellness_tracker` 分支（考试练习）**：本分支已把项目改造成考试练习题
++> “Wellness Tracker（健康日志）”——每天记录身体状况、步数、备注，保存后可查看历史。
++> 改造说明见 [`docs/wellness-tracker.md`](docs/wellness-tracker.md)，
++> 可迁移到同类题目的考场教程见 [`docs/exam-playbook.md`](docs/exam-playbook.md)，
++> 补丁文件见 `patch/wellness-tracker.patch`。
++> 下面关于 `cityu_lab` / BMI 的说明仍然适用于工具链部分。
++
+ 一个 Android BMI 计算小应用（作业项目）。本分支 `cityu_lab` 已调整为可直接在
+ **学校的 Android Studio 2025.2.1 Patch 1（Otter）** 上打开并运行。
+ 
+diff --git a/app/src/main/AndroidManifest.xml b/app/src/main/AndroidManifest.xml
+index b385e20..b4fd622 100644
+--- a/app/src/main/AndroidManifest.xml
++++ b/app/src/main/AndroidManifest.xml
+@@ -43,6 +43,16 @@
+         android:theme="@style/Theme.BMI"
+         tools:targetApi="31">
+ 
++        <!-- 历史记录页（健康日志分支新增；不对外开放）。 -->
++        <activity
++            android:name=".HistoryActivity"
++            android:exported="false"
++            android:label="@string/wellness_history_title">
++            <meta-data
++                android:name="android.app.lib_name"
++                android:value="" />
++        </activity>
++
+         <!-- 趋势页（不对外开放，只能 App 内部跳转）。 -->
+         <activity
+             android:name=".TrendActivity"
+diff --git a/app/src/main/java/com/example/bmi/HistoryActivity.kt b/app/src/main/java/com/example/bmi/HistoryActivity.kt
+new file mode 100644
+index 0000000..1a66350
+--- /dev/null
++++ b/app/src/main/java/com/example/bmi/HistoryActivity.kt
+@@ -0,0 +1,112 @@
++package com.example.bmi
++
++import android.os.Bundle
++import android.widget.ListView
++import android.widget.SimpleAdapter
++import android.widget.TextView
++import androidx.appcompat.app.AppCompatActivity
++import androidx.core.view.isVisible
++import com.example.bmi.data.WellnessDbHelper
++import com.example.bmi.data.WellnessRecord
++
++/*
++ * ============================================================================
++ * HistoryActivity.kt —— 历史记录页
++ * ============================================================================
++ * 【这个文件是干什么的】
++ *   打开时从 SQLite 读出所有记录，按日期从新到旧显示在 ListView 里；
++ *   顺便显示“一共记录了多少天、平均每天多少步”。
++ *   一条记录都没有时，显示一句空状态提示。
++ *
++ * 【为什么不需要 Intent 传数据】
++ *   数据已经存在数据库里了，任何页面都能自己查。这正是“持久化”的好处，
++ *   也是作业里趋势页 TrendActivity 的做法。
++ *
++ * 【ListView + Adapter 是最基础的列表写法】
++ *   ListView 负责滚动显示，Adapter 负责把数据变成一行行界面。
++ *   这里用系统自带的 SimpleAdapter：它按 key 把 Map 里的值填到行布局的控件里，
++ *   不用自己写 BaseAdapter 的 getView()，代码最少、最不容易出错。
++ *   如果考试只要求一行文字，换成 ArrayAdapter + simple_list_item_1 会更短。
++ *
++ * ────────────────────────────────────────────────────────────────────────────
++ * 【依赖关系】
++ *   本文件依赖：WellnessDbHelper、WellnessRecord、activity_history.xml、strings.xml。
++ *   谁依赖本文件：MainActivity（点“查看历史”跳转）。
++ * ────────────────────────────────────────────────────────────────────────────
++ */
++class HistoryActivity : AppCompatActivity() {
++
++    override fun onCreate(savedInstanceState: Bundle?) {
++        super.onCreate(savedInstanceState)
++        setContentView(R.layout.activity_history)
++
++        val list: ListView = findViewById(R.id.historyList)
++        val summary: TextView = findViewById(R.id.historySummary)
++        val empty: TextView = findViewById(R.id.historyEmpty)
++
++        // 每次打开页面都重新查一遍，保证刚保存的记录能立刻看到。
++        val records = WellnessDbHelper(this).allRecords()
++
++        if (records.isEmpty()) {
++            // 没有记录：隐藏列表和统计，只显示提示文字。
++            list.isVisible = false
++            summary.isVisible = false
++            empty.isVisible = true
++            return
++        }
++
++        empty.isVisible = false
++        list.isVisible = true
++        summary.isVisible = true
++
++        // 平均步数：先求和再除以天数。用 Double 计算后 roundToInt()，避免整数除法丢小数。
++        val averageSteps = records.sumOf { it.steps }.toDouble() / records.size
++        summary.text = getString(
++            R.string.wellness_history_summary,
++            records.size,
++            Math.round(averageSteps).toInt()
++        )
++
++        /*
++         * 每一行显示成两行文字：
++         *   第一行：日期 · 身体状况
++         *   第二行：步数 · 备注
++         * 这里用 simple_list_item_1 一个 TextView 装不下两行样式，
++         * 所以用自定义的 item_wellness.xml + SimpleAdapter。
++         */
++        val rows = records.map { record ->
++            mapOf(
++                "title" to getString(
++                    R.string.wellness_history_title_row,
++                    record.date,
++                    conditionText(record.condition)
++                ),
++                "subtitle" to buildSubtitle(record)
++            )
++        }
++
++        // SimpleAdapter 的五个参数：Context、数据、行布局、数据 key 数组、布局里对应的控件 id 数组
++        list.adapter = SimpleAdapter(
++            this,
++            rows,
++            R.layout.item_wellness,
++            arrayOf("title", "subtitle"),
++            intArrayOf(R.id.itemTitle, R.id.itemSubtitle)
++        )
++    }
++
++    /** 把数据库里的 0/1/2 翻译成当前语言下的文字。 */
++    private fun conditionText(condition: Int): String = getString(
++        when (condition) {
++            0 -> R.string.wellness_condition_good
++            1 -> R.string.wellness_condition_fair
++            else -> R.string.wellness_condition_poor
++        }
++    )
++
++    /** 第二行：步数 + （有备注时）备注。 */
++    private fun buildSubtitle(record: WellnessRecord): String {
++        val steps = getString(R.string.wellness_history_steps, record.steps)
++        return if (record.note.isBlank()) steps else "$steps  ·  ${record.note}"
++    }
++}
+diff --git a/app/src/main/java/com/example/bmi/MainActivity.kt b/app/src/main/java/com/example/bmi/MainActivity.kt
+index 0f59bf6..765e152 100644
+--- a/app/src/main/java/com/example/bmi/MainActivity.kt
++++ b/app/src/main/java/com/example/bmi/MainActivity.kt
+@@ -1,372 +1,119 @@
+ package com.example.bmi
+ 
+-import android.content.ActivityNotFoundException
+ import android.content.Intent
+-import android.net.Uri
+ import android.os.Bundle
+-import android.view.ContextMenu
+-import android.view.Menu
+-import android.view.MenuItem
+-import android.view.View
+ import android.widget.Button
+ import android.widget.EditText
+-import android.widget.ImageView
+ import android.widget.Spinner
++import android.widget.TextView
+ import android.widget.Toast
+ import androidx.appcompat.app.AppCompatActivity
+-import com.example.bmi.data.BmiPreferences
+-import com.google.android.material.dialog.MaterialAlertDialogBuilder
+-import com.google.android.material.snackbar.Snackbar
++import com.example.bmi.data.BmiDates
++import com.example.bmi.data.WellnessDbHelper
++import com.example.bmi.data.WellnessRecord
+ 
+ /*
+  * ============================================================================
+- * MainActivity.kt —— 主界面（输入身高/体重/年龄/性别）
++ * MainActivity.kt —— 健康日志主界面（记录今天）
+  * ============================================================================
+  * 【这个文件是干什么的】
+- *   App 启动后的第一个界面。用户在这里输入身高、体重、年龄，选择性别，
+- *   点“See BMI Report Now”后把数据打包，跳转到 ReportActivity 去计算结果。
++ *   用户在这里选择今天的身体状况、填步数和备注，点“保存”写进 SQLite；
++ *   点“查看历史”跳到 HistoryActivity 看所有记录。
+  *
+- * 【一句话看懂整个流程】
+- *   用户输入 → 点按钮 → 校验输入合法 → 用 SharedPreferences 记住输入
+- *           → 用 Intent + Bundle 把数据带到 ReportActivity → 跳转。
++ * 【从作业的 BMI 版改过来时，这个文件改了哪些地方】
++ *   1. 输入项：身高/体重/年龄/性别 → 身体状况/步数/备注；
++ *   2. 按钮行为：计算 BMI 并跳转报告页 → 直接写数据库（不再需要第二个页面算结果）；
++ *   3. 删掉了 SharedPreferences 自动填充、选项菜单、上下文菜单、对话框
++ *      —— 这些都不是本题必需，属于“可以不要的冗余功能”。
+  *
+- * 【Activity 是什么】
+- *   Activity 是 Android 的“一个屏幕”。onCreate() 是这个屏幕刚创建时调用的方法，
+- *   相当于“构造函数 + 初始化入口”。所有控件的查找、点击事件都在这里设置。
+- *
+- * 【本文件用到哪些考试常考知识点】
+- *   1. findViewById：根据布局里的 id 拿到控件对象；
+- *   2. 从 EditText 读取用户输入（text 属性）；
+- *   3. 字符串转数字并校验（toDoubleOrNull / toIntOrNull）；
+- *   4. SharedPreferences 保存/读取（自动填充）；
+- *   5. Intent + Bundle 在页面之间传数据；
+- *   6. 菜单（选项菜单 OptionsMenu + 上下文菜单 ContextMenu）；
+- *   7. 对话框（MaterialAlertDialogBuilder）。
++ * 【本文件对应的考试知识点】
++ *   · findViewById 找控件；
++ *   · EditText 读取输入 + toIntOrNull() 校验；
++ *   · Spinner 读取 selectedItemPosition；
++ *   · SQLite 保存（通过 WellnessDbHelper）；
++ *   · Intent 跳转到另一个 Activity；
++ *   · Toast 提示。
+  *
+  * ────────────────────────────────────────────────────────────────────────────
+- * 【依赖关系】（考试删文件前先看这里）
+- *   本文件依赖：
+- *     · 自动填充：BmiPreferences；
+- *     · 跳转：ReportActivity、TrendActivity；
+- *     · 菜单：res/menu/menu_options.xml、res/menu/menu_context.xml；
+- *     · 界面库：Material（MaterialAlertDialogBuilder、Snackbar）。
+- *   谁依赖本文件：无（它是 App 入口，点图标先启动它）。
+- *   删除指引：MainActivity 是必留的主界面，永远保留。
+- *             但考试若要做“最简版”，可按文件里【可删功能】标注，逐块删掉
+- *             自动填充 / 跳转 / 菜单，把计算逻辑直接写在按钮点击里（见开发指南.md）。
++ * 【依赖关系】
++ *   本文件依赖：WellnessDbHelper、WellnessRecord、BmiDates（日期工具）、
++ *               HistoryActivity、activity_main.xml、strings.xml。
++ *   谁依赖本文件：无（它是桌面图标启动的入口页）。
+  * ────────────────────────────────────────────────────────────────────────────
+  */
+ class MainActivity : AppCompatActivity() {
+ 
+-    /*
+-     * 下面是“控件引用”。lateinit 表示“稍后再初始化”（在 onCreate 里用 findViewById 赋值）。
+-     * 有了这些变量，之后点按钮时就能直接读写界面上的输入框。
+-     */
+-    lateinit var heightET: EditText    // 身高输入框
+-    lateinit var weightET: EditText    // 体重输入框
+-    lateinit var ageET: EditText       // 年龄输入框
+-    lateinit var genderSpinner: Spinner// 性别下拉框
+-    lateinit var bmiImage: ImageView   // BMI 图标
+-    private lateinit var preferences: BmiPreferences  // SharedPreferences 封装
++    // 数据库助手：Activity 创建时初始化，后面保存记录时直接用。
++    private lateinit var db: WellnessDbHelper
++
++    // 界面控件。
++    private lateinit var dateTV: TextView        // 显示“今天日期”
++    private lateinit var conditionSpinner: Spinner
++    private lateinit var stepsET: EditText
++    private lateinit var noteET: EditText
+ 
+-    /**
+-     * 屏幕创建时调用。整个界面的初始化都发生在这里。
+-     */
+     override fun onCreate(savedInstanceState: Bundle?) {
+         super.onCreate(savedInstanceState)
+-
+-        // 把 res/layout/activity_main.xml 这个布局“贴”到屏幕上。
+         setContentView(R.layout.activity_main)
+ 
+-        // 创建 SharedPreferences 封装（用来记住用户上次输入的内容）。
+-        preferences = BmiPreferences(this)
+-
+-        /*
+-         * findViewById<T>(R.id.xxx)：根据布局里某个控件的 android:id，拿到它的对象。
+-         * R.id.heightET 就是 activity_main.xml 里 <EditText android:id="@+id/heightET"> 的那个控件。
+-         */
+-        heightET = findViewById(R.id.heightET)
+-        weightET = findViewById(R.id.weightET)
+-        ageET = findViewById(R.id.ageET)
+-        genderSpinner = findViewById(R.id.genderSpinner)
+-        bmiImage = findViewById(R.id.imageView)
+-        val reportBtn: Button = findViewById<Button>(R.id.reportBtn)
+-
+-        // 给 BMI 图标注册“长按弹出菜单”（ContextMenu）。
+-        registerForContextMenu(bmiImage)
+-
+-        /*
+-         * ────────────────────────────────────────────────────────────────────
+-         * 【重点】如何从表单读取用户输入
+-         * ────────────────────────────────────────────────────────────────────
+-         * 点击“查看报告”按钮时，做下面几件事：
+-         *   1. 从三个 EditText 读字符串；
+-         *   2. 从 Spinner 读选中的位置序号；
+-         *   3. 把字符串转成数字并校验；
+-         *   4. 校验通过 → 保存 + 打包 → 跳转。
+-         * ────────────────────────────────────────────────────────────────────
+-         */
+-        reportBtn.setOnClickListener(object : View.OnClickListener {
+-            override fun onClick(v: View?) {
+-                /*
+-                 * 【读取 EditText 的内容】
+-                 * heightET 是 EditText（输入框），它的 text 属性是 Editable 类型，
+-                 * 调用 .toString() 才能变成普通 String。
+-                 * 注意：用户没输入时，text 是空字符串 ""，不是 null。
+-                 *
+-                 * 另一种等价写法：heightET.editableText.toString()
+-                 * （Editable 本质上也是 CharSequence，两种写法结果一样。）
+-                 */
+-                val height = heightET.text.toString()
+-                val weight = weightET.text.toString()
+-                val age = ageET.text.toString()
+-
+-                /*
+-                 * 【读取 Spinner 的选中项】
+-                 * genderSpinner.selectedItemPosition 返回选中的“位置序号”（从 0 开始）。
+-                 * 这里故意传“位置”而不是传“男/女文字”，
+-                 * 因为文字会跟着语言变（中文“男”、英文“Male”），
+-                 * 而位置 0/1 永远不变，后面的逻辑不会受语言影响。
+-                 */
+-                val gender = genderSpinner.selectedItemPosition
+-
+-                /*
+-                 * 【字符串转数字 + 校验】
+-                 * toDoubleOrNull()：能转成小数就返回数值，转不了（比如输入了字母）就返回 null。
+-                 * 这样就不用手写 try-catch，也不怕用户输入非法内容导致崩溃。
+-                 * toIntOrNull() 同理（年龄是整数）。
+-                 */
+-                val heightValue = height.toDoubleOrNull()
+-                val weightValue = weight.toDoubleOrNull()
+-                val ageValue = age.toIntOrNull()
++        // 创建数据库助手（此时不会真的建库，第一次读写时才创建 wellness.db）。
++        db = WellnessDbHelper(this)
+ 
+-                /*
+-                 * 校验：任何一个没输入（null）、小于等于 0（年龄允许 0 也算非法）都算无效。
+-                 * 无效时用 Snackbar（屏幕底部弹出的小提示条）提示，不跳转。
+-                 */
+-                if (heightValue == null || weightValue == null || ageValue == null ||
+-                    heightValue <= 0 || weightValue <= 0 || ageValue < 0
+-                ) {
+-                    Snackbar.make(
+-                        findViewById<View>(android.R.id.content),  // 挂在根布局上
+-                        R.string.bmi_warning,                       // 提示文案（多语言）
+-                        Snackbar.LENGTH_SHORT                       // 显示时长：短
+-                    ).show()
+-                } else {
+-                    // ── 校验通过：先记住这次输入（下次自动填充）──
+-                    preferences.save(height, weight, age, gender)
++        dateTV = findViewById(R.id.dateTV)
++        conditionSpinner = findViewById(R.id.conditionSpinner)
++        stepsET = findViewById(R.id.stepsET)
++        noteET = findViewById(R.id.noteET)
++        val saveBtn: Button = findViewById(R.id.saveBtn)
++        val historyBtn: Button = findViewById(R.id.historyBtn)
+ 
+-                    /*
+-                     * ─────────────────────────────────────────────────────────
+-                     * 【重点】用 Intent 把数据从 MainActivity 传到 ReportActivity
+-                     * ─────────────────────────────────────────────────────────
+-                     * Intent = 意图，用来“启动另一个界面 / 在界面间传数据”。
+-                     * Bundle = 一个“键值对袋子”，能装多组数据一起带过去。
+-                     *
+-                     * 传什么：身高、体重、年龄、性别位置（都是字符串/整数）。
+-                     * 怎么取：在 ReportActivity 里用 intent.getStringExtra("height") 等取回。
+-                     * ─────────────────────────────────────────────────────────
+-                     */
+-                    val intent = Intent(applicationContext, ReportActivity::class.java)
+-                    val bundle = Bundle()
+-                    bundle.putString("height", height)   // key="height" 存身高
+-                    bundle.putString("weight", weight)   // key="weight" 存体重
+-                    bundle.putInt("gender", gender)      // key="gender" 存性别位置
+-                    bundle.putString("age", age)         // key="age" 存年龄
+-                    intent.putExtras(bundle)             // 把整个袋子塞进 Intent
+-                    startActivity(intent)                // 跳转
+-                }
++        // 把“今天”的日期显示在标题下面，让用户知道这条记录属于哪一天。
++        // BmiDates 是作业里现成的日期工具，虽然名字带 Bmi，但内容只是通用的日期格式化。
++        dateTV.text = getString(R.string.wellness_today, BmiDates.today())
+ 
+-                /*
+-                 * ── 【考点 / 备用方案】传值的另外两种常见写法 ─────────────────
+-                 * （把上面 else 块替换成下面任一种都可以，效果几乎一样）
+-                 *
+-                 * 方案 B：不包 Bundle，直接 putExtra：
+-                 *   val intent = Intent(this, ReportActivity::class.java)
+-                 *   intent.putExtra("height", height)
+-                 *   intent.putExtra("weight", weight)
+-                 *   intent.putExtra("age", age)
+-                 *   intent.putExtra("gender", gender)
+-                 *   startActivity(intent)
+-                 *
+-                 * 方案 C：用 companion object 的静态变量传值（不推荐，但考试偶尔考到）：
+-                 *   在 ReportActivity 里写：
+-                 *       companion object { var height: String = "" ; var weight = "" ... }
+-                 *   这里写：
+-                 *       ReportActivity.height = height
+-                 *       ReportActivity.weight = weight
+-                 *       startActivity(Intent(this, ReportActivity::class.java))
+-                 *   （缺点：全局变量容易造成状态混乱，仅用于理解“静态变量”这个概念。）
+-                 * ────────────────────────────────────────────────────────────────────
+-                 */
+-            }
+-        })
+-
+-        // “关于 BMI”按钮：弹一个对话框。
+-        val aboutBtn: Button = findViewById(R.id.aboutBtn)
+-        aboutBtn.setOnClickListener {
+-            about_BMI_Dialog()
++        // 保存按钮：校验 → 写数据库 → 提示。
++        saveBtn.setOnClickListener {
++            saveTodayRecord()
+         }
+ 
+-        /*
+-         * 【自动填充】
+-         * savedInstanceState 是 Android 在“旋转屏幕 / 系统回收界面”时保存下来的现场。
+-         * 如果它是 null，说明这是“第一次创建界面”（不是旋转后的重建），
+-         * 此时才用 SharedPreferences 把上次输入的内容填回去。
+-         *
+-         * 为什么只在这一步填，而不在 onStart() 里每次填？
+-         * 因为旋转屏幕时 Android 会自动帮 EditText 恢复它自己输入的内容；
+-         * 如果我们在 onStart 里又用旧数据覆盖一次，用户旋转前刚改、还没提交的内容就丢了。
+-         */
+-        if (savedInstanceState == null) {
+-            restoreProfile()
++        // 历史按钮：打开历史页（不需要传数据，历史页自己从数据库读）。
++        historyBtn.setOnClickListener {
++            startActivity(Intent(this, HistoryActivity::class.java))
+         }
+     }
+ 
+     /**
+-     * 把 SharedPreferences 里记住的内容填回输入框。
+-     * 首次打开 App 时，这里就是“自动填充上次输入”的地方。
++     * 读取界面输入，校验后保存“今天”的记录。
++     *
++     * 注意：日期不是让用户手填的，而是直接用 BmiDates.today() 取系统日期，
++     * 这样既符合“每天记录一次”的需求，也避免用户输错日期格式。
+      */
+-    private fun restoreProfile() {
+-        // setText 会把字符串填进输入框；preferences.height() 返回上次保存的身高。
+-        heightET.setText(preferences.height())
+-        weightET.setText(preferences.weight())
+-        ageET.setText(preferences.age())
+-
++    private fun saveTodayRecord() {
+         /*
+-         * 恢复下拉框选中项：
+-         * genderSpinner.adapter.count 是下拉框里一共有几项（这里是 2）。
+-         * preferences.gender() 是上次保存的位置；coerceIn(0, count-1) 把它限制在合法范围，
+-         * 防止保存值越界导致崩溃。
++         * toIntOrNull()：能转成整数就返回数字，转不了（空、字母、小数）返回 null。
++         * 用 trim() 去掉首尾空格，避免 " 8000 " 这种输入被判为非法。
+          */
+-        if (genderSpinner.adapter.count > 0) {
+-            genderSpinner.setSelection(
+-                preferences.gender().coerceIn(0, genderSpinner.adapter.count - 1)
+-            )
+-        }
+-    }
++        val steps = stepsET.text.toString().trim().toIntOrNull()
+ 
+-    // ===================== 选项菜单（右上角三个点）=====================
+-
+-    /**
+-     * 创建右上角的选项菜单。inflate 就是把 res/menu/menu_options.xml 里定义的
+-     * 菜单项“加载”进 menu 对象。
+-     */
+-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+-        menuInflater.inflate(R.menu.menu_options, menu)
+-        return super.onCreateOptionsMenu(menu)
+-    }
+-
+-    /**
+-     * 用户点击某个菜单项时回调。根据 itemId 判断点了哪一个。
+-     */
+-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+-        when (item.itemId) {
+-            R.id.menu_about -> {
+-                about_BMI_Dialog()
+-                return true
+-            }
+-            R.id.menu_wiki -> {
+-                openWebpage(getString(R.string.wiki_url))
+-                return true
+-            }
+-            R.id.menu_trend -> {
+-                // 打开趋势页（不传数据，因为趋势页自己从数据库读历史）。
+-                startActivity(Intent(this, TrendActivity::class.java))
+-                return true
+-            }
+-            R.id.menu_exit -> {
+-                finish()   // 结束当前 Activity，回到桌面/上一层
+-                return true
+-            }
++        // 步数必须是非负整数。非法时只提示，不写数据库。
++        if (steps == null || steps < 0) {
++            Toast.makeText(this, R.string.wellness_steps_warning, Toast.LENGTH_SHORT).show()
++            return
+         }
+-        return super.onOptionsItemSelected(item)
+-    }
+-
+-    // ===================== 上下文菜单（长按 BMI 图标）=====================
+-
+-    /**
+-     * 创建“长按”菜单。必须配合 onCreate 里的 registerForContextMenu(图片) 使用。
+-     */
+-    override fun onCreateContextMenu(
+-        menu: ContextMenu,
+-        v: View,
+-        menuInfo: ContextMenu.ContextMenuInfo?
+-    ) {
+-        super.onCreateContextMenu(menu, v, menuInfo)
+-        menuInflater.inflate(R.menu.menu_context, menu)
+-    }
+-
+-    /** 处理长按菜单的点击。 */
+-    override fun onContextItemSelected(item: MenuItem): Boolean {
+-        when (item.itemId) {
+-            R.id.menu_item_about -> {
+-                about_BMI_Dialog()
+-                return true
+-            }
+-            R.id.menu_item_wiki -> {
+-                openWebpage(getString(R.string.wiki_url))
+-                return true
+-            }
+-            R.id.menu_item_trend -> {
+-                startActivity(Intent(this, TrendActivity::class.java))
+-                return true
+-            }
+-            else -> return super.onContextItemSelected(item)
+-        }
+-    }
+-
+-    /**
+-     * 用系统浏览器打开一个网址。
+-     * ACTION_VIEW 表示“查看某样东西”，配合一个 Uri 就是“打开网页”。
+-     */
+-    private fun openWebpage(url: String) {
+-        val webpage = Uri.parse(url)   // 字符串 → Uri 对象
+-        val intent = Intent(Intent.ACTION_VIEW, webpage)
+-        try {
+-            startActivity(intent)
+-        } catch (e: ActivityNotFoundException) {
+-            // 万一手机上没有浏览器，捕获异常并提示，避免崩溃。
+-            Snackbar.make(
+-                findViewById<View>(android.R.id.content),
+-                R.string.no_browser,
+-                Snackbar.LENGTH_SHORT
+-            ).show()
+-        }
+-    }
+-
+-    /**
+-     * 弹出“关于 BMI”对话框。
+-     * 这里用 MaterialAlertDialogBuilder（Material 组件库的对话框）。
+-     */
+-    fun about_BMI_Dialog() {
+-        MaterialAlertDialogBuilder(this)
+-            .setTitle(R.string.about_button)          // 标题
+-            .setMessage(R.string.about_msg)           // 正文
+-            .setPositiveButton(R.string.button_ok) { dialog, which ->
+-                // 点“确定”后弹一个 Toast（短暂的小提示）。
+-                Toast.makeText(
+-                    this@MainActivity,
+-                    getString(R.string.button_ok),
+-                    Toast.LENGTH_SHORT
+-                ).show()
+-            }
+-            .show()
+ 
+         /*
+-         * ── 【考点 / 备用方案】用系统自带 AlertDialog 代替 Material 对话框 ──
+-         * 如果考试环境没有 Material 依赖，或老师要求用最基础的 AlertDialog：
+-         * 把上面 about_BMI_Dialog 换成下面这段即可（并 import android.app.AlertDialog）：
+-         *
+-         *   fun about_BMI_Dialog() {
+-         *       AlertDialog.Builder(this)
+-         *           .setTitle(R.string.about_button)
+-         *           .setMessage(R.string.about_msg)
+-         *           .setPositiveButton(R.string.button_ok, null)   // null = 点击后直接关闭
+-         *           .setNegativeButton(R.string.button_ok, null)   // 也可以加“取消”按钮
+-         *           .show()
+-         *   }
+-         * ────────────────────────────────────────────────────────────────────
++         * Spinner 的 selectedItemPosition 就是选中的序号（0/1/2），
++         * 刚好对应 strings.xml 里 wellness_condition 数组的三项。
+          */
++        val record = WellnessRecord(
++            date = BmiDates.today(),
++            condition = conditionSpinner.selectedItemPosition,
++            steps = steps,
++            note = noteET.text.toString().trim()
++        )
++
++        // 同一天重复保存会覆盖旧记录（数据库里 date 是主键 + CONFLICT_REPLACE）。
++        db.save(record)
++
++        Toast.makeText(this, R.string.wellness_saved, Toast.LENGTH_SHORT).show()
+     }
+ }
+diff --git a/app/src/main/java/com/example/bmi/data/WellnessDbHelper.kt b/app/src/main/java/com/example/bmi/data/WellnessDbHelper.kt
+new file mode 100644
+index 0000000..6c4f978
+--- /dev/null
++++ b/app/src/main/java/com/example/bmi/data/WellnessDbHelper.kt
+@@ -0,0 +1,138 @@
++package com.example.bmi.data
++
++import android.content.ContentValues
++import android.content.Context
++import android.database.sqlite.SQLiteDatabase
++import android.database.sqlite.SQLiteOpenHelper
++
++/*
++ * ============================================================================
++ * WellnessDbHelper.kt —— 用 SQLite 保存每天的健康日志
++ * ============================================================================
++ * 【这个文件是干什么的】
++ *   1. 第一次使用时创建 wellness.db 数据库和 wellness_records 表；
++ *   2. save() 把一条记录写进表里（同一天再存会覆盖旧记录）；
++ *   3. allRecords() 把所有记录按日期从新到旧读出来，给历史页显示。
++ *
++ * 【为什么继承 SQLiteOpenHelper】
++ *   Android 内置的 SQLite 需要我们自己写建表 SQL，但“什么时候建库、什么时候升级”
++ *   这些琐事由 SQLiteOpenHelper 管：
++ *     - 数据库文件不存在 → 自动调用 onCreate()；
++ *     - DATABASE_VERSION 变大 → 自动调用 onUpgrade()。
++ *
++ * 【和作业里 BmiDbHelper 的关系】
++ *   结构几乎一样，只是表名、列名、字段不同。考试时可以直接照抄 BmiDbHelper，
++ *   把这三样东西换掉即可，这是最省时间的做法。
++ *
++ * ────────────────────────────────────────────────────────────────────────────
++ * 【依赖关系】
++ *   本文件依赖：WellnessRecord。
++ *   谁依赖本文件：MainActivity（保存）、HistoryActivity（读取）。
++ * ────────────────────────────────────────────────────────────────────────────
++ */
++class WellnessDbHelper(context: Context) : SQLiteOpenHelper(
++    context.applicationContext,   // 用 Application Context，避免持有 Activity 造成内存泄漏
++    DATABASE_NAME,
++    null,                         // CursorFactory，一般传 null
++    DATABASE_VERSION
++) {
++
++    /**
++     * 数据库第一次创建时调用，只执行一次。
++     *
++     * date 设成 PRIMARY KEY：同一天只能有一行；
++     * updated_at 记录最后修改时间，方便以后按“最近修改”排序或显示。
++     */
++    override fun onCreate(db: SQLiteDatabase) {
++        db.execSQL(
++            """
++            CREATE TABLE $TABLE_RECORDS (
++                $COL_DATE TEXT PRIMARY KEY NOT NULL,
++                $COL_CONDITION INTEGER NOT NULL,
++                $COL_STEPS INTEGER NOT NULL,
++                $COL_NOTE TEXT NOT NULL,
++                $COL_UPDATED_AT INTEGER NOT NULL
++            )
++            """.trimIndent()
++        )
++    }
++
++    /**
++     * 数据库版本号变大时调用（表结构变了才会走到这里）。
++     * 教学项目里直接删表重建最省事；真实项目要用 ALTER TABLE 保留用户数据。
++     */
++    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
++        db.execSQL("DROP TABLE IF EXISTS $TABLE_RECORDS")
++        onCreate(db)
++    }
++
++    /**
++     * 保存一条记录。
++     *
++     * insertWithOnConflict(..., CONFLICT_REPLACE) 的含义：
++     *   如果 date 已经存在（同一天已经记过），就把旧行替换成新行，
++     *   而不是报错。这样“一天多条”最终只留最后一条。
++     */
++    fun save(record: WellnessRecord) {
++        val values = ContentValues().apply {
++            put(COL_DATE, record.date)
++            put(COL_CONDITION, record.condition)
++            put(COL_STEPS, record.steps)
++            put(COL_NOTE, record.note)
++            put(COL_UPDATED_AT, System.currentTimeMillis())
++        }
++        writableDatabase.insertWithOnConflict(
++            TABLE_RECORDS,
++            null,
++            values,
++            SQLiteDatabase.CONFLICT_REPLACE
++        )
++    }
++
++    /**
++     * 读取全部记录，按日期从新到旧排序（DESC）。
++     * 历史页直接把结果丢给 ListView，所以最新的记录显示在最上面。
++     */
++    fun allRecords(): List<WellnessRecord> {
++        val records = mutableListOf<WellnessRecord>()
++
++        // query(...) 的参数依次是：表名、要查的列、where 条件、条件参数、groupBy、having、orderBy
++        // 这里没有条件（null），排序规则是 "date DESC"。
++        val cursor = readableDatabase.query(
++            TABLE_RECORDS,
++            arrayOf(COL_DATE, COL_CONDITION, COL_STEPS, COL_NOTE),
++            null,
++            null,
++            null,
++            null,
++            "$COL_DATE DESC"
++        )
++
++        // cursor.use { } 会在读完后自动 close()，不会忘记释放资源。
++        cursor.use { c ->
++            while (c.moveToNext()) {
++                records.add(
++                    WellnessRecord(
++                        date = c.getString(0),
++                        condition = c.getInt(1),
++                        steps = c.getInt(2),
++                        note = c.getString(3)
++                    )
++                )
++            }
++        }
++        return records
++    }
++
++    private companion object {
++        const val DATABASE_NAME = "wellness.db"     // 数据库文件名
++        const val DATABASE_VERSION = 1              // 改表结构时 +1
++
++        const val TABLE_RECORDS = "wellness_records"
++        const val COL_DATE = "date"
++        const val COL_CONDITION = "condition"
++        const val COL_STEPS = "steps"
++        const val COL_NOTE = "note"
++        const val COL_UPDATED_AT = "updated_at"
++    }
++}
+diff --git a/app/src/main/java/com/example/bmi/data/WellnessRecord.kt b/app/src/main/java/com/example/bmi/data/WellnessRecord.kt
+new file mode 100644
+index 0000000..3ce26aa
+--- /dev/null
++++ b/app/src/main/java/com/example/bmi/data/WellnessRecord.kt
+@@ -0,0 +1,29 @@
++package com.example.bmi.data
++
++/*
++ * ============================================================================
++ * WellnessRecord.kt —— 健康日志里的一条记录（纯数据类）
++ * ============================================================================
++ * 【这个文件是干什么的】
++ *   把“某一天的健康记录”打包成一个对象，方便在 Activity 和数据库之间传递。
++ *   它只有四个字段：日期、身体状况、步数、备注，没有任何业务逻辑。
++ *
++ * 【字段设计（考试时最先想清楚这一步）】
++ *   date      日期字符串 "yyyy-MM-dd"，同时是数据库主键 → 同一天只保留最新一条；
++ *   condition 身体状况，用 0/1/2 表示（0=良好，1=一般，2=较差），
++ *             刚好对应 Spinner 的 selectedItemPosition，省掉一次转换；
++ *   steps     当天步数（整数）；
++ *   note      备注，可以为空字符串，但不要用 null（数据库列设了 NOT NULL）。
++ *
++ * ────────────────────────────────────────────────────────────────────────────
++ * 【依赖关系】
++ *   本文件依赖：无。
++ *   谁依赖本文件：WellnessDbHelper、MainActivity、HistoryActivity。
++ * ────────────────────────────────────────────────────────────────────────────
++ */
++data class WellnessRecord(
++    val date: String,
++    val condition: Int,
++    val steps: Int,
++    val note: String
++)
+diff --git a/app/src/main/res/layout-land/activity_main.xml b/app/src/main/res/layout-land/activity_main.xml
+deleted file mode 100644
+index b8475e3..0000000
+--- a/app/src/main/res/layout-land/activity_main.xml
++++ /dev/null
+@@ -1,168 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-  ============================================================================
+-  activity_main.xml（横屏版，放在 layout-land/ 目录）
+-  ============================================================================
+-  【为什么有 layout-land 这个目录】
+-    Android 会根据屏幕方向自动选择布局：
+-      - 竖屏 → 用 res/layout/activity_main.xml；
+-      - 横屏 → 用 res/layout-land/activity_main.xml（就是本文件）。
+-    两个文件的控件 id 必须完全一样（heightET、weightET、ageET、genderSpinner、reportBtn…），
+-    这样 MainActivity 里的 findViewById(R.id.xxx) 在横竖屏都能找到同一个控件。
+-
+-  【本布局用 LinearLayout（线性布局）】
+-    横屏时屏幕更宽，适合把“图标”放在左边、把“表单”放右边，所以这里用
+-    LinearLayout + orientation="horizontal"（水平排列）来左右分栏。
+--->
+-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+-    xmlns:app="http://schemas.android.com/apk/res-auto"
+-    xmlns:tools="http://schemas.android.com/tools"
+-    android:layout_width="match_parent"
+-    android:layout_height="match_parent"
+-    android:orientation="horizontal"
+-    android:gravity="center_vertical"
+-    android:padding="16dp"
+-    tools:context=".MainActivity">
+-
+-    <!-- 左边：BMI 图标（id 与竖屏一致：imageView）。 -->
+-    <ImageView
+-        android:id="@+id/imageView"
+-        android:layout_width="wrap_content"
+-        android:layout_height="120dp"
+-        android:layout_marginEnd="24dp"
+-        android:adjustViewBounds="true"
+-        android:contentDescription="@string/bmi_icon"
+-        app:srcCompat="@drawable/icon_128" />
+-
+-    <!--
+-      右边：竖排的表单。
+-      layout_width="0dp" + layout_weight="1" 表示“占满图标之外的所有剩余宽度”。
+-    -->
+-    <LinearLayout
+-        android:layout_width="0dp"
+-        android:layout_height="wrap_content"
+-        android:layout_weight="1"
+-        android:orientation="vertical">
+-
+-        <!-- 每一行 = 一个水平 LinearLayout：左边标签 + 右边输入框。 -->
+-
+-        <LinearLayout
+-            android:layout_width="match_parent"
+-            android:layout_height="wrap_content"
+-            android:gravity="center_vertical"
+-            android:orientation="horizontal">
+-
+-            <TextView
+-                android:id="@+id/textView7"
+-                android:layout_width="90dp"
+-                android:layout_height="wrap_content"
+-                android:text="@string/bmi_height"
+-                android:textSize="16sp" />
+-
+-            <!-- 身高输入框，id 与竖屏一致：heightET。 -->
+-            <EditText
+-                android:id="@+id/heightET"
+-                android:layout_width="0dp"
+-                android:layout_height="wrap_content"
+-                android:layout_weight="1"
+-                android:inputType="numberDecimal"
+-                android:hint="@string/bmi_height" />
+-        </LinearLayout>
+-
+-        <LinearLayout
+-            android:layout_width="match_parent"
+-            android:layout_height="wrap_content"
+-            android:layout_marginTop="8dp"
+-            android:gravity="center_vertical"
+-            android:orientation="horizontal">
+-
+-            <TextView
+-                android:id="@+id/textView2"
+-                android:layout_width="90dp"
+-                android:layout_height="wrap_content"
+-                android:text="@string/bmi_weight"
+-                android:textSize="16sp" />
+-
+-            <!-- 体重输入框，id：weightET。 -->
+-            <EditText
+-                android:id="@+id/weightET"
+-                android:layout_width="0dp"
+-                android:layout_height="wrap_content"
+-                android:layout_weight="1"
+-                android:inputType="numberDecimal"
+-                android:hint="@string/bmi_weight" />
+-        </LinearLayout>
+-
+-        <LinearLayout
+-            android:layout_width="match_parent"
+-            android:layout_height="wrap_content"
+-            android:layout_marginTop="8dp"
+-            android:gravity="center_vertical"
+-            android:orientation="horizontal">
+-
+-            <TextView
+-                android:id="@+id/textView3"
+-                android:layout_width="90dp"
+-                android:layout_height="wrap_content"
+-                android:text="@string/bmi_age"
+-                android:textSize="16sp" />
+-
+-            <!-- 年龄输入框，id：ageET。 -->
+-            <EditText
+-                android:id="@+id/ageET"
+-                android:layout_width="0dp"
+-                android:layout_height="wrap_content"
+-                android:layout_weight="1"
+-                android:inputType="number"
+-                android:hint="@string/bmi_age" />
+-        </LinearLayout>
+-
+-        <LinearLayout
+-            android:layout_width="match_parent"
+-            android:layout_height="wrap_content"
+-            android:layout_marginTop="8dp"
+-            android:gravity="center_vertical"
+-            android:orientation="horizontal">
+-
+-            <TextView
+-                android:id="@+id/textView"
+-                android:layout_width="90dp"
+-                android:layout_height="wrap_content"
+-                android:text="@string/bmi_gender"
+-                android:textSize="16sp" />
+-
+-            <!-- 性别下拉框，id：genderSpinner。 -->
+-            <Spinner
+-                android:id="@+id/genderSpinner"
+-                android:layout_width="0dp"
+-                android:layout_height="wrap_content"
+-                android:layout_weight="1"
+-                android:entries="@array/gender"
+-                android:spinnerMode="dropdown" />
+-        </LinearLayout>
+-
+-        <LinearLayout
+-            android:layout_width="match_parent"
+-            android:layout_height="wrap_content"
+-            android:layout_marginTop="12dp"
+-            android:orientation="horizontal">
+-
+-            <!-- “查看报告”按钮，id：reportBtn。 -->
+-            <Button
+-                android:id="@+id/reportBtn"
+-                android:layout_width="wrap_content"
+-                android:layout_height="wrap_content"
+-                android:text="@string/bmi_btn"
+-                android:textSize="12sp" />
+-
+-            <!-- “关于”按钮，id：aboutBtn。 -->
+-            <Button
+-                android:id="@+id/aboutBtn"
+-                android:layout_width="wrap_content"
+-                android:layout_height="wrap_content"
+-                android:layout_marginStart="12dp"
+-                android:text="@string/about_button"
+-                android:textSize="12sp" />
+-        </LinearLayout>
+-    </LinearLayout>
+-</LinearLayout>
+diff --git a/app/src/main/res/layout/activity_history.xml b/app/src/main/res/layout/activity_history.xml
+new file mode 100644
+index 0000000..709bd56
+--- /dev/null
++++ b/app/src/main/res/layout/activity_history.xml
+@@ -0,0 +1,59 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++  ============================================================================
++  activity_history.xml —— 历史记录页布局
++  ============================================================================
++  【这个文件是干什么的】
++    上面一行统计（记录天数 + 平均步数），下面一个 ListView 显示每条记录。
++    没有记录时隐藏列表，显示中间的提示文字。
++
++  【控件 id 与代码的对应关系】
++    historySummary → 统计文字
++    historyEmpty   → 空状态提示
++    historyList    → 记录列表
++-->
++<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
++    xmlns:tools="http://schemas.android.com/tools"
++    android:layout_width="match_parent"
++    android:layout_height="match_parent"
++    android:orientation="vertical"
++    android:padding="16dp"
++    tools:context=".HistoryActivity">
++
++    <TextView
++        android:id="@+id/historySummary"
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:textSize="15sp"
++        android:textStyle="bold"
++        tools:text="3 days recorded · average 6500 steps" />
++
++    <!--
++      空状态提示。默认 gone，由代码在没有记录时设为 visible。
++      layout_weight="1" 让它占满剩余空间，文字才能垂直居中。
++    -->
++    <TextView
++        android:id="@+id/historyEmpty"
++        android:layout_width="match_parent"
++        android:layout_height="0dp"
++        android:layout_weight="1"
++        android:gravity="center"
++        android:padding="24dp"
++        android:text="@string/wellness_history_empty"
++        android:textSize="16sp"
++        android:visibility="gone" />
++
++    <!--
++      ListView：Android 最基础的滚动列表控件。
++      只需要给它设置一个 Adapter（这里用 SimpleAdapter），它就会自动显示每一行。
++    -->
++    <ListView
++        android:id="@+id/historyList"
++        android:layout_width="match_parent"
++        android:layout_height="0dp"
++        android:layout_marginTop="8dp"
++        android:layout_weight="1"
++        android:divider="?android:attr/listDivider"
++        android:dividerHeight="1dp" />
++
++</LinearLayout>
+diff --git a/app/src/main/res/layout/activity_main.xml b/app/src/main/res/layout/activity_main.xml
+index 9703ee6..d5f6f90 100644
+--- a/app/src/main/res/layout/activity_main.xml
++++ b/app/src/main/res/layout/activity_main.xml
+@@ -1,184 +1,135 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <!--
+   ============================================================================
+-  activity_main.xml —— 主界面布局（竖屏）
++  activity_main.xml —— 健康日志主界面
+   ============================================================================
+   【这个文件是干什么的】
+-    定义 MainActivity 这个屏幕长什么样：哪里放图标、输入框、按钮、下拉框。
++    定义 MainActivity 的界面：显示今天日期，选择身体状况，填步数和备注，
++    底部两个按钮：保存、查看历史。
+ 
+-  【布局里最重要的两件事】
+-    1. android:id="@+id/xxx"：给控件起一个名字，代码里用 findViewById(R.id.xxx) 找到它。
+-       例如 heightET 这个输入框，代码里就是 findViewById(R.id.heightET)。
+-    2. app:layout_constraintXXX：约束布局（ConstraintLayout）用“约束”决定控件位置，
+-       比如“这个控件在哪个控件的下面、离左边多远”。
++  【为什么换成 LinearLayout】
++    作业原版用 ConstraintLayout，适合“自由摆放”的复杂界面，但要写很多约束属性。
++    这个页面就是从上到下排一列控件，用 LinearLayout（orientation="vertical"）
++    最简单：谁写在前面谁在上面，加 layout_marginTop 控制间距即可。
++    外面再套一层 ScrollView，保证小屏幕或弹出键盘时内容可以滚动。
+ 
+-  【根布局是 ConstraintLayout】
+-    它是“约束布局”，通过 app:layout_constraintStart_toStartOf 等属性把控件
+-    相对父容器或其它控件“钉”住，比 LinearLayout 更适合做这种自由摆放的界面。
++  【控件 id 与代码的对应关系】
++    dateTV            → 显示“今天：2026-11-26”
++    conditionSpinner  → 身体状况下拉框（良好/一般/较差）
++    stepsET           → 步数输入框
++    noteET            → 备注输入框
++    saveBtn           → 保存按钮
++    historyBtn        → 查看历史按钮
+ -->
+-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+-    xmlns:app="http://schemas.android.com/apk/res-auto"
++<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+     xmlns:tools="http://schemas.android.com/tools"
+     android:layout_width="match_parent"
+     android:layout_height="match_parent"
++    android:fillViewport="true"
+     tools:context=".MainActivity">
+ 
+-    <!--
+-      BMI 图标（ImageView 显示图片）。
+-      id = imageView，代码里 findViewById(R.id.imageView)。
+-      它还被注册了“长按菜单”，长按它会弹出菜单。
+-    -->
+-    <ImageView
+-        android:id="@+id/imageView"
+-        android:layout_width="wrap_content"
++    <LinearLayout
++        android:layout_width="match_parent"
+         android:layout_height="wrap_content"
+-        android:layout_marginStart="150dp"
+-        android:layout_marginTop="20dp"
+-        android:contentDescription="@string/bmi_icon"
+-        app:layout_constraintStart_toStartOf="parent"
+-        app:layout_constraintTop_toTopOf="parent"
+-        app:srcCompat="@drawable/icon_128" />
++        android:orientation="vertical"
++        android:padding="24dp">
+ 
+-    <!--
+-      体重输入框（EditText）。
+-      id = weightET，代码里 findViewById(R.id.weightET)。
+-      android:inputType="numberDecimal"：只能输入小数（带小数点）。
+-      android:hint：输入框为空时显示的灰色提示文字。
+-    -->
+-    <EditText
+-        android:id="@+id/weightET"
+-        android:layout_width="232dp"
+-        android:layout_height="62dp"
+-        android:layout_marginStart="52dp"
+-        android:layout_marginTop="24dp"
+-        android:ems="10"
+-        android:inputType="numberDecimal"
+-        android:hint="@string/bmi_weight"
+-        app:layout_constraintStart_toStartOf="parent"
+-        app:layout_constraintTop_toBottomOf="@+id/textView2" />
++        <!-- 当天日期。文字由 MainActivity 用 getString(..., BmiDates.today()) 填进来。 -->
++        <TextView
++            android:id="@+id/dateTV"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:textSize="16sp"
++            android:textStyle="bold"
++            tools:text="Today: 2026-11-26" />
+ 
+-    <!-- 身高输入框，id = heightET，只能输入小数。 -->
+-    <EditText
+-        android:id="@+id/heightET"
+-        android:layout_width="228dp"
+-        android:layout_height="49dp"
+-        android:layout_marginStart="52dp"
+-        android:layout_marginTop="24dp"
+-        android:ems="10"
+-        android:inputType="numberDecimal"
+-        android:hint="@string/bmi_height"
+-        app:layout_constraintStart_toStartOf="parent"
+-        app:layout_constraintTop_toBottomOf="@+id/textView7" />
++        <!-- 身体状况标签。 -->
++        <TextView
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="24dp"
++            android:text="@string/wellness_condition_label"
++            android:textSize="16sp" />
+ 
+-    <!-- 年龄输入框，id = ageET，只能输入整数（inputType="number"）。 -->
+-    <EditText
+-        android:id="@+id/ageET"
+-        android:layout_width="234dp"
+-        android:layout_height="53dp"
+-        android:layout_marginStart="52dp"
+-        android:layout_marginTop="20dp"
+-        android:ems="10"
+-        android:inputType="number"
+-        android:hint="@string/bmi_age"
+-        app:layout_constraintStart_toStartOf="parent"
+-        app:layout_constraintTop_toBottomOf="@+id/textView3" />
++        <!--
++          身体状况下拉框。
++          android:entries="@array/wellness_condition" 表示选项来自 strings.xml 里的数组，
++          代码里用 conditionSpinner.selectedItemPosition 拿到 0/1/2。
++        -->
++        <Spinner
++            android:id="@+id/conditionSpinner"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="8dp"
++            android:entries="@array/wellness_condition"
++            android:minHeight="48dp"
++            android:spinnerMode="dropdown" />
+ 
+-    <!-- 下面几个 TextView 是各个输入框旁边的“说明文字”（体重/身高/性别/年龄标签）。 -->
++        <!-- 步数标签。 -->
++        <TextView
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="16dp"
++            android:text="@string/wellness_steps_label"
++            android:textSize="16sp" />
+ 
+-    <TextView
+-        android:id="@+id/textView2"
+-        android:layout_width="wrap_content"
+-        android:layout_height="wrap_content"
+-        android:text="@string/bmi_weight"
+-        android:textSize="16sp"
+-        app:layout_constraintBottom_toBottomOf="parent"
+-        app:layout_constraintEnd_toEndOf="parent"
+-        app:layout_constraintHorizontal_bias="0.152"
+-        app:layout_constraintStart_toStartOf="parent"
+-        app:layout_constraintTop_toTopOf="parent"
+-        app:layout_constraintVertical_bias="0.722" />
+-
+-    <TextView
+-        android:id="@+id/textView7"
+-        android:layout_width="wrap_content"
+-        android:layout_height="wrap_content"
+-        android:text="@string/bmi_height"
+-        android:textSize="16sp"
+-        app:layout_constraintBottom_toBottomOf="parent"
+-        app:layout_constraintEnd_toEndOf="parent"
+-        app:layout_constraintHorizontal_bias="0.154"
+-        app:layout_constraintStart_toStartOf="parent"
+-        app:layout_constraintTop_toTopOf="parent"
+-        app:layout_constraintVertical_bias="0.569" />
+-
+-    <TextView
+-        android:id="@+id/textView"
+-        android:layout_width="wrap_content"
+-        android:layout_height="wrap_content"
+-        android:text="@string/bmi_gender"
+-        android:textSize="16sp"
+-        app:layout_constraintBottom_toBottomOf="parent"
+-        app:layout_constraintEnd_toEndOf="parent"
+-        app:layout_constraintHorizontal_bias="0.141"
+-        app:layout_constraintStart_toStartOf="parent"
+-        app:layout_constraintTop_toTopOf="parent"
+-        app:layout_constraintVertical_bias="0.208" />
++        <!--
++          步数输入框。
++          inputType="number" 会弹出数字键盘，并且只允许输入整数（不允许小数点/字母）。
++          注意：它只是“限制键盘”，代码里仍然要用 toIntOrNull() 做一次校验。
++        -->
++        <EditText
++            android:id="@+id/stepsET"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="8dp"
++            android:hint="@string/wellness_steps_hint"
++            android:importantForAutofill="no"
++            android:inputType="number"
++            android:maxLength="7"
++            android:minHeight="48dp" />
+ 
+-    <TextView
+-        android:id="@+id/textView3"
+-        android:layout_width="wrap_content"
+-        android:layout_height="wrap_content"
+-        android:text="@string/bmi_age"
+-        android:textSize="16sp"
+-        app:layout_constraintBottom_toBottomOf="parent"
+-        app:layout_constraintEnd_toEndOf="parent"
+-        app:layout_constraintHorizontal_bias="0.135"
+-        app:layout_constraintStart_toStartOf="parent"
+-        app:layout_constraintTop_toTopOf="parent"
+-        app:layout_constraintVertical_bias="0.389" />
++        <!-- 备注标签。 -->
++        <TextView
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="16dp"
++            android:text="@string/wellness_note_label"
++            android:textSize="16sp" />
+ 
+-    <!--
+-      “查看报告”按钮。id = reportBtn。
+-      代码里 reportBtn.setOnClickListener 给它绑定点击事件。
+-    -->
+-    <Button
+-        android:id="@+id/reportBtn"
+-        android:layout_width="wrap_content"
+-        android:layout_height="wrap_content"
+-        android:layout_marginStart="52dp"
+-        android:layout_marginTop="36dp"
+-        android:text="@string/bmi_btn"
+-        android:textSize="12sp"
+-        app:layout_constraintStart_toStartOf="parent"
+-        app:layout_constraintTop_toBottomOf="@+id/weightET" />
++        <!--
++          备注输入框。
++          textMultiLine 允许换行；gravity="top" 让光标从左上角开始（默认是垂直居中）。
++        -->
++        <EditText
++            android:id="@+id/noteET"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="8dp"
++            android:gravity="top|start"
++            android:hint="@string/wellness_note_hint"
++            android:importantForAutofill="no"
++            android:inputType="textMultiLine|textCapSentences"
++            android:minLines="3" />
+ 
+-    <!-- “关于”按钮，id = aboutBtn。 -->
+-    <Button
+-        android:id="@+id/aboutBtn"
+-        android:layout_width="wrap_content"
+-        android:layout_height="wrap_content"
+-        android:layout_marginStart="20dp"
+-        android:layout_marginTop="36dp"
+-        android:text="@string/about_button"
+-        android:textSize="12sp"
+-        app:layout_constraintStart_toEndOf="@+id/reportBtn"
+-        app:layout_constraintTop_toBottomOf="@+id/weightET" />
++        <!-- 保存按钮：点击后写数据库。 -->
++        <Button
++            android:id="@+id/saveBtn"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="24dp"
++            android:text="@string/wellness_save"
++            android:textSize="16sp" />
+ 
+-    <!--
+-      性别下拉框（Spinner）。id = genderSpinner。
+-      android:entries="@array/gender"：选项来自 strings.xml 里的 <string-array name="gender">
+-      （第 0 项“男”，第 1 项“女”）。
+-      代码里 genderSpinner.selectedItemPosition 拿到选中的位置序号。
+-    -->
+-    <Spinner
+-        android:id="@+id/genderSpinner"
+-        android:layout_width="210dp"
+-        android:layout_height="62dp"
+-        android:layout_marginStart="52dp"
+-        android:layout_marginTop="20dp"
+-        android:entries="@array/gender"
+-        android:spinnerMode="dropdown"
+-        app:layout_constraintStart_toStartOf="parent"
+-        app:layout_constraintTop_toBottomOf="@+id/textView" />
++        <!-- 查看历史按钮：用“描边按钮”和主按钮区分层级。 -->
++        <Button
++            android:id="@+id/historyBtn"
++            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="8dp"
++            android:text="@string/wellness_view_history"
++            android:textSize="16sp" />
+ 
+-</androidx.constraintlayout.widget.ConstraintLayout>
++    </LinearLayout>
++</ScrollView>
+diff --git a/app/src/main/res/layout/item_wellness.xml b/app/src/main/res/layout/item_wellness.xml
+new file mode 100644
+index 0000000..13b4edb
+--- /dev/null
++++ b/app/src/main/res/layout/item_wellness.xml
+@@ -0,0 +1,46 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++  ============================================================================
++  item_wellness.xml —— ListView 里“一行记录”的布局
++  ============================================================================
++  【这个文件是干什么的】
++    定义历史列表每一行长什么样：第一行“日期 · 身体状况”，第二行“步数 · 备注”。
++    HistoryActivity 用 SimpleAdapter 把数据填进 itemTitle / itemSubtitle 两个控件。
++
++  【为什么单独一个文件】
++    ListView 的每一行都需要一个布局。如果直接用系统自带的 simple_list_item_1，
++    只有一行文字、样式也改不了；自定义这个文件后，一行可以显示两行文字。
++-->
++<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
++    xmlns:tools="http://schemas.android.com/tools"
++    android:layout_width="match_parent"
++    android:layout_height="wrap_content"
++    android:orientation="vertical"
++    android:paddingStart="8dp"
++    android:paddingTop="12dp"
++    android:paddingEnd="8dp"
++    android:paddingBottom="12dp">
++
++    <!-- 第一行：日期 · 身体状况（加粗、稍大）。 -->
++    <TextView
++        android:id="@+id/itemTitle"
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:textColor="?android:attr/textColorPrimary"
++        android:textSize="16sp"
++        android:textStyle="bold"
++        tools:text="2026-11-26 · Good" />
++
++    <!-- 第二行：步数 · 备注（灰色、稍小，最多两行，超出显示省略号）。 -->
++    <TextView
++        android:id="@+id/itemSubtitle"
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:layout_marginTop="2dp"
++        android:ellipsize="end"
++        android:maxLines="2"
++        android:textColor="?android:attr/textColorSecondary"
++        android:textSize="14sp"
++        tools:text="8200 steps · Slept well" />
++
++</LinearLayout>
+diff --git a/app/src/main/res/values-zh-rCN/strings.xml b/app/src/main/res/values-zh-rCN/strings.xml
+index dd0aa58..1176f71 100644
+--- a/app/src/main/res/values-zh-rCN/strings.xml
++++ b/app/src/main/res/values-zh-rCN/strings.xml
+@@ -10,7 +10,7 @@
+     只是把 value 换成中文。
+ -->
+ <resources>
+-    <string name="app_name">BMI</string>
++    <string name="app_name">健康日志</string>
+     <string name="bmi_height">高度（cm）</string>
+     <string name="bmi_weight">重量（kg）</string>
+     <string name="bmi_age">年龄</string>
+@@ -50,4 +50,30 @@
+         <item>@string/gender_male</item>
+         <item>@string/gender_female</item>
+     </string-array>
++
++    <!-- ==================== Wellness Tracker（健康日志）==================== -->
++    <string name="wellness_today">今天：%1$s</string>
++    <string name="wellness_condition_label">今天的身体状况</string>
++    <string name="wellness_condition_good">良好</string>
++    <string name="wellness_condition_fair">一般</string>
++    <string name="wellness_condition_poor">较差</string>
++    <string name="wellness_steps_label">今日步数</string>
++    <string name="wellness_steps_hint">例如 8000</string>
++    <string name="wellness_note_label">备注（可选）</string>
++    <string name="wellness_note_hint">睡眠、心情、身体不适…</string>
++    <string name="wellness_save">保存今天的记录</string>
++    <string name="wellness_view_history">查看历史</string>
++    <string name="wellness_saved">已保存今天的记录。</string>
++    <string name="wellness_steps_warning">请输入有效的步数。</string>
++    <string name="wellness_history_title">历史记录</string>
++    <string name="wellness_history_empty">暂无记录。\n保存今天的健康日志后，这里就会显示历史。</string>
++    <string name="wellness_history_summary">已记录 %1$d 天 · 平均 %2$d 步</string>
++    <string name="wellness_history_title_row">%1$s · %2$s</string>
++    <string name="wellness_history_steps">%1$d 步</string>
++
++    <string-array name="wellness_condition">
++        <item>@string/wellness_condition_good</item>
++        <item>@string/wellness_condition_fair</item>
++        <item>@string/wellness_condition_poor</item>
++    </string-array>
+ </resources>
+diff --git a/app/src/main/res/values/strings.xml b/app/src/main/res/values/strings.xml
+index b9df712..e643fa9 100644
+--- a/app/src/main/res/values/strings.xml
++++ b/app/src/main/res/values/strings.xml
+@@ -19,7 +19,7 @@
+     代码里用 getString(R.string.trend_summary, 5, 24.8) 把真实值填进去。
+ -->
+ <resources>
+-    <string name="app_name">BMI</string>
++    <string name="app_name">Wellness Tracker</string>
+     <string name="bmi_height">Height (cm)</string>
+     <string name="bmi_weight">Weight (kg)</string>
+     <string name="bmi_age">Age</string>
+@@ -69,4 +69,31 @@
+         <item>@string/gender_male</item>
+         <item>@string/gender_female</item>
+     </string-array>
++
++    <!-- ==================== Wellness Tracker（健康日志）==================== -->
++    <string name="wellness_today">Today: %1$s</string>
++    <string name="wellness_condition_label">How do you feel today?</string>
++    <string name="wellness_condition_good">Good</string>
++    <string name="wellness_condition_fair">Fair</string>
++    <string name="wellness_condition_poor">Poor</string>
++    <string name="wellness_steps_label">Steps today</string>
++    <string name="wellness_steps_hint">e.g. 8000</string>
++    <string name="wellness_note_label">Notes (optional)</string>
++    <string name="wellness_note_hint">Sleep, mood, symptoms…</string>
++    <string name="wellness_save">Save today\'s record</string>
++    <string name="wellness_view_history">View history</string>
++    <string name="wellness_saved">Saved for today.</string>
++    <string name="wellness_steps_warning">Please enter a valid step count.</string>
++    <string name="wellness_history_title">History</string>
++    <string name="wellness_history_empty">No records yet.\nSave today to start your log.</string>
++    <string name="wellness_history_summary">%1$d days recorded · average %2$d steps</string>
++    <string name="wellness_history_title_row">%1$s · %2$s</string>
++    <string name="wellness_history_steps">%1$d steps</string>
++
++    <!-- 身体状况下拉框的选项，顺序必须和代码里的 0/1/2 对应。 -->
++    <string-array name="wellness_condition">
++        <item>@string/wellness_condition_good</item>
++        <item>@string/wellness_condition_fair</item>
++        <item>@string/wellness_condition_poor</item>
++    </string-array>
+ </resources>
+diff --git a/docs/exam-playbook.md b/docs/exam-playbook.md
+new file mode 100644
+index 0000000..808708f
+--- /dev/null
++++ b/docs/exam-playbook.md
+@@ -0,0 +1,571 @@
++# 考场通用教程：把 BMI 作业改成任意“每日记录类”App
++
++老师已经说了：考试题会和 BMI 作业“十分相似”。这句话的含金量很高——相似的不是
++BMI 公式，而是**项目的骨架**：
++
++```
++输入页（表单） → 校验 → 保存到 SQLite → 另一个页面读出历史 → 列表/统计/图表
++```
++
++BMI 作业把这套骨架完整演示了一遍。考试无论换成健康日志、心情日记、喝水记录、
++记账、学习打卡，只要还是“每天记点什么，然后能看历史”，改的都是同一批位置。
++
++这份教程给你两样东西：
++
++1. 一套**七步改造法**，从现有代码出发，不引入新框架、不改构建配置；
++2. 一张**变体对照表**，告诉你不同题目分别改哪几个字段和控件。
++
++配套的完整示例就是本仓库的 `wellness_tracker` 分支（见
++`docs/wellness-tracker.md`），可以对照着看。
++
++---
++
++## 1. 读题三分钟：先填一张表
++
++不要急着写代码。先回答四个问题，把答案写成一张表：
++
++| 问题 | 例子（Wellness Tracker） |
++| --- | --- |
++| 一条记录要存哪些信息？ | 日期、身体状况、步数、备注 |
++| 每天只能有一条，还是可以多条？ | 每天一条，后保存的覆盖先保存的 |
++| 需要统计/图表吗？ | 不需要，只需要历史列表 |
++| 需要编辑/删除吗？ | 不需要 |
++
++然后为每个字段决定三件事：
++
++| 字段 | 类型 | 界面控件 | 校验 |
++| --- | --- | --- | --- |
++| 日期 | `String`（`yyyy-MM-dd`） | 不输入，取系统当天 | 无 |
++| 身体状况 | `Int`（0/1/2） | `Spinner` | 一定有值 |
++| 步数 | `Int` | `EditText` + `inputType="number"` | 非空、非负 |
++| 备注 | `String` | 多行 `EditText` | 可为空 |
++
++这张表决定了后面 90% 的代码。**表没想清楚就开始写，是考场最大的时间浪费。**
++
++---
++
++## 2. 可复用的骨架
++
++```
++MainActivity                     WellnessDbHelper                HistoryActivity
++────────────                     ─────────────────               ───────────────
++findViewById 找控件              继承 SQLiteOpenHelper            allRecords()
++读 EditText / Spinner            onCreate() 建表                 空状态 / 统计
++校验 toIntOrNull()               save() 写一行                    ListView + Adapter
++new 一个数据类                    allRecords() 读全部              显示
++db.save(record)
++startActivity(HistoryActivity)
++```
++
++三个页面/组件，两个数据文件，一个布局文件，就是全部。
++
++---
++
++## 3. 七步改造法
++
++### 第 0 步：保留什么，删什么
++
++**保留**（考试时别碰）：
++
++- `app/build.gradle`、`settings.gradle`、`gradle/`、主题、颜色、图标；
++- 包名 `com.example.bmi`、`applicationId`、`MainActivity` 的类名；
++- `AndroidManifest.xml` 里 `MainActivity` 的 `MAIN/LAUNCHER` 注册。
++
++**可以不管**：
++
++- 旧的 `ReportActivity`、`TrendActivity`、AI 相关类、旧布局、旧字符串。
++  它们编译得过、界面上进不去，不会影响新功能。考试时间宝贵，不要做“大扫除”。
++
++**必须处理**：
++
++- 如果主界面布局被整体换掉，检查 `res/layout-land/` 里有没有同名布局。
++  有就删掉或同步修改，否则横屏时会加载旧布局，`findViewById` 返回 null 直接崩溃。
++
++### 第 1 步：写数据类（5 分钟）
++
++新建 `data/Record.kt`（名字随题目改）：
++
++```kotlin
++package com.example.bmi.data
++
++data class Record(
++    val date: String,      // yyyy-MM-dd；如果一天可以多条，这里换成 id: Int
++    val type: Int,         // Spinner 的序号，0/1/2…
++    val amount: Int,       // 数字字段：步数/毫升/分钟/页数/金额（金额用 Double）
++    val note: String       // 备注，可为空字符串
++)
++```
++
++`data class` 会自动生成 `equals`、`toString` 等，纯数据用它最合适。
++
++### 第 2 步：写数据库助手（10 分钟）
++
++直接复制原作业的 `BmiDbHelper.kt`，改四处：**类名、库名、表名/列名、CRUD 方法**。
++
++```kotlin
++package com.example.bmi.data
++
++import android.content.ContentValues
++import android.content.Context
++import android.database.sqlite.SQLiteDatabase
++import android.database.sqlite.SQLiteOpenHelper
++
++class RecordDbHelper(context: Context) : SQLiteOpenHelper(
++    context.applicationContext, "records.db", null, 1
++) {
++    override fun onCreate(db: SQLiteDatabase) {
++        db.execSQL(
++            """
++            CREATE TABLE records (
++                date TEXT PRIMARY KEY NOT NULL,
++                type INTEGER NOT NULL,
++                amount INTEGER NOT NULL,
++                note TEXT NOT NULL,
++                updated_at INTEGER NOT NULL
++            )
++            """.trimIndent()
++        )
++    }
++
++    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
++        db.execSQL("DROP TABLE IF EXISTS records")
++        onCreate(db)
++    }
++
++    fun save(record: Record) {
++        val values = ContentValues().apply {
++            put("date", record.date)
++            put("type", record.type)
++            put("amount", record.amount)
++            put("note", record.note)
++            put("updated_at", System.currentTimeMillis())
++        }
++        // date 是主键：同一天再存会替换旧行
++        writableDatabase.insertWithOnConflict(
++            "records", null, values, SQLiteDatabase.CONFLICT_REPLACE
++        )
++    }
++
++    fun allRecords(): List<Record> {
++        val list = mutableListOf<Record>()
++        val cursor = readableDatabase.query(
++            "records",
++            arrayOf("date", "type", "amount", "note"),
++            null, null, null, null,
++            "date DESC"
++        )
++        cursor.use { c ->
++            while (c.moveToNext()) {
++                list.add(
++                    Record(
++                        date = c.getString(0),
++                        type = c.getInt(1),
++                        amount = c.getInt(2),
++                        note = c.getString(3)
++                    )
++                )
++            }
++        }
++        return list
++    }
++}
++```
++
++关键点：
++
++- `onUpgrade` 在**版本号变大**时才调用。改了表结构一定把版本号 +1；
++  教学项目里更快的办法是卸载 App 或清除 App 数据。
++- 列名必须和 `ContentValues` 的 key、`Cursor` 的读取顺序一致，错一个就崩。
++- 日期做主键 + `CONFLICT_REPLACE` = 一天只留最后一条。这是一套组合拳，缺一不可。
++- 如果题目要求“同一天多条”，见第 4 节。
++
++### 第 3 步：改主界面布局（10 分钟）
++
++把 `activity_main.xml` 换成纵向 `LinearLayout`，而不是继续和
++`ConstraintLayout` 的约束属性较劲：
++
++```xml
++<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
++    android:layout_width="match_parent"
++    android:layout_height="match_parent"
++    android:fillViewport="true">
++
++    <LinearLayout
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:orientation="vertical"
++        android:padding="24dp">
++
++        <TextView android:id="@+id/dateTV"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content" />
++
++        <Spinner android:id="@+id/typeSpinner"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="16dp"
++            android:entries="@array/record_types" />
++
++        <EditText android:id="@+id/amountET"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="16dp"
++            android:hint="@string/amount_hint"
++            android:inputType="number" />
++
++        <EditText android:id="@+id/noteET"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="16dp"
++            android:gravity="top|start"
++            android:hint="@string/note_hint"
++            android:inputType="textMultiLine"
++            android:minLines="3" />
++
++        <Button android:id="@+id/saveBtn"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="24dp"
++            android:text="@string/save" />
++
++        <Button android:id="@+id/historyBtn"
++            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="8dp"
++            android:text="@string/view_history" />
++
++    </LinearLayout>
++</ScrollView>
++```
++
++要点：
++
++- 外面套 `ScrollView`，小屏幕 + 弹出键盘时不会把按钮顶出屏幕；
++- `inputType="number"` 只限制键盘，代码里仍要校验；
++- 每个控件都必须有 `android:id`，否则 `findViewById` 找不到。
++
++### 第 4 步：写保存逻辑（10 分钟）
++
++`MainActivity.onCreate()` 里找控件、绑事件，保存方法照下面写：
++
++```kotlin
++private lateinit var db: RecordDbHelper
++
++override fun onCreate(savedInstanceState: Bundle?) {
++    super.onCreate(savedInstanceState)
++    setContentView(R.layout.activity_main)
++    db = RecordDbHelper(this)
++
++    val amountET: EditText = findViewById(R.id.amountET)
++    val noteET: EditText = findViewById(R.id.noteET)
++    val typeSpinner: Spinner = findViewById(R.id.typeSpinner)
++
++    findViewById<TextView>(R.id.dateTV).text =
++        getString(R.string.today, SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date()))
++
++    findViewById<Button>(R.id.saveBtn).setOnClickListener {
++        val amount = amountET.text.toString().trim().toIntOrNull()
++        if (amount == null || amount < 0) {
++            Toast.makeText(this, R.string.invalid_amount, Toast.LENGTH_SHORT).show()
++            return@setOnClickListener
++        }
++        db.save(
++            Record(
++                date = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date()),
++                type = typeSpinner.selectedItemPosition,
++                amount = amount,
++                note = noteET.text.toString().trim()
++            )
++        )
++        Toast.makeText(this, R.string.saved, Toast.LENGTH_SHORT).show()
++    }
++
++    findViewById<Button>(R.id.historyBtn).setOnClickListener {
++        startActivity(Intent(this, HistoryActivity::class.java))
++    }
++}
++```
++
++如果你直接复用本项目的 `BmiDates.today()`，就不用写 `SimpleDateFormat`。
++
++**校验的三条铁律**：
++
++1. 空字符串转数字会得到 null，必须判断；
++2. 负数、超大数要按题目要求限制；
++3. 校验失败就 `return`，绝不能带着非法值写库。
++
++### 第 5 步：写历史页（15 分钟）
++
++新建 `HistoryActivity.kt` 和 `activity_history.xml`。最简单的版本：
++
++```kotlin
++class HistoryActivity : AppCompatActivity() {
++    override fun onCreate(savedInstanceState: Bundle?) {
++        super.onCreate(savedInstanceState)
++        setContentView(R.layout.activity_history)
++
++        val list: ListView = findViewById(R.id.historyList)
++        val empty: TextView = findViewById(R.id.historyEmpty)
++        val records = RecordDbHelper(this).allRecords()
++
++        if (records.isEmpty()) {
++            list.visibility = View.GONE
++            empty.visibility = View.VISIBLE
++            return
++        }
++
++        val rows = records.map { r ->
++            "${r.date}  ·  ${typeText(r.type)}  ·  ${r.amount}" +
++                if (r.note.isBlank()) "" else "  ·  ${r.note}"
++        }
++        list.adapter = ArrayAdapter(
++            this,
++            android.R.layout.simple_list_item_1,
++            rows
++        )
++    }
++
++    private fun typeText(type: Int): String = getString(
++        when (type) {
++            0 -> R.string.type_0
++            1 -> R.string.type_1
++            else -> R.string.type_2
++        }
++    )
++}
++```
++
++布局只要三样：
++
++```xml
++<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
++    android:layout_width="match_parent"
++    android:layout_height="match_parent"
++    android:orientation="vertical"
++    android:padding="16dp">
++
++    <TextView android:id="@+id/historySummary"
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content" />
++
++    <TextView android:id="@+id/historyEmpty"
++        android:layout_width="match_parent"
++        android:layout_height="0dp"
++        android:layout_weight="1"
++        android:gravity="center"
++        android:visibility="gone"
++        android:text="@string/history_empty" />
++
++    <ListView android:id="@+id/historyList"
++        android:layout_width="match_parent"
++        android:layout_height="0dp"
++        android:layout_weight="1" />
++
++</LinearLayout>
++```
++
++如果想做成两行更漂亮，直接抄本项目的 `item_wellness.xml` + `SimpleAdapter`，
++不要自己写 `BaseAdapter`（`getView` 里的 ViewHolder 复用很容易写错）。
++
++### 第 6 步：注册页面 + 加文案（5 分钟）
++
++`AndroidManifest.xml` 的 `<application>` 里加：
++
++```xml
++<activity
++    android:name=".HistoryActivity"
++    android:exported="false"
++    android:label="@string/history_title" />
++```
++
++`strings.xml` 里加文案和 Spinner 数组：
++
++```xml
++<string name="app_name">Wellness Tracker</string>
++<string name="today">Today: %1$s</string>
++<string name="save">Save</string>
++<string name="view_history">View history</string>
++<string name="history_title">History</string>
++<string name="history_empty">No records yet.</string>
++<string name="invalid_amount">Please enter a valid number.</string>
++<string name="saved">Saved.</string>
++<string name="type_0">Good</string>
++<string name="type_1">Fair</string>
++<string name="type_2">Poor</string>
++
++<string-array name="record_types">
++    <item>@string/type_0</item>
++    <item>@string/type_1</item>
++    <item>@string/type_2</item>
++</string-array>
++```
++
++如果项目有 `values-zh-rCN/strings.xml`，**所有 key 都要同步加一份中文**，
++否则中文系统下会回落到英文；漏掉也不会崩，但会显得没做完。
++
++### 第 7 步：编译 + 按清单自测（5 分钟）
++
++先 `Build → Make Project`，再 Run。测试顺序：
++
++1. 空输入 → 应提示，不崩；
++2. 正常输入 → 保存成功；
++3. 打开历史 → 能看到刚才的记录；
++4. 同一天再存一次 → 还是一条（或被更新）；
++5. 旋转屏幕 → 不崩；
++6. 杀进程重开 → 记录还在；
++7. 切换语言 → 文字正常。
++
++---
++
++## 4. 变体对照表
++
++| 题目 | 数据类字段 | 控件选择 | 额外注意 |
++| --- | --- | --- | --- |
++| 健康日志 Wellness | `date, condition, steps, note` | Spinner + 数字输入 + 备注 | 本分支示例 |
++| 心情日记 Mood | `date, mood, note` | Spinner（或 RatingBar/SeekBar） | 心情等级用 0..4 |
++| 喝水记录 Water | `date, ml` | 数字输入，或几个快捷按钮（+200ml） | 同一天要**累加**：先查再更新，或 SQL `UPDATE ... SET ml = ml + ?` |
++| 学习打卡 Study | `date, minutes, subject` | Spinner + 数字输入 | 统计总时长用 `SUM(minutes)` |
++| 记账 Expense | `id, date, amount, category, note` | 小数输入 + Spinner | 一天多条 → 自增 id 主键；金额用 `Double`/`REAL` |
++| 睡眠记录 Sleep | `date, hours, quality` | 小数输入 + Spinner | `hours` 用 `Double` |
++| 读书打卡 Reading | `date, pages, title` | 数字输入 + 文本输入 | 书名可为空要允许 |
++| 运动记录 Workout | `date, type, minutes` | Spinner + 数字输入 | 可能一天多种运动 → 自增 id |
++
++### 按天唯一 vs 一天多条
++
++**按天唯一**（默认，最省事）：
++
++```sql
++date TEXT PRIMARY KEY NOT NULL
++```
++
++保存用 `insertWithOnConflict(..., CONFLICT_REPLACE)`，读取按 `date DESC` 排序。
++
++**一天多条**：
++
++```sql
++id INTEGER PRIMARY KEY AUTOINCREMENT,
++date TEXT NOT NULL
++```
++
++保存用普通 `insert(...)`，读取按 `date DESC, id DESC` 排序。
++数据类要加 `id: Int`，删除/编辑时用 `WHERE id = ?`。
++
++### 要统计时
++
++- 平均值、总和在 Kotlin 里算最简单：
++  `records.map { it.amount }.average()`、`records.sumOf { it.amount }`；
++- 也可以在 SQL 里算：`SELECT SUM(amount), AVG(amount) FROM records`；
++- 考试优先选 Kotlin，因为不用多写一个 Cursor 解析。
++
++### 要图表时
++
++- 题目说“查看历史”，列表就够，**不要主动加图表**；
++- 真要求图表：引入 MPAndroidChart（`build.gradle` 里有注释示例），
++  或照着原项目 `BmiTrendChartView` 改一个自定义 View；
++- 时间不够就画“最近 7 天的柱状图”，比折线图好写。
++
++---
++
++## 5. 把 Wellness 示例改成另一道题：只改 8 个地方
++
++如果你打算考试时直接套用本项目的 `wellness_tracker` 代码，按顺序改这 8 处：
++
++1. **`strings.xml`（默认 + 中文）**：`app_name`、标签、提示、数组项；
++2. **`WellnessRecord.kt`**：字段名/类型（例如 `steps` → `ml`，`condition` → `mood`）；
++3. **`WellnessDbHelper.kt`**：
++   - `DATABASE_NAME`；
++   - `CREATE TABLE` 的列；
++   - `save()` 里的 `put(...)`；
++   - `allRecords()` 的列数组、`getXxx()` 顺序、`Record(...)` 构造；
++4. **`activity_main.xml`**：控件类型（数字/小数/多行）、`inputType`、`hint`；
++5. **`MainActivity.kt`**：读取哪些控件、怎么校验、数据类怎么构造；
++6. **`HistoryActivity.kt`**：`conditionText()` 换成新字段的翻译、行文字格式；
++7. **`item_wellness.xml`**：如果行数/样式要变；
++8. **`AndroidManifest.xml`**：只有新增页面时才需要改（改字段不用动）。
++
++**不要改**：包名、`applicationId`、Gradle 版本、主题、`MainActivity` 的入口注册。
++这些和题目无关，改了只会引入新问题。
++
++---
++
++## 6. 考场时间分配（按 45 分钟算）
++
++| 时间 | 做什么 |
++| --- | --- |
++| 0–5 分钟 | 读题、填第 1 节那张表；复制/打开已提交的项目 |
++| 5–15 分钟 | 数据类 + DbHelper，先只写 `save()` 和 `allRecords()` |
++| 15–25 分钟 | 主界面布局 + `MainActivity` 保存逻辑 |
++| 25–40 分钟 | 历史页 + 列表 + 空状态 |
++| 40–45 分钟 | 编译、按自测清单跑一遍、修小问题 |
++
++原则：**先让“保存 → 历史”跑通，再考虑美化**。一个能跑的朴素界面，
++比一个编译不过的漂亮界面分数高得多。
++
++---
++
++## 7. 高频错误与排查
++
++| 现象 | 原因 | 解决 |
++| --- | --- | --- |
++| 点按钮直接闪退，日志 `NullPointerException` | `findViewById` 的 id 写错，或横屏加载了旧布局 | 对照 XML 检查 id；删掉 `layout-land/` 里的旧同名布局 |
++| 跳转历史页闪退，`ActivityNotFoundException` | Manifest 没注册 `HistoryActivity` | 加 `<activity android:name=".HistoryActivity" ... />` |
++| 保存后历史是空的 | 存和读用了不同的库名/表名/列名 | 统一常量；检查 `query` 的列顺序 |
++| 同一天出现多条（或反过来覆盖了） | 主键策略和 `CONFLICT_*` 不匹配 | 按第 4 节选一种，成套修改 |
++| 输入 `8000 ` 被判非法 | 没 `trim()` | `text.toString().trim().toIntOrNull()` |
++| 步数/金额输入框能输字母 | `inputType` 没设 | 设 `number` / `numberDecimal`，代码仍要校验 |
++| 改完表结构后崩溃 `no such column` | 数据库版本没变，旧表还在 | 版本号 +1，或清除 App 数据 |
++| 列表一直空白 | 没设 `adapter`，或数据为空但没显示空状态 | 设置 adapter；空列表时显示提示文字 |
++| 中文系统显示英文 | 只改了 `values/strings.xml` | 同步改 `values-zh-rCN/strings.xml` |
++| 字符串格式化崩溃 `MissingFormatArgumentException` | `getString` 传的参数个数和占位符不一致 | `%1$s` 对应 1 个参数，`%1$d` 对应整数 |
++| 旋转屏幕后输入丢失 | 正常现象（除非用 `onSaveInstanceState`） | 本题不要求；别在 `onStart` 里用旧值覆盖 |
++| 数据库里有数据但重启后没了 | 存到了内存/局部变量，没真正写库 | 确认调用的是 `db.save(...)` |
++
++---
++
++## 8. 如果题目根本不是“每日记录”
++
++也可能出现“待办清单 / 联系人 / 图书管理”这类纯 CRUD。骨架仍然一样，只换语义：
++
++| 记录类 App | 通用 CRUD |
++| --- | --- |
++| 日期（唯一键） | `id INTEGER PRIMARY KEY AUTOINCREMENT` |
++| 每天一条 | 每条一个 id，可多条 |
++| 历史页 | 列表页 |
++| 保存 | 新增（`insert`） |
++| 修改同一天 | 编辑（`update ... where id = ?`） |
++| — | 删除（`delete ... where id = ?`） |
++
++把第 3 节的 `date` 换成 `id`，`save()` 换成 `insert()`，再加一个“点击列表项进入编辑”
++就变成待办清单。**结构不变，只换字段和 SQL。**
++
++---
++
++## 9. 考场不要做的事
++
++- 不要改包名、`applicationId`、Gradle/AGP 版本——和题目无关，极易把项目改坏；
++- 不要引入 Room、Retrofit、Jetpack Compose 等新东西——多一个依赖就多一个失败点；
++- 不要为了“架构好看”拆 Repository / UseCase / DI——考试只看功能；
++- 不要大规模删除旧文件——旧代码能编译就留着，删漏引用会浪费大量时间；
++- 不要把密钥、网络请求放进新功能——断网或没配 key 时会失败；
++- 不要忘记 Manifest 注册、`strings` 双语、横屏布局这三处“隐形坑”。
++
++---
++
++## 10. 最后：一张可打印的检查卡
++
++```
++[ ] 数据字段表填好了（字段/类型/控件/校验）
++[ ] data class 写好
++[ ] DbHelper：建表 SQL、save、allRecords
++[ ] 布局：id 齐全、inputType 正确、ScrollView
++[ ] MainActivity：findViewById、校验、db.save、跳转
++[ ] HistoryActivity：空状态、adapter、日期倒序
++[ ] Manifest 注册新 Activity
++[ ] strings 默认 + 中文都加了
++[ ] 删掉 layout-land 里的旧主布局
++[ ] 编译通过
++[ ] 空输入 / 正常保存 / 看历史 / 重开 App / 旋转屏幕
++```
++
++把这张卡和 `patch/wellness-tracker.patch` 一起带到考场，就够用了。
+diff --git a/docs/wellness-tracker.md b/docs/wellness-tracker.md
+new file mode 100644
+index 0000000..2d24b6b
+--- /dev/null
++++ b/docs/wellness-tracker.md
+@@ -0,0 +1,338 @@
++# Wellness Tracker 改造说明（考试练习版）
++
++本分支 `wellness_tracker` 从 `cityu_lab` 的最新提交 `d43a3c9` 创建，把原来的
++BMI 作业改成了学长回忆中的考试题：**Wellness Tracker（健康日志）**。
++
++目标只有一个：用最小的改动，做出一个能完成题目全部基本要求、且能直接运行和演示的
++MVP（Minimum Viable Product，最小可用版本）。
++
++---
++
++## 1. 题目要求与实现对照
++
++| 题目要求 | 本项目的实现 |
++| --- | --- |
++| 记录每天的身体状况（良好 / 一般 / 较差） | 主界面的 `Spinner`，选中序号 0/1/2 存库 |
++| 记录今天走了多少步 | `EditText` 输入整数，校验后存库 |
++| 记录一些信息（备注） | 多行 `EditText`，可留空 |
++| 保存 | “Save today record” 按钮写入 SQLite |
++| 每天记录一下 | 日期自动取系统当天，同一天再保存会覆盖旧记录 |
++| 查看历史记录 | “View history” 打开 `HistoryActivity`，按日期倒序列出全部记录 |
++
++没有做的内容（刻意不做，属于冗余）：BMI 计算、AI 建议、折线图、登录、云同步、
++编辑/删除单条记录。旧 BMI 代码仍然留在仓库里，但已经无法从界面进入（见第 8 节）。
++
++---
++
++## 2. 运行与演示
++
++1. 用 Android Studio 打开项目根目录（包含 `settings.gradle` 的那一层）。
++2. 等 Gradle Sync 完成，选中 `app` 运行配置，点 Run。
++3. 演示路径：
++   - 主界面显示 `Today: 2026-11-26`；
++   - 在 “How do you feel today?” 选择 `Good / Fair / Poor`；
++   - 输入步数，例如 `8000`；
++   - 备注可以留空，也可以写 `Slept well`；
++   - 点 **Save today record**，底部出现 `Saved for today.`；
++   - 点 **View history**，能看到 `日期 · 状况` 和 `步数 · 备注`；
++   - 再保存一次同一天的数据，历史里仍然只有一条（内容被更新）。
++
++数据库文件在设备上的位置：
++
++```
++/data/data/com.example.bmi/databases/wellness.db
++```
++
++用 Android Studio 的 **Device Explorer**（旧版叫 Device File Explorer）可以导出来，
++用任意 SQLite 工具打开，就能看到 `wellness_records` 表。
++
++> 说明：包名仍然是 `com.example.bmi`，没有改成 `com.example.wellness`。
++> 这是为了把改动压到最小：改包名要动 `namespace`、`applicationId`、所有
++> `package` 声明和目录结构，考试时既费时又容易出错，而且题目并不检查包名。
++
++---
++
++## 3. 如何应用 patch 文件
++
++patch 文件：`patch/wellness-tracker.patch`
++
++它记录的是 **从 `d43a3c9`（你已提交的 BMI 作业）到本分支** 的全部改动。
++考试时把 patch 文件和仓库一起带过去，执行：
++
++```bat
++cd 你的仓库目录
++git status
++git checkout -b exam d43a3c9
++git apply --check patch/wellness-tracker.patch
++git apply patch/wellness-tracker.patch
++```
++
++- `--check` 只检查能不能打上，不会改文件。看到没有输出就说明可以。
++- 如果提示行尾/空白问题，用：
++
++```bat
++git apply --ignore-whitespace patch/wellness-tracker.patch
++```
++
++- 如果提示 “patch does not apply”，最稳的是用三方合并：
++
++```bat
++git apply --3way patch/wellness-tracker.patch
++```
++
++- 打完补丁后，在 Android Studio 里 **Sync Project with Gradle Files**，再 Run。
++
++> 不要把 patch 文件用记事本打开后“另存为”，那会改变行尾，导致打不上。
++> 如果考试电脑没有 git，直接按第 4 节的文件清单，从本分支复制文件覆盖过去也可以。
++
++---
++
++## 4. 改了哪些文件
++
++### 4.1 新增文件
++
++| 文件 | 作用 |
++| --- | --- |
++| `app/src/main/java/com/example/bmi/data/WellnessRecord.kt` | 一条健康记录的数据类：日期、状况、步数、备注 |
++| `app/src/main/java/com/example/bmi/data/WellnessDbHelper.kt` | SQLite 建表、保存、读取全部记录 |
++| `app/src/main/java/com/example/bmi/HistoryActivity.kt` | 历史记录页：读库、统计、显示列表 |
++| `app/src/main/res/layout/activity_history.xml` | 历史页布局（统计 + 空状态 + ListView） |
++| `app/src/main/res/layout/item_wellness.xml` | 历史列表每一行的布局（两行文字） |
++
++### 4.2 修改文件
++
++| 文件 | 改了什么 |
++| --- | --- |
++| `app/src/main/java/com/example/bmi/MainActivity.kt` | 整体换成“选状况 + 填步数/备注 + 保存 + 查看历史”，删掉 BMI 计算、跳转报告页、菜单、对话框、自动填充 |
++| `app/src/main/res/layout/activity_main.xml` | 整体换成纵向 `LinearLayout` + `ScrollView`，只保留本题需要的控件 |
++| `app/src/main/AndroidManifest.xml` | 注册 `HistoryActivity` |
++| `app/src/main/res/values/strings.xml` | 新增 wellness 相关文案和状况数组，`app_name` 改为 Wellness Tracker |
++| `app/src/main/res/values-zh-rCN/strings.xml` | 同上，中文文案 |
++
++### 4.3 删除文件
++
++| 文件 | 为什么删 |
++| --- | --- |
++| `app/src/main/res/layout-land/activity_main.xml` | 这是原 BMI 主界面的**横屏**布局。Android 在横屏时会优先加载 `layout-land/`，如果保留，横屏下 `findViewById(R.id.stepsET)` 会找不到控件并崩溃。删掉后横屏会自动回落到 `layout/activity_main.xml`。 |
++
++### 4.4 没有动的文件
++
++`app/build.gradle`、`settings.gradle`、主题、颜色、图标、旧 BMI 的 Activity 和
++data 类全部没动。这带来两个好处：
++
++1. 补丁很小，打上去不会牵连构建配置；
++2. 旧代码仍然能编译，不会因为删文件漏改引用而报错。
++
++代价是仓库里留着用不到的 BMI/AI 代码。考试时完全可以保留；如果老师明确要求
++“不能有无关代码”，按第 8 节的清单清理，并在清理后完整编译一次。
++
++---
++
++## 5. 和原 BMI 作业的对应关系
++
++理解这张表，就理解了这个题目 80% 的改法。
++
++| BMI 作业 | Wellness Tracker | 说明 |
++| --- | --- | --- |
++| `heightET` / `weightET` / `ageET` | `stepsET` | 输入框从“多个数字”变成一个数字 |
++| `genderSpinner` | `conditionSpinner` | Spinner 的用法完全一样：读 `selectedItemPosition` |
++| “See BMI Report Now” 跳 `ReportActivity` | “Save today record” 直接存库 | 本题不需要“结果页”，保存就是最终动作 |
++| `ReportActivity` 计算 BMI 并显示 | 无 | 少一个页面、少一次 Intent 传值 |
++| `BmiDbHelper`（表 `bmi_records`） | `WellnessDbHelper`（表 `wellness_records`） | 结构照抄，只换表名和列 |
++| `TrendActivity` 折线图 | `HistoryActivity` 列表 | 历史记录用 ListView 就够，不必画图 |
++| `BmiPreferences` 自动填充 | 无 | 题目没要求“记住上次输入”，删掉 |
++| 选项菜单 / 上下文菜单 / 关于对话框 | 无 | 题目没要求，删掉 |
++
++一句话总结：**输入 → 校验 → 写库；另一个页面 → 读库 → 列表。**
++BMI 作业里“算 BMI”这一步被删掉了，其余骨架几乎原样复用。
++
++---
++
++## 6. 核心代码讲解
++
++### 6.1 保存流程（`MainActivity.saveTodayRecord()`）
++
++```kotlin
++val steps = stepsET.text.toString().trim().toIntOrNull()
++if (steps == null || steps < 0) {
++    Toast.makeText(this, R.string.wellness_steps_warning, Toast.LENGTH_SHORT).show()
++    return
++}
++
++val record = WellnessRecord(
++    date = BmiDates.today(),
++    condition = conditionSpinner.selectedItemPosition,
++    steps = steps,
++    note = noteET.text.toString().trim()
++)
++db.save(record)
++```
++
++要点：
++
++- `trim()` 先去掉空格，否则 `" 8000 "` 会被 `toIntOrNull()` 判为非法；
++- `toIntOrNull()` 一步完成“转数字 + 校验”，不需要 `try/catch`；
++- 日期不让用户输入，直接取系统当天，避免格式错误，也符合“每天记录”；
++- `selectedItemPosition` 是 `0/1/2`，和 `strings.xml` 里数组的顺序一一对应。
++
++`BmiDates` 虽然名字里有 BMI，但内容只是 `yyyy-MM-dd` 的日期格式化，属于通用工具。
++为了少改文件，这里直接复用了它。如果考试要求代码里不能出现 BMI 字样，把
++`data/BmiDates.kt` 重命名为 `data/Dates.kt`，再把引用处的 `BmiDates` 全局替换即可。
++
++### 6.2 数据库（`WellnessDbHelper`）
++
++表结构：
++
++| 列 | 类型 | 含义 |
++| --- | --- | --- |
++| `date` | TEXT PRIMARY KEY | 日期，`yyyy-MM-dd`，一天只能有一行 |
++| `condition` | INTEGER | 0=良好，1=一般，2=较差 |
++| `steps` | INTEGER | 步数 |
++| `note` | TEXT | 备注，可以为空字符串，但不会是 NULL |
++| `updated_at` | INTEGER | 最后保存的时间戳（毫秒） |
++
++保存时用了：
++
++```kotlin
++writableDatabase.insertWithOnConflict(
++    TABLE_RECORDS, null, values, SQLiteDatabase.CONFLICT_REPLACE
++)
++```
++
++因为 `date` 是主键，同一天再插入会冲突；`CONFLICT_REPLACE` 表示“删掉旧行、写入新行”。
++于是“一天记多次只留最后一次”自动成立，不需要先查询再判断。
++
++读取时：
++
++```kotlin
++readableDatabase.query(
++    TABLE_RECORDS, columns, null, null, null, null, "$COL_DATE DESC"
++)
++```
++
++`DESC` 让最新的日期排在最前面。`cursor.use { }` 保证读完自动关闭游标。
++
++### 6.3 历史页（`HistoryActivity`）
++
++```kotlin
++val records = WellnessDbHelper(this).allRecords()
++if (records.isEmpty()) {
++    // 显示空状态
++    return
++}
++val averageSteps = records.sumOf { it.steps }.toDouble() / records.size
++summary.text = getString(R.string.wellness_history_summary, records.size, Math.round(averageSteps).toInt())
++
++val rows = records.map { record ->
++    mapOf(
++        "title" to getString(R.string.wellness_history_title_row, record.date, conditionText(record.condition)),
++        "subtitle" to buildSubtitle(record)
++    )
++}
++list.adapter = SimpleAdapter(
++    this, rows, R.layout.item_wellness,
++    arrayOf("title", "subtitle"),
++    intArrayOf(R.id.itemTitle, R.id.itemSubtitle)
++)
++```
++
++- `ListView` 只负责滚动和回收视图，真正“一行长什么样”由 `item_wellness.xml` 决定；
++- `SimpleAdapter` 是系统自带的适配器，把 `Map` 里的值按 key 填到指定控件，
++  不用自己写 `BaseAdapter`，代码最少；
++- `conditionText()` 把数据库里的 `0/1/2` 翻译成当前语言的文字，这样切换中英文时
++  历史记录也会跟着变。
++
++### 6.4 为什么不需要 Intent 传值
++
++保存时数据已经写进 SQLite，历史页自己查询即可。这比“用 Intent 把列表传过去”
++更简单，也更符合真实 App 的做法。原作业的趋势页也是这个思路。
++
++---
++
++## 7. 如果考试要求变了，怎么改
++
++### 7.1 “同一天可以记多条”
++
++把 `date` 从主键改成普通列，新增自增主键：
++
++```sql
++CREATE TABLE wellness_records (
++    id INTEGER PRIMARY KEY AUTOINCREMENT,
++    date TEXT NOT NULL,
++    condition INTEGER NOT NULL,
++    steps INTEGER NOT NULL,
++    note TEXT NOT NULL,
++    updated_at INTEGER NOT NULL
++)
++```
++
++同时：
++
++1. `DATABASE_VERSION` 从 1 改成 2（否则旧库不会重建表；
++   教学项目也可以在系统设置里清除 App 数据）；
++2. `save()` 改用普通 `insert(...)`（或 `CONFLICT_ABORT`），不要 `REPLACE`；
++3. `allRecords()` 排序改成 `"$COL_DATE DESC, $COL_ID DESC"`；
++4. 数据类和读取逻辑加上 `id`（删除/编辑单条时需要）。
++
++### 7.2 “要能选择日期”
++
++在主界面加一个按钮显示日期，点击弹 `DatePickerDialog`，把选中的日期存进变量，
++保存时用它代替 `BmiDates.today()`。这样演示历史记录时不用真的等几天。
++
++### 7.3 “要能删除一条记录”
++
++给 `ListView` 设置 `setOnItemLongClickListener`，拿到位置对应的记录，
++执行 `DELETE FROM wellness_records WHERE date = ?`，然后重新查询并
++`adapter.notifyDataSetChanged()`（或用新的 adapter 重新赋值）。
++
++### 7.4 “要画趋势图”
++
++原项目的 `BmiTrendChartView` 是专门画 `BmiRecord` 的，不能直接复用。
++考试最省事的做法是引入 MPAndroidChart（`app/build.gradle` 里已有注释示例），
++用 `LineChart` + `LineDataSet`；或者只显示“最近 7 天步数”的柱状图。
++如果题目只说“查看历史”，列表就够，不要主动加图表。
++
++---
++
++## 8. 可选：清理旧 BMI 代码
++
++考试时不建议动这些文件——它们不影响运行，删了反而可能漏改引用。交卷前如果
++确实需要一份“干净”的代码，按下面的顺序删，并且每删一组就编译一次。
++
++1. 删页面：`ReportActivity.kt`、`TrendActivity.kt`；
++2. 删 UI：`ui/report/`、`ui/trend/` 整个目录；
++3. 删数据：`data/BmiDbHelper.kt`、`BmiHistoryRepository.kt`、`BmiPreferences.kt`、
++   `BmiProfile.kt`、`BmiRecord.kt`、`Gender.kt`、`DeepSeekClient.kt`、
++   `HealthAdviceRepository.kt`、`PromptBuilder.kt`；
++4. `data/BmiDates.kt` **先别删**：`MainActivity` 还在用它。可以重命名为
++   `Dates.kt` 并全局替换，或者把 `today()` 直接写进 `MainActivity`；
++5. 删布局：`activity_report.xml`、`activity_trend.xml` 以及 `layout-land/` 下对应文件；
++6. 删菜单：`res/menu/menu_options.xml`、`menu_context.xml`；
++7. 删图片：`drawable/bot_thin.png`、`bot_fit.png`、`bot_fat.png`；
++8. 删测试：`app/src/test/java/com/example/bmi/PromptBuilderTest.kt`；
++9. 清 `AndroidManifest.xml` 里 `ReportActivity`、`TrendActivity` 的注册；
++10. 清 `strings.xml` 里不再使用的 BMI / AI 文案（可选，留着不会报错）。
++
++最后 **Build → Clean Project → Rebuild Project**，确认没有 “Unresolved reference”。
++
++---
++
++## 9. 自测清单
++
++- [ ] 什么都不填，直接点保存：出现“请输入有效的步数”，不崩溃、不写库。
++- [ ] 输入 `abc`：数字键盘通常打不出来；如果能输入，仍然被校验拦住。
++- [ ] 输入 `0`：允许保存（0 步是合法值）。
++- [ ] 保存后打开历史：能看到刚保存的日期、状况、步数、备注。
++- [ ] 同一天保存两次：历史里只有一条，显示第二次的内容。
++- [ ] 历史为空时：显示“暂无记录”，不显示空白列表。
++- [ ] 旋转屏幕：不崩溃（因为已删除旧的横屏主布局）。
++- [ ] 切换系统语言为中文：界面和历史记录都变成中文。
++- [ ] 从历史页按返回键：回到主界面，输入内容还在。
++- [ ] 杀掉 App 再打开：历史记录仍然存在（数据真的写进了 SQLite）。
++
++---
++
++## 10. 相关文档
++
++- `docs/exam-playbook.md`：把这道题的做法迁移到其他“每日记录类”题目的通用教程。
++- `patch/wellness-tracker.patch`：可直接应用到 `d43a3c9` 的补丁。
