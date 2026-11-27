@@ -55,6 +55,14 @@
     <string name="menu_language">Switch language</string>
     <!-- 【AI 功能 · 考试可删】菜单项文字：打开 AI 健康建议页。 -->
     <string name="menu_ai_advice">AI advice</string>
+    <!-- 【图表 · 考试可删】菜单项文字：打开最近 7 天步数折线图。 -->
+    <string name="menu_trend">Trend chart</string>
+
+    <!-- ==================== 趋势折线图页（考试可删） ==================== -->
+    <string name="trend_title">7-day trend</string>
+    <string name="trend_series_steps">Steps</string>
+    <string name="trend_summary">Last %1$d days · average %2$d steps</string>
+    <string name="trend_empty">No records yet.\nSave a record first.</string>
 
     <!-- ==================== AI 健康建议页（考试可删） ==================== -->
     <string name="ai_title">AI health advice</string>

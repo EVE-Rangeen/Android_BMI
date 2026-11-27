@@ -105,6 +105,13 @@ dependencies {
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'
     // ──────────────────────────────────────────────────────────────────────
 
+    // ── 趋势折线图【图表 · 考试可删】───────────────────────────────────────
+    // MPAndroidChart 提供 LineChart / LineDataSet，一行依赖就能画折线图。
+    // 注意它只在 JitPack 上（settings.gradle 里已经加好仓库）。
+    // 不用图表时删掉这一行，再删 TrendActivity / activity_trend.xml / 菜单项即可。
+    implementation 'com.github.PhilJay:MPAndroidChart:v3.1.0'
+    // ──────────────────────────────────────────────────────────────────────
+
     testImplementation 'junit:junit:4.13.2'                        // 单元测试（本地 JVM 测试）
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'      // 仪器测试（跑在设备上）
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'  // UI 测试框架

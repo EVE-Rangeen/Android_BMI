@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ============================================================================
+  activity_trend.xml —— 最近 7 天步数折线图（【图表 · 考试可删】）
+  ============================================================================
+  【这个文件是干什么的】
+    上面一行统计文字（最近 N 天平均步数），下面是 MPAndroidChart 的 LineChart。
+
+  【控件 id 与代码的对应关系】
+    trendSummary → 统计文字（TrendActivity 用 getString 填）
+    trendChart   → 折线图本体，类型是全类名 com.github.mikephil.charting.charts.LineChart
+    trendEmpty   → 没有任何记录时的提示文字（默认 gone）
+
+  【为什么图表高度写死 280dp】
+    LineChart 不会自己“撑开”，必须给一个确定高度；写在 dp 里保证不同屏幕一样高。
+    外面包一层 ScrollView，小屏时如果统计文字换行也能滚动。
+-->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    tools:context=".TrendActivity">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- 统计文字：例如“Last 7 days · average 6500 steps”。 -->
+        <TextView
+            android:id="@+id/trendSummary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            tools:text="Last 7 days · average 6500 steps" />
+
+        <!--
+          折线图。android:id 必须和 TrendActivity 里 findViewById(R.id.trendChart) 一致。
+          自定义控件在 XML 里要写完整类名（包名 + 类名），不能只写 LineChart。
+        -->
+        <com.github.mikephil.charting.charts.LineChart
+            android:id="@+id/trendChart"
+            android:layout_width="match_parent"
+            android:layout_height="280dp"
+            android:layout_marginTop="12dp" />
+
+        <!-- 没有任何记录时的提示，默认隐藏。 -->
+        <TextView
+            android:id="@+id/trendEmpty"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:gravity="center"
+            android:padding="24dp"
+            android:text="@string/trend_empty"
+            android:textSize="16sp"
+            android:visibility="gone" />
+
+    </LinearLayout>
+</ScrollView>

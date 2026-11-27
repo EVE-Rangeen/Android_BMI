@@ -67,6 +67,15 @@
             android:exported="false"
             android:label="@string/ai_title" />
 
+        <!--
+          【图表 · 考试可删】最近 7 天步数折线图。
+          同样不对外开放，只能从主界面菜单进入；label 用 trend_title。
+        -->
+        <activity
+            android:name=".TrendActivity"
+            android:exported="false"
+            android:label="@string/trend_title" />
+
         <!-- 主界面（入口页，对外开放）。 -->
         <activity
             android:name=".MainActivity"

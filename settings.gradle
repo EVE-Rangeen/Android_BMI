@@ -26,6 +26,9 @@ dependencyResolutionManagement {
         // maven { url 'https://maven.aliyun.com/repository/public' }
         google()
         mavenCentral()
+        // 【图表 · 考试可删】MPAndroidChart 只发布在 JitPack，不在 Maven Central。
+        // 不写这一行，Sync 会报 "Could not find com.github.PhilJay:MPAndroidChart"。
+        maven { url 'https://jitpack.io' }
     }
 }
 

@@ -187,6 +187,13 @@ class MainActivity : BaseActivity() {
                 true
             }
 
+            // ── 【图表 · 考试可删】打开最近 7 天步数折线图 ──
+            R.id.menu_trend -> {
+                // 同样不传数据：趋势页自己读库。
+                startActivity(Intent(this, TrendActivity::class.java))
+                true
+            }
+
             else -> super.onOptionsItemSelected(item)
         }
     }

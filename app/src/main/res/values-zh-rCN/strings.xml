@@ -39,6 +39,14 @@
     <!-- ==================== 选项菜单 ==================== -->
     <string name="menu_language">切换语言</string>
     <string name="menu_ai_advice">AI 健康建议</string>
+    <!-- 【图表 · 考试可删】菜单项文字：打开最近 7 天步数折线图。 -->
+    <string name="menu_trend">趋势图</string>
+
+    <!-- ==================== 趋势折线图页（考试可删） ==================== -->
+    <string name="trend_title">最近 7 天趋势</string>
+    <string name="trend_series_steps">步数</string>
+    <string name="trend_summary">最近 %1$d 天 · 平均 %2$d 步</string>
+    <string name="trend_empty">还没有记录。\n请先在主界面保存一条记录。</string>
 
     <!-- ==================== AI 健康建议页（考试可删） ==================== -->
     <string name="ai_title">AI 健康建议</string>

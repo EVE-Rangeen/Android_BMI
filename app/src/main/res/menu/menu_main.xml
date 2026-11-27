@@ -14,8 +14,9 @@
 
   【考试删除指引】见 docs/exam-guide.md
     · 不要求中英文切换 → 删掉 menu_language 这一项；
-    · 不要求 AI        → 删掉 menu_ai_advice 这一项。
-    两项都删掉后，这个文件就没有用了，可以整个删掉，
+    · 不要求 AI        → 删掉 menu_ai_advice 这一项；
+    · 不要求图表       → 删掉 menu_trend 这一项。
+    三项都删掉后，这个文件就没有用了，可以整个删掉，
     同时删掉 MainActivity 里的 onCreateOptionsMenu / onOptionsItemSelected。
 
   【改题点 C11】想加新页面（统计 / 设置 / 关于）：在这里加一个 <item>，
@@ -37,6 +38,12 @@
     <item
         android:id="@+id/menu_ai_advice"
         android:title="@string/menu_ai_advice"
+        app:showAsAction="never" />
+
+    <!-- 【图表 · 考试可删】点击后打开 TrendActivity，看最近 7 天的步数折线图。 -->
+    <item
+        android:id="@+id/menu_trend"
+        android:title="@string/menu_trend"
         app:showAsAction="never" />
 
 </menu>
