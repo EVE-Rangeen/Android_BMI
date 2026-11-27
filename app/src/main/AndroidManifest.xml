@@ -10,10 +10,14 @@
       2. 有哪些屏幕（Activity），每个 Activity 叫什么类、是否对外开放（<activity>）；
       3. 需要哪些权限（<uses-permission>）。
 
-  【本项目不需要任何权限】
-    健康日志只把数据写进本机 SQLite，不联网、不读通讯录、不拍照，
-    所以这里没有 <uses-permission>。考试时如果不确定，宁可不加：
-    多申请权限可能被老师扣分，而少申请会直接崩溃（比如联网没加 INTERNET）。
+  【本项目的权限】
+    健康日志的数据只存在本机 SQLite，本来不需要任何权限。
+    但【AI 健康建议】要走网络请求 DeepSeek 接口，所以必须声明 INTERNET 权限。
+
+  【AI 功能 · 考试可删】不需要 AI 时：
+    1. 删掉下面那行 <uses-permission android:name="android.permission.INTERNET" />；
+    2. 删掉 <application> 里的 .AdviceActivity 注册。
+    详细清单见 docs/exam-guide.md。
 
   【android:exported 是什么】
     表示“这个 Activity 能不能被别的 App 启动”。
@@ -26,6 +30,9 @@
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- 【AI 功能 · 考试可删】访问 DeepSeek 接口需要联网权限，不写会直接崩溃。 -->
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <!--
       application 是应用的全局配置：
@@ -50,6 +57,15 @@
             android:name=".HistoryActivity"
             android:exported="false"
             android:label="@string/wellness_history_title" />
+
+        <!--
+          【AI 功能 · 考试可删】AI 健康建议页。
+          不对外开放，只能从主界面的菜单进入；label 用 ai_title 作为标题栏文字。
+        -->
+        <activity
+            android:name=".AdviceActivity"
+            android:exported="false"
+            android:label="@string/ai_title" />
 
         <!-- 主界面（入口页，对外开放）。 -->
         <activity

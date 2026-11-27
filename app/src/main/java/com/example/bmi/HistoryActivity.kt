@@ -4,7 +4,6 @@ import android.os.Bundle
 import android.widget.ListView
 import android.widget.SimpleAdapter
 import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import com.example.bmi.data.WellnessDbHelper
 import com.example.bmi.data.WellnessRecord
@@ -32,13 +31,22 @@ import com.example.bmi.data.WellnessRecord
  * 【依赖关系】
  *   本文件依赖：WellnessDbHelper、WellnessRecord、activity_history.xml、strings.xml。
  *   谁依赖本文件：MainActivity（点“查看历史”跳转）。
+ *
+ * 【为什么继承 BaseActivity 而不是 AppCompatActivity】
+ *   为了让本页也跟着用户选的语言显示（中文/英文）。
+ *   BaseActivity 是 AppCompatActivity 的子类，用法完全一样。
+ *   ★ 考试不要求中英文切换时，把这里改回 `class HistoryActivity : AppCompatActivity()`
+ *     并重新 import androidx.appcompat.app.AppCompatActivity（见 docs/exam-guide.md）。
  * ────────────────────────────────────────────────────────────────────────────
  */
-class HistoryActivity : AppCompatActivity() {
+class HistoryActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_history)
+
+        // 【语言切换 · 考试可删】标题跟着 App 内语言走（原因见 MainActivity 的说明）。
+        title = getString(R.string.wellness_history_title)
 
         val list: ListView = findViewById(R.id.historyList)
         val summary: TextView = findViewById(R.id.historySummary)

@@ -124,6 +124,41 @@ class WellnessDbHelper(context: Context) : SQLiteOpenHelper(
         return records
     }
 
+    /**
+     * 按日期查一条记录，查不到返回 null。
+     *
+     * 【AI 功能 · 考试可删】目前只有 AdviceActivity 用它取“今天的记录”。
+     * 不做 AI 时这个方法可以删掉，不影响保存和历史页。
+     *
+     * query 的第三个参数是 where 条件，第四个参数是条件里的值：
+     *   selection     = "date = ?"   —— ? 是占位符；
+     *   selectionArgs = arrayOf(date) —— 真正的值按顺序填进 ? 里。
+     * 用 ? 占位而不是把日期拼进 SQL 字符串，可以防止 SQL 注入、也不用手动加引号。
+     */
+    fun findByDate(date: String): WellnessRecord? {
+        val cursor = readableDatabase.query(
+            TABLE_RECORDS,
+            arrayOf(COL_DATE, COL_CONDITION, COL_STEPS, COL_NOTE),
+            "$COL_DATE = ?",
+            arrayOf(date),
+            null,
+            null,
+            null
+        )
+        return cursor.use { c ->
+            if (c.moveToFirst()) {
+                WellnessRecord(
+                    date = c.getString(0),
+                    condition = c.getInt(1),
+                    steps = c.getInt(2),
+                    note = c.getString(3)
+                )
+            } else {
+                null
+            }
+        }
+    }
+
     private companion object {
         const val DATABASE_NAME = "wellness.db"     // 数据库文件名
         const val DATABASE_VERSION = 1              // 改表结构时 +1

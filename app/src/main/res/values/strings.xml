@@ -42,6 +42,24 @@
         <item>@string/wellness_condition_poor</item>
     </string-array>
 
+    <!-- ==================== 选项菜单 ==================== -->
+    <!-- 【语言切换 · 考试可删】菜单项文字：点一下就在中英文之间切换。 -->
+    <string name="menu_language">Switch language</string>
+    <!-- 【AI 功能 · 考试可删】菜单项文字：打开 AI 健康建议页。 -->
+    <string name="menu_ai_advice">AI advice</string>
+
+    <!-- ==================== AI 健康建议页（考试可删） ==================== -->
+    <string name="ai_title">AI health advice</string>
+    <string name="ai_loading">Asking AI, please wait…</string>
+    <string name="ai_retry">Try again</string>
+    <string name="ai_no_record">No record for today yet.\nSave today\'s record first.</string>
+    <string name="ai_record_summary">%1$s · %2$s · %3$d steps</string>
+    <string name="ai_note">Note: %1$s</string>
+    <string name="ai_error_missing_key">API key is not configured. Put deepseek.apiKey in local.properties and rebuild the app.</string>
+    <string name="ai_error_network">Network error. Check your connection and try again.</string>
+    <string name="ai_error_api">The AI service returned an error. Please try again later.</string>
+    <string name="ai_error_unknown">Request failed. Please try again.</string>
+
     <!-- ==================== 历史页 ==================== -->
     <string name="wellness_history_title">History</string>
     <string name="wellness_history_empty">No records yet.\nSave today to start your log.</string>

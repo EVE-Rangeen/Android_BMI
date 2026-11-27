@@ -2,12 +2,13 @@ package com.example.bmi
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.Menu
+import android.view.MenuItem
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
 import com.example.bmi.data.Dates
 import com.example.bmi.data.WellnessDbHelper
 import com.example.bmi.data.WellnessRecord
@@ -23,8 +24,14 @@ import com.example.bmi.data.WellnessRecord
  * 【从作业的 BMI 版改过来时，这个文件改了哪些地方】
  *   1. 输入项：身高/体重/年龄/性别 → 身体状况/步数/备注；
  *   2. 按钮行为：计算 BMI 并跳转报告页 → 直接写数据库（不再需要第二个页面算结果）；
- *   3. 删掉了 SharedPreferences 自动填充、选项菜单、上下文菜单、对话框
+ *   3. 删掉了 SharedPreferences 自动填充、上下文菜单、对话框
  *      —— 这些都不是本题必需，属于“可以不要的冗余功能”。
+ *
+ * 【后来又加回来的两个“上课内容”（都是可选的，考试按需删）】
+ *   A. 中英文切换：继承 BaseActivity + 右上角菜单的“切换语言”，
+ *      点击后 toggleLanguage() 保存选择并 recreate() 重建界面。
+ *   B. AI 健康建议：菜单里的“AI 健康建议”跳转到 AdviceActivity。
+ *   这两块的删除清单见 docs/exam-guide.md。
  *
  * 【本文件对应的考试知识点】
  *   · findViewById 找控件；
@@ -32,16 +39,18 @@ import com.example.bmi.data.WellnessRecord
  *   · Spinner 读取 selectedItemPosition；
  *   · SQLite 保存（通过 WellnessDbHelper）；
  *   · Intent 跳转到另一个 Activity；
- *   · Toast 提示。
+ *   · Toast 提示；
+ *   · 选项菜单（onCreateOptionsMenu / onOptionsItemSelected）。
  *
  * ────────────────────────────────────────────────────────────────────────────
  * 【依赖关系】
  *   本文件依赖：WellnessDbHelper、WellnessRecord、Dates（日期工具）、
- *               HistoryActivity、activity_main.xml、strings.xml。
+ *               HistoryActivity、AdviceActivity（可选）、
+ *               BaseActivity（可选）、activity_main.xml、strings.xml、menu_main.xml。
  *   谁依赖本文件：无（它是桌面图标启动的入口页）。
  * ────────────────────────────────────────────────────────────────────────────
  */
-class MainActivity : AppCompatActivity() {
+class MainActivity : BaseActivity() {
 
     // 数据库助手：Activity 创建时初始化，后面保存记录时直接用。
     private lateinit var db: WellnessDbHelper
@@ -55,6 +64,16 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        /*
+         * 【语言切换 · 考试可删】手动设置标题栏文字。
+         *
+         * 标题栏默认显示 Manifest 里 android:label 指向的文字，而那是“系统”
+         * 按手机的设置解析的；我们在 App 内切换语言后，系统并不知道，
+         * 标题就会停在原来的语言。所以这里用 getString() 从“当前页面的资源”取，
+         * 跟着 App 内语言走。不做语言切换时可以删掉这一行。
+         */
+        title = getString(R.string.app_name)
 
         // 创建数据库助手（此时不会真的建库，第一次读写时才创建 wellness.db）。
         db = WellnessDbHelper(this)
@@ -114,5 +133,44 @@ class MainActivity : AppCompatActivity() {
         db.save(record)
 
         Toast.makeText(this, R.string.wellness_saved, Toast.LENGTH_SHORT).show()
+    }
+
+    // ===================== 选项菜单（右上角三个点）=====================
+
+    /**
+     * 把 res/menu/menu_main.xml 加载成右上角菜单。
+     *
+     * 【考试可删】不需要中英文切换、也不需要 AI 时，删掉本方法和
+     * onOptionsItemSelected()，再删掉 res/menu/menu_main.xml。
+     */
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.menu_main, menu)
+        return true
+    }
+
+    /**
+     * 菜单项点击处理：靠 itemId 区分点的是哪一项。
+     *
+     * 注意返回 true 表示“这个事件我处理了”，返回 false 会继续交给父类处理。
+     */
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+
+            // ── 【语言切换 · 考试可删】中文 ↔ 英文，切换后整页重建 ──
+            R.id.menu_language -> {
+                // toggleLanguage() 在 BaseActivity 里：保存选择 + recreate()
+                toggleLanguage()
+                true
+            }
+
+            // ── 【AI 功能 · 考试可删】打开 AI 健康建议页 ──
+            R.id.menu_ai_advice -> {
+                // 不传数据：建议页自己按 Dates.today() 去数据库查今天的记录。
+                startActivity(Intent(this, AdviceActivity::class.java))
+                true
+            }
+
+            else -> super.onOptionsItemSelected(item)
+        }
     }
 }

@@ -11,6 +11,26 @@ plugins {
     id 'org.jetbrains.kotlin.android' // Kotlin 语言支持
 }
 
+// ----------------------------------------------------------------------------
+// 【AI 功能 · 考试可删】BuildConfig 注入 API key
+// ----------------------------------------------------------------------------
+// 这里从根目录的 local.properties 里读 deepseek.apiKey（该文件不会被提交到 Git），
+// 编译时注入到 BuildConfig 类里，代码里就能用 BuildConfig.DEEPSEEK_API_KEY。
+// 好处：真正的密钥不出现在源码里；换机器只要改 local.properties 再编译即可。
+//
+// 【考试不需要 AI 时要删什么】
+//   1. 删掉本段（def localProperties ... def deepSeekApiKey ...）这三个变量；
+//   2. 删掉 defaultConfig 里的两行 buildConfigField；
+//   3. 删掉 buildFeatures { buildConfig = true } 这一段（本项目没有其它地方用 BuildConfig）。
+//   详细清单见 docs/exam-guide.md。
+// ----------------------------------------------------------------------------
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withInputStream { stream -> localProperties.load(stream) }
+}
+def deepSeekApiKey = localProperties.getProperty('deepseek.apiKey') ?: ''
+
 android {
     namespace = 'com.example.bmi'   // 应用的命名空间（包名）
     // compileSdk 36 是 Android Studio 2025.2.1 (Otter) 默认安装的 API 级别。
@@ -26,6 +46,10 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // 【AI 功能 · 考试可删】把密钥和接口地址注入到 BuildConfig 常量。
+        buildConfigField "String", "DEEPSEEK_API_KEY", "\"${deepSeekApiKey}\""
+        buildConfigField "String", "DEEPSEEK_BASE_URL", "\"https://api.deepseek.com\""
     }
 
     buildTypes {
@@ -34,6 +58,11 @@ android {
             minifyEnabled = false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
+    }
+
+    buildFeatures {
+        // 【AI 功能 · 考试可删】打开 BuildConfig 生成（AGP 8.x 默认关闭，需要显式打开）。
+        buildConfig = true
     }
 
     compileOptions {
@@ -52,18 +81,29 @@ kotlin {
 
 // ----------------------------------------------------------------------------
 // dependencies：这个模块用到的第三方库。
-// 健康日志只用到最基础的 UI + SQLite，所以依赖很少：
+// 健康日志的基础功能只用到最基础的 UI + SQLite：
 //   core-ktx      → Kotlin 扩展（isVisible 等）
 //   appcompat     → AppCompatActivity
 //   material      → Material 主题和按钮样式
 //   junit/espresso→ 测试
 // SQLite 是 Android 系统自带的，不需要额外依赖。
+//
+// 【AI 功能 · 考试可删】下面标了「AI 功能」的四行依赖（activity-ktx、
+//   lifecycle-*、coroutines）只用于 AI 页面的 ViewModel + 协程。
+//   不做 AI 时删掉这四行即可，其余代码不受影响（语言切换不需要它们）。
 // ----------------------------------------------------------------------------
 dependencies {
 
     implementation 'androidx.core:core-ktx:1.13.1'                      // 核心扩展
     implementation 'androidx.appcompat:appcompat:1.7.0'                // AppCompat（向后兼容）
     implementation 'com.google.android.material:material:1.12.0'        // Material 组件库
+
+    // ── AI 功能：MVVM（Activity 的 viewModels 委托、ViewModel、LiveData）+ 协程 ──
+    implementation 'androidx.activity:activity-ktx:1.5.1'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.5.1'
+    implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.5.1'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'
+    // ──────────────────────────────────────────────────────────────────────
 
     testImplementation 'junit:junit:4.13.2'                        // 单元测试（本地 JVM 测试）
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'      // 仪器测试（跑在设备上）

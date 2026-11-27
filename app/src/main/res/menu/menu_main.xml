@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ============================================================================
+  menu_main.xml —— 主界面右上角的选项菜单（OptionsMenu）
+  ============================================================================
+  【这个文件是干什么的】
+    定义右上角三个点里有哪些菜单项。MainActivity 用
+      menuInflater.inflate(R.menu.menu_main, menu)
+    把它加载进菜单，用户点击时由 onOptionsItemSelected(item) 处理。
+
+  【showAsAction 属性】
+    app:showAsAction="never" → 收进右上角“三个点”的溢出菜单（最省标题栏空间）。
+    app:showAsAction="always"→ 直接显示在标题栏上（图标/文字常驻）。
+
+  【考试删除指引】见 docs/exam-guide.md
+    · 不要求中英文切换 → 删掉 menu_language 这一项；
+    · 不要求 AI        → 删掉 menu_ai_advice 这一项。
+    两项都删掉后，这个文件就没有用了，可以整个删掉，
+    同时删掉 MainActivity 里的 onCreateOptionsMenu / onOptionsItemSelected。
+-->
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context=".MainActivity">
+
+    <!-- 【语言切换 · 考试可删】点击后在这里切换 中文 / English 并重建界面。 -->
+    <item
+        android:id="@+id/menu_language"
+        android:title="@string/menu_language"
+        app:showAsAction="never" />
+
+    <!-- 【AI 功能 · 考试可删】点击后打开 AdviceActivity，向 DeepSeek 要今天的健康建议。 -->
+    <item
+        android:id="@+id/menu_ai_advice"
+        android:title="@string/menu_ai_advice"
+        app:showAsAction="never" />
+
+</menu>

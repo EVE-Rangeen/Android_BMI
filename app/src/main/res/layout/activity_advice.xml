@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ============================================================================
+  activity_advice.xml —— AI 健康建议页（【AI 功能 · 考试可删】）
+  ============================================================================
+  【这个文件是干什么的】
+    显示“今天这条记录”的摘要，然后把 DeepSeek 返回的建议文字显示在下面。
+    请求期间显示转圈（ProgressBar），失败时显示“重试”按钮。
+
+  【控件 id 与代码的对应关系】
+    adviceSummary  → 今天记录的一行摘要（日期 · 状况 · 步数）
+    adviceNote     → 备注那一行（没有备注就不显示）
+    adviceProgress → 加载中的转圈
+    adviceText     → AI 返回的建议文字
+    adviceRetry    → 失败后的重试按钮
+
+  【为什么用 ScrollView】
+    AI 回答的长度不固定，小屏幕上可能超出一屏，包一层 ScrollView 就能滚动查看。
+-->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    tools:context=".AdviceActivity">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <!-- 今天这条记录的摘要，文字由 AdviceActivity 用 getString(...) 填进来。 -->
+        <TextView
+            android:id="@+id/adviceSummary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            tools:text="2026-11-27 · Good · 8000 steps" />
+
+        <!-- 备注行：没有备注时由代码隐藏（isVisible = false）。 -->
+        <TextView
+            android:id="@+id/adviceNote"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textSize="14sp"
+            tools:text="Note: slept well" />
+
+        <!-- 加载中：转圈。默认隐藏，进入 Loading 状态才显示。 -->
+        <ProgressBar
+            android:id="@+id/adviceProgress"
+            style="?android:attr/progressBarStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="24dp"
+            android:visibility="gone" />
+
+        <!-- AI 建议正文。 -->
+        <TextView
+            android:id="@+id/adviceText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:lineSpacingExtra="4dp"
+            android:textSize="16sp"
+            tools:text="1. ..." />
+
+        <!-- 失败后的重试按钮：默认隐藏，只有 Error 状态才显示。 -->
+        <Button
+            android:id="@+id/adviceRetry"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="@string/ai_retry"
+            android:visibility="gone" />
+
+    </LinearLayout>
+</ScrollView>
