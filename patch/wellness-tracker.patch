@@ -9,7 +9,7 @@ index dfe0770..a6980ab 100644
 +# Keep patch files LF so git apply works on Windows.
 +*.patch -text
 diff --git a/README.md b/README.md
-index dc0aa70..f099d62 100644
+index dc0aa70..719182a 100644
 --- a/README.md
 +++ b/README.md
 @@ -1,7 +1,63 @@
@@ -123,22 +123,19 @@ index dc0aa70..f099d62 100644
  ## 校园网访问不了 Google / Maven 时
  
  依赖（androidx、Material、AGP、Kotlin 插件）走的是 `google()` 和
-@@ -59,102 +139,36 @@ gradlew.bat assembleDebug
+@@ -59,102 +139,41 @@ gradlew.bat assembleDebug
  
  生成的文件在 `app/build/outputs/apk/debug/app-debug.apk`。
  
 -## 分支工作流（main → cityu_lab）
-+## 考试补丁
- 
+-
 -`main` 是日常开发分支，保持原来的旧工具链（AGP 7.3.1），可以继续在本地旧版
 -Android Studio 里打开；`cityu_lab` 只负责“学校电脑上能跑”的适配，**不要直接
 -在这个分支上写业务代码**，否则以后每次合并都会更麻烦。
 -
 -每做完一次作业，按这个顺序操作：
-+`patch/wellness-tracker.patch` 记录的是从 `cityu_lab` 的提交 `d43a3c9`
-+到本分支的全部改动，可以直接应用到你已提交的作业代码上：
- 
- ```bat
+-
+-```bat
 -git checkout main
 -git add -A
 -git commit -m "assignment04"
@@ -190,11 +187,8 @@ index dc0aa70..f099d62 100644
 -
 -```properties
 -deepseek.apiKey=sk-xxxxxxxxxxxxxxxxxxxx
-+git checkout -b exam d43a3c9
-+git apply --check patch/wellness-tracker.patch
-+git apply patch/wellness-tracker.patch
- ```
- 
+-```
+-
 -然后 Sync + Run（key 是在编译时写进 `BuildConfig` 的，改完必须重新编译）。
 -没有 key 时 App 仍能正常计算 BMI，只是 AI 建议区域会显示配置提示。
 -详细说明见 `docs/llm-setup.md`。
@@ -216,15 +210,27 @@ index dc0aa70..f099d62 100644
 -set JAVA_HOME=<本机 JDK 17 或更高的路径>
 -gradlew.bat assembleDebug
 -```
--
++## 考试补丁
+ 
 -成功之后推送：
--
--```bat
++`patch/wellness-tracker.patch` 记录的是从 `cityu_lab` 的提交 `d43a3c9`
++到本分支的全部改动，可以直接应用到你已提交的作业代码上：
+ 
+ ```bat
 -git push origin cityu_lab
--```
-+## 文档
++git checkout -b exam d43a3c9
++git apply --check patch/wellness-tracker.patch
++git apply patch/wellness-tracker.patch
+ ```
  
 -学校电脑上只需要在 `cityu_lab` 分支上 `git pull`，然后 Sync + Run 即可。
++## 文档
++
++- [`docs/from-scratch.md`](docs/from-scratch.md)
++  —— **从零建工程手册**：在空工程里按顺序把功能一块块加出来，每步都有验收点；
++  还写了学校版本 / 自己电脑版本的差异与踩坑清单。
++- [`docs/adapt-to-other-topic.md`](docs/adapt-to-other-topic.md)
++  —— **改题点地图**：题目换成喝水/心情/记账时，改哪一处、连带改哪里，含三个完整示例。
 +- [`docs/exam-guide.md`](docs/exam-guide.md)
 +  —— **考试删减指南**：不要中英文切换 / 不要 AI 时，具体删哪些文件、哪些代码。
 +- [`docs/wellness-tracker.md`](docs/wellness-tracker.md)
@@ -468,10 +474,10 @@ index b385e20..7a18fa0 100644
  
 diff --git a/app/src/main/java/com/example/bmi/AdviceActivity.kt b/app/src/main/java/com/example/bmi/AdviceActivity.kt
 new file mode 100644
-index 0000000..8e644f2
+index 0000000..6bbfb98
 --- /dev/null
 +++ b/app/src/main/java/com/example/bmi/AdviceActivity.kt
-@@ -0,0 +1,161 @@
+@@ -0,0 +1,165 @@
 +package com.example.bmi
 +
 +import android.os.Bundle
@@ -561,6 +567,8 @@ index 0000000..8e644f2
 +        }
 +
 +        // 摘要：日期 · 身体状况 · 步数（占位符按顺序对应 %1$s %2$s %3$d）。
++        // 【改题点 C10】这里的参数个数必须等于 ai_record_summary 的占位符个数；
++        // 换了字段就一起改（C3 文案 + 这里的参数）。
 +        summaryTV.text = getString(
 +            R.string.ai_record_summary,
 +            record.date,
@@ -624,6 +632,8 @@ index 0000000..8e644f2
 +     * 把数据库里的 0/1/2 翻成当前语言的文字。
 +     * （HistoryActivity 里有一份同样的映射，故意各自保留一个小函数，
 +     *   这样任一面被删除时另一面不受影响。）
++     *
++     * 【改题点 C10】和 HistoryActivity.conditionText() 一起改，保持两处映射一致。
 +     */
 +    private fun conditionText(condition: Int): String = getString(
 +        when (condition) {
@@ -752,10 +762,10 @@ index 0000000..eb27074
 +}
 diff --git a/app/src/main/java/com/example/bmi/HistoryActivity.kt b/app/src/main/java/com/example/bmi/HistoryActivity.kt
 new file mode 100644
-index 0000000..0a565ff
+index 0000000..f8cbf11
 --- /dev/null
 +++ b/app/src/main/java/com/example/bmi/HistoryActivity.kt
-@@ -0,0 +1,120 @@
+@@ -0,0 +1,136 @@
 +package com.example.bmi
 +
 +import android.os.Bundle
@@ -826,6 +836,8 @@ index 0000000..0a565ff
 +        summary.isVisible = true
 +
 +        // 平均步数：先求和再除以天数。用 Double 计算后 roundToInt()，避免整数除法丢小数。
++        // 【改题点 C7】统计口径换了（比如改成“本月总饮水量”）就改这两行；
++        // 换了数值类型（Int → Double）时，sumOf 与 toDouble() 的写法也要跟着调。
 +        val averageSteps = records.sumOf { it.steps }.toDouble() / records.size
 +        summary.text = getString(
 +            R.string.wellness_history_summary,
@@ -839,6 +851,12 @@ index 0000000..0a565ff
 +         *   第二行：步数 · 备注
 +         * 这里用 simple_list_item_1 一个 TextView 装不下两行样式，
 +         * 所以用自定义的 item_wellness.xml + SimpleAdapter。
++         *
++         * 【改题点 C7/C8】换题目时，改的是 map 里的两个 key 对应的内容：
++         *   "title"    → 想放主信息（日期 + 分类）
++         *   "subtitle" → 想放次要信息（数值 + 单位 + 备注）
++         * 想改成三行？在 item_wellness.xml 加一个 TextView，
++         * 这里加一个 key，并把下面 SimpleAdapter 的数组各加一项。
 +         */
 +        val rows = records.map { record ->
 +            mapOf(
@@ -861,7 +879,13 @@ index 0000000..0a565ff
 +        )
 +    }
 +
-+    /** 把数据库里的 0/1/2 翻译成当前语言下的文字。 */
++    /**
++     * 把数据库里的 0/1/2 翻译成当前语言下的文字。
++     *
++     * 【改题点 C7】如果题目不是“身体状况”，这里改成题目的选项映射；
++     * 选项数量变了（比如心情 1–5），记得同时改 strings.xml 的数组（C3）
++     * 和布局里 Spinner 的 entries（C4）。
++     */
 +    private fun conditionText(condition: Int): String = getString(
 +        when (condition) {
 +            0 -> R.string.wellness_condition_good
@@ -872,15 +896,17 @@ index 0000000..0a565ff
 +
 +    /** 第二行：步数 + （有备注时）备注。 */
 +    private fun buildSubtitle(record: WellnessRecord): String {
++        // 【改题点 C7】单位/格式在这里：想显示 “1200 ml”“¥12.30”“60 分钟”，
++        // 改 wellness_history_steps 的文案（C3），或在这里用 String.format 补小数位。
 +        val steps = getString(R.string.wellness_history_steps, record.steps)
 +        return if (record.note.isBlank()) steps else "$steps  ·  ${record.note}"
 +    }
 +}
 diff --git a/app/src/main/java/com/example/bmi/MainActivity.kt b/app/src/main/java/com/example/bmi/MainActivity.kt
-index 0f59bf6..f8ef6f8 100644
+index 0f59bf6..10d5d9f 100644
 --- a/app/src/main/java/com/example/bmi/MainActivity.kt
 +++ b/app/src/main/java/com/example/bmi/MainActivity.kt
-@@ -1,372 +1,176 @@
+@@ -1,372 +1,193 @@
  package com.example.bmi
  
 -import android.content.ActivityNotFoundException
@@ -1057,8 +1083,7 @@ index 0f59bf6..f8ef6f8 100644
 -                 * 而位置 0/1 永远不变，后面的逻辑不会受语言影响。
 -                 */
 -                val gender = genderSpinner.selectedItemPosition
-+        title = getString(R.string.app_name)
- 
+-
 -                /*
 -                 * 【字符串转数字 + 校验】
 -                 * toDoubleOrNull()：能转成小数就返回数值，转不了（比如输入了字母）就返回 null。
@@ -1068,8 +1093,7 @@ index 0f59bf6..f8ef6f8 100644
 -                val heightValue = height.toDoubleOrNull()
 -                val weightValue = weight.toDoubleOrNull()
 -                val ageValue = age.toIntOrNull()
-+        // 创建数据库助手（此时不会真的建库，第一次读写时才创建 wellness.db）。
-+        db = WellnessDbHelper(this)
++        title = getString(R.string.app_name)
  
 -                /*
 -                 * 校验：任何一个没输入（null）、小于等于 0（年龄允许 0 也算非法）都算无效。
@@ -1086,12 +1110,8 @@ index 0f59bf6..f8ef6f8 100644
 -                } else {
 -                    // ── 校验通过：先记住这次输入（下次自动填充）──
 -                    preferences.save(height, weight, age, gender)
-+        dateTV = findViewById(R.id.dateTV)
-+        conditionSpinner = findViewById(R.id.conditionSpinner)
-+        stepsET = findViewById(R.id.stepsET)
-+        noteET = findViewById(R.id.noteET)
-+        val saveBtn: Button = findViewById(R.id.saveBtn)
-+        val historyBtn: Button = findViewById(R.id.historyBtn)
++        // 创建数据库助手（此时不会真的建库，第一次读写时才创建 wellness.db）。
++        db = WellnessDbHelper(this)
  
 -                    /*
 -                     * ─────────────────────────────────────────────────────────
@@ -1113,8 +1133,12 @@ index 0f59bf6..f8ef6f8 100644
 -                    intent.putExtras(bundle)             // 把整个袋子塞进 Intent
 -                    startActivity(intent)                // 跳转
 -                }
-+        // 把“今天”的日期显示在标题下面，让用户知道这条记录属于哪一天。
-+        dateTV.text = getString(R.string.wellness_today, Dates.today())
++        dateTV = findViewById(R.id.dateTV)
++        conditionSpinner = findViewById(R.id.conditionSpinner)
++        stepsET = findViewById(R.id.stepsET)
++        noteET = findViewById(R.id.noteET)
++        val saveBtn: Button = findViewById(R.id.saveBtn)
++        val historyBtn: Button = findViewById(R.id.historyBtn)
  
 -                /*
 -                 * ── 【考点 / 备用方案】传值的另外两种常见写法 ─────────────────
@@ -1140,7 +1164,9 @@ index 0f59bf6..f8ef6f8 100644
 -                 */
 -            }
 -        })
--
++        // 把“今天”的日期显示在标题下面，让用户知道这条记录属于哪一天。
++        dateTV.text = getString(R.string.wellness_today, Dates.today())
+ 
 -        // “关于 BMI”按钮：弹一个对话框。
 -        val aboutBtn: Button = findViewById(R.id.aboutBtn)
 -        aboutBtn.setOnClickListener {
@@ -1190,6 +1216,13 @@ index 0f59bf6..f8ef6f8 100644
 -         * 防止保存值越界导致崩溃。
 +         * toIntOrNull()：能转成整数就返回数字，转不了（空、字母、小数）返回 null。
 +         * 用 trim() 去掉首尾空格，避免 " 8000 " 这种输入被判为非法。
++         *
++         * >>> 【改题点 C5】题目换了数值含义时，改这两行：
++         *    · 整数 → 小数：toIntOrNull() 换成 toDoubleOrNull()；
++         *    · 取值范围：把下面 if 里的判据换成题目的上限
++         *      （喝水 0..20000、学习 0..1440、金额 > 0.0 且 < 100000）。
++         *    · 变量名 steps 可以顺手改成 waterMl 之类，IDE 会让你一起改。
++         * <<<
           */
 -        if (genderSpinner.adapter.count > 0) {
 -            genderSpinner.setSelection(
@@ -1206,6 +1239,12 @@ index 0f59bf6..f8ef6f8 100644
 +        /*
 +         * Spinner 的 selectedItemPosition 就是选中的序号（0/1/2），
 +         * 刚好对应 strings.xml 里 wellness_condition 数组的三项。
++         *
++         * >>> 【改题点 C6】这里把 4 个字段装进一条记录。
++         *     改了 WellnessRecord 的字段（C1）之后，这一行会立刻编译报错，
++         *     按提示补上新字段即可。如果题目要求“一天多条”，
++         *     日期不再是主键，见 docs/wellness-tracker.md 7.1。
++         * <<<
 +         */
 +        val record = WellnessRecord(
 +            date = Dates.today(),
@@ -1229,6 +1268,10 @@ index 0f59bf6..f8ef6f8 100644
 +     *
 +     * 【考试可删】不需要中英文切换、也不需要 AI 时，删掉本方法和
 +     * onOptionsItemSelected()，再删掉 res/menu/menu_main.xml。
++     *
++     * 【改题点 C11】如果题目要求“菜单里增加一个页面”（比如统计页），
++     * 就在这里加一个 when 分支 + 在 menu_main.xml 加一个 item，
++     * 再在 AndroidManifest.xml 注册新 Activity，三处缺一不可。
       */
      override fun onCreateOptionsMenu(menu: Menu): Boolean {
 -        menuInflater.inflate(R.menu.menu_options, menu)
@@ -1287,12 +1330,7 @@ index 0f59bf6..f8ef6f8 100644
 -            R.id.menu_item_about -> {
 -                about_BMI_Dialog()
 -                return true
-+            // ── 【语言切换 · 考试可删】中文 ↔ 英文，切换后整页重建 ──
-+            R.id.menu_language -> {
-+                // toggleLanguage() 在 BaseActivity 里：保存选择 + recreate()
-+                toggleLanguage()
-+                true
-             }
+-            }
 -            R.id.menu_item_wiki -> {
 -                openWebpage(getString(R.string.wiki_url))
 -                return true
@@ -1300,7 +1338,12 @@ index 0f59bf6..f8ef6f8 100644
 -            R.id.menu_item_trend -> {
 -                startActivity(Intent(this, TrendActivity::class.java))
 -                return true
--            }
++            // ── 【语言切换 · 考试可删】中文 ↔ 英文，切换后整页重建 ──
++            R.id.menu_language -> {
++                // toggleLanguage() 在 BaseActivity 里：保存选择 + recreate()
++                toggleLanguage()
++                true
+             }
 -            else -> return super.onContextItemSelected(item)
 -        }
 -    }
@@ -2761,10 +2804,10 @@ index 0000000..bc34b97
 +    }
 +}
 diff --git a/app/src/main/java/com/example/bmi/data/PromptBuilder.kt b/app/src/main/java/com/example/bmi/data/PromptBuilder.kt
-index d7d306c..6cc9462 100644
+index d7d306c..c33856c 100644
 --- a/app/src/main/java/com/example/bmi/data/PromptBuilder.kt
 +++ b/app/src/main/java/com/example/bmi/data/PromptBuilder.kt
-@@ -1,89 +1,96 @@
+@@ -1,89 +1,104 @@
  package com.example.bmi.data
  
 -import java.util.Locale
@@ -2783,20 +2826,26 @@ index d7d306c..6cc9462 100644
 + *   这里把“今天的健康记录 + 用中文还是英文回答”拼成两段文本：
 + *     1. systemPrompt：系统提示词，规定 AI 的身份和回答规则；
 + *     2. userPrompt：  用户提示词，放入具体的日期、身体状况、步数、备注。
-  *
-- * 【为什么单独抽成一个文件】
-- *   因为它不依赖任何 Android 代码，是“纯 Kotlin”，
-- *   所以可以写单元测试（见 PromptBuilderTest.kt）直接验证字符串内容是否正确。
++ *
 + * 【为什么单独抽成一个文件（重要设计理由）】
 + *   它不 import 任何 Android 类，是“纯 Kotlin”，
 + *   所以可以在电脑上直接用 JUnit 跑单元测试（见 app/src/test/PromptBuilderTest.kt），
 + *   不需要模拟器。考试里“把逻辑和界面分开”通常能加分。
   *
-- * 【谁在用这个文件】
-- *   HealthAdviceRepository 在发请求前调用这两个方法拿到提示词。
+- * 【为什么单独抽成一个文件】
+- *   因为它不依赖任何 Android 代码，是“纯 Kotlin”，
+- *   所以可以写单元测试（见 PromptBuilderTest.kt）直接验证字符串内容是否正确。
 + * 【为什么身体状况文字要在这里自己映射，而不用 R.string.xxx】
 + *   因为提示词的语言必须跟“回答语言”一致：用户切到英文界面时，
 + *   AI 也应该用英文回答。用 Android 资源的话，这段代码就不能脱离 Context 测试了。
+  *
+- * 【谁在用这个文件】
+- *   HealthAdviceRepository 在发请求前调用这两个方法拿到提示词。
++ * >>> 【改题点 C9】题目换了记录内容时，改 userPrompt() 里的字段名和单位，
++ *     再改 conditionLabel() 的映射（如果选项不是“良好/一般/较差”）。
++ *     改完一定要去 PromptBuilderTest 里同步断言，否则单元测试会红。
++ *     systemPrompt() 里的“给出 3 条建议”也可以按题目要求改成别的条数/角度。
++ * <<<
   *
   * ────────────────────────────────────────────────────────────────────────────
 - * 【依赖关系】（考试删文件前先看这里）
@@ -2863,6 +2912,8 @@ index d7d306c..6cc9462 100644
 -        )
 +    fun userPrompt(record: WellnessRecord, language: AppLanguage): String = when (language) {
 +        AppLanguage.CHINESE -> buildString {
++            // 【改题点 C9】这里每一个字段都要和 WellnessRecord、数据库列对应上；
++            // 单位（ml / 元 / 分钟）也要写清楚，AI 才知道数字的含义。
 +            append("日期：").append(record.date).append('\n')
 +            append("身体状况：").append(conditionLabel(record.condition, language)).append('\n')
 +            append("步数：").append(record.steps).append('\n')
@@ -2981,10 +3032,10 @@ index 0000000..cfc38b9
 +}
 diff --git a/app/src/main/java/com/example/bmi/data/WellnessDbHelper.kt b/app/src/main/java/com/example/bmi/data/WellnessDbHelper.kt
 new file mode 100644
-index 0000000..b755241
+index 0000000..591cd63
 --- /dev/null
 +++ b/app/src/main/java/com/example/bmi/data/WellnessDbHelper.kt
-@@ -0,0 +1,173 @@
+@@ -0,0 +1,185 @@
 +package com.example.bmi.data
 +
 +import android.content.ContentValues
@@ -3029,6 +3080,14 @@ index 0000000..b755241
 +     *
 +     * date 设成 PRIMARY KEY：同一天只能有一行；
 +     * updated_at 记录最后修改时间，方便以后按“最近修改”排序或显示。
++     *
++     * >>> 【改题点 C2】建表 SQL：列名、类型、NOT NULL 必须和 WellnessRecord 的字段
++     *     一一对应。加字段 / 改类型时，除了改这里，还要：
++     *       ① 把 DATABASE_VERSION 加 1（否则旧库不会重建，查询时报 no such column）；
++     *       ② 改 save() 里的每一个 put；
++     *       ③ 改 allRecords()/findByDate() 里的列数组和 getXxx(序号)。
++     *     示例见 docs/adapt-to-other-topic.md 第 6 节。
++     * <<<
 +     */
 +    override fun onCreate(db: SQLiteDatabase) {
 +        db.execSQL(
@@ -3061,6 +3120,7 @@ index 0000000..b755241
 +     *   而不是报错。这样“一天多条”最终只留最后一条。
 +     */
 +    fun save(record: WellnessRecord) {
++        // 【改题点 C2】每个 put 对应建表 SQL 里的一列；改了字段记得这里同步改。
 +        val values = ContentValues().apply {
 +            put(COL_DATE, record.date)
 +            put(COL_CONDITION, record.condition)
@@ -3098,6 +3158,8 @@ index 0000000..b755241
 +        // cursor.use { } 会在读完后自动 close()，不会忘记释放资源。
 +        cursor.use { c ->
 +            while (c.moveToNext()) {
++                // 【改题点 C2】getString(0)/getInt(1)/getInt(2)/getString(3) 的序号
++                // 必须和上面 query 里列数组的顺序一致；不一致会把数据读串位。
 +                records.add(
 +                    WellnessRecord(
 +                        date = c.getString(0),
@@ -3148,22 +3210,23 @@ index 0000000..b755241
 +
 +    private companion object {
 +        const val DATABASE_NAME = "wellness.db"     // 数据库文件名
-+        const val DATABASE_VERSION = 1              // 改表结构时 +1
++        // 【改题点 C2】改了表结构（加列/改类型）就把它 +1，否则旧库不会重建。
++        const val DATABASE_VERSION = 1
 +
 +        const val TABLE_RECORDS = "wellness_records"
 +        const val COL_DATE = "date"
 +        const val COL_CONDITION = "condition"
-+        const val COL_STEPS = "steps"
++        const val COL_STEPS = "steps"               // 【改题点 C2】列名
 +        const val COL_NOTE = "note"
 +        const val COL_UPDATED_AT = "updated_at"
 +    }
 +}
 diff --git a/app/src/main/java/com/example/bmi/data/WellnessRecord.kt b/app/src/main/java/com/example/bmi/data/WellnessRecord.kt
 new file mode 100644
-index 0000000..3ce26aa
+index 0000000..32095cd
 --- /dev/null
 +++ b/app/src/main/java/com/example/bmi/data/WellnessRecord.kt
-@@ -0,0 +1,29 @@
+@@ -0,0 +1,37 @@
 +package com.example.bmi.data
 +
 +/*
@@ -3181,6 +3244,14 @@ index 0000000..3ce26aa
 + *   steps     当天步数（整数）；
 + *   note      备注，可以为空字符串，但不要用 null（数据库列设了 NOT NULL）。
 + *
++ * >>> 【改题点 C1】这一行 4 个字段就是“一道题要记什么”。
++ *     换题目时第一个动手的地方：改字段名、类型、含义。
++ *     改完必须顺着改：C2（数据库列）→ C3（文案）→ C4（布局）→ C5（校验）
++ *     → C6（组装记录）→ C7（历史显示）→ C9/C10（AI）。
++ *     少改任何一处，要么编译不过，要么运行起来数据串位。
++ *     完整清单和示例见 docs/adapt-to-other-topic.md 第 5、6、7 节。
++ * <<<
++ *
 + * ────────────────────────────────────────────────────────────────────────────
 + * 【依赖关系】
 + *   本文件依赖：无。
@@ -3189,8 +3260,8 @@ index 0000000..3ce26aa
 + */
 +data class WellnessRecord(
 +    val date: String,
-+    val condition: Int,
-+    val steps: Int,
++    val condition: Int,   // 【改题点 C1】换题目就改这里
++    val steps: Int,       // 【改题点 C1】例如改成 waterMl: Int / amount: Double
 +    val note: String
 +)
 diff --git a/app/src/main/java/com/example/bmi/ui/advice/AdviceUiState.kt b/app/src/main/java/com/example/bmi/ui/advice/AdviceUiState.kt
@@ -5893,10 +5964,10 @@ index 0000000..709bd56
 +
 +</LinearLayout>
 diff --git a/app/src/main/res/layout/activity_main.xml b/app/src/main/res/layout/activity_main.xml
-index 9703ee6..a074f98 100644
+index 9703ee6..8a5478e 100644
 --- a/app/src/main/res/layout/activity_main.xml
 +++ b/app/src/main/res/layout/activity_main.xml
-@@ -1,184 +1,135 @@
+@@ -1,184 +1,149 @@
  <?xml version="1.0" encoding="utf-8"?>
  <!--
    ============================================================================
@@ -5929,6 +6000,14 @@ index 9703ee6..a074f98 100644
 +    noteET            → 备注输入框
 +    saveBtn           → 保存按钮
 +    historyBtn        → 查看历史按钮
++
++  >>> 【改题点 C4】换题目时改这个布局，注意两件事：
++     ① 改了 id 就必须同步改 MainActivity 里的 findViewById(R.id.xxx)，
++        否则运行时空指针崩溃（编译不会报错，最难发现）；
++     ② inputType 决定弹什么键盘：整数用 number，小数用 numberDecimal，
++        文本用 text；它只是“限制键盘”，真正的校验仍然在代码里（C5）。
++     不知道自己该用哪种控件？看 docs/adapt-to-other-topic.md 第 6 节的示例。
++  <<<
  -->
 -<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
 -    xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -5956,9 +6035,7 @@ index 9703ee6..a074f98 100644
 -        app:layout_constraintStart_toStartOf="parent"
 -        app:layout_constraintTop_toTopOf="parent"
 -        app:srcCompat="@drawable/icon_128" />
-+        android:orientation="vertical"
-+        android:padding="24dp">
- 
+-
 -    <!--
 -      体重输入框（EditText）。
 -      id = weightET，代码里 findViewById(R.id.weightET)。
@@ -5976,14 +6053,8 @@ index 9703ee6..a074f98 100644
 -        android:hint="@string/bmi_weight"
 -        app:layout_constraintStart_toStartOf="parent"
 -        app:layout_constraintTop_toBottomOf="@+id/textView2" />
-+        <!-- 当天日期。文字由 MainActivity 用 getString(..., Dates.today()) 填进来。 -->
-+        <TextView
-+            android:id="@+id/dateTV"
-+            android:layout_width="match_parent"
-+            android:layout_height="wrap_content"
-+            android:textSize="16sp"
-+            android:textStyle="bold"
-+            tools:text="Today: 2026-11-26" />
++        android:orientation="vertical"
++        android:padding="24dp">
  
 -    <!-- 身高输入框，id = heightET，只能输入小数。 -->
 -    <EditText
@@ -5997,13 +6068,14 @@ index 9703ee6..a074f98 100644
 -        android:hint="@string/bmi_height"
 -        app:layout_constraintStart_toStartOf="parent"
 -        app:layout_constraintTop_toBottomOf="@+id/textView7" />
-+        <!-- 身体状况标签。 -->
++        <!-- 当天日期。文字由 MainActivity 用 getString(..., Dates.today()) 填进来。 -->
 +        <TextView
++            android:id="@+id/dateTV"
 +            android:layout_width="match_parent"
 +            android:layout_height="wrap_content"
-+            android:layout_marginTop="24dp"
-+            android:text="@string/wellness_condition_label"
-+            android:textSize="16sp" />
++            android:textSize="16sp"
++            android:textStyle="bold"
++            tools:text="Today: 2026-11-26" />
  
 -    <!-- 年龄输入框，id = ageET，只能输入整数（inputType="number"）。 -->
 -    <EditText
@@ -6017,6 +6089,15 @@ index 9703ee6..a074f98 100644
 -        android:hint="@string/bmi_age"
 -        app:layout_constraintStart_toStartOf="parent"
 -        app:layout_constraintTop_toBottomOf="@+id/textView3" />
++        <!-- 身体状况标签。 -->
++        <TextView
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="24dp"
++            android:text="@string/wellness_condition_label"
++            android:textSize="16sp" />
+ 
+-    <!-- 下面几个 TextView 是各个输入框旁边的“说明文字”（体重/身高/性别/年龄标签）。 -->
 +        <!--
 +          身体状况下拉框。
 +          android:entries="@array/wellness_condition" 表示选项来自 strings.xml 里的数组，
@@ -6031,15 +6112,6 @@ index 9703ee6..a074f98 100644
 +            android:minHeight="48dp"
 +            android:spinnerMode="dropdown" />
  
--    <!-- 下面几个 TextView 是各个输入框旁边的“说明文字”（体重/身高/性别/年龄标签）。 -->
-+        <!-- 步数标签。 -->
-+        <TextView
-+            android:layout_width="match_parent"
-+            android:layout_height="wrap_content"
-+            android:layout_marginTop="16dp"
-+            android:text="@string/wellness_steps_label"
-+            android:textSize="16sp" />
- 
 -    <TextView
 -        android:id="@+id/textView2"
 -        android:layout_width="wrap_content"
@@ -6052,7 +6124,14 @@ index 9703ee6..a074f98 100644
 -        app:layout_constraintStart_toStartOf="parent"
 -        app:layout_constraintTop_toTopOf="parent"
 -        app:layout_constraintVertical_bias="0.722" />
--
++        <!-- 步数标签。 -->
++        <TextView
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="16dp"
++            android:text="@string/wellness_steps_label"
++            android:textSize="16sp" />
+ 
 -    <TextView
 -        android:id="@+id/textView7"
 -        android:layout_width="wrap_content"
@@ -6065,7 +6144,11 @@ index 9703ee6..a074f98 100644
 -        app:layout_constraintStart_toStartOf="parent"
 -        app:layout_constraintTop_toTopOf="parent"
 -        app:layout_constraintVertical_bias="0.569" />
--
++        <!--
++          步数输入框。
++          inputType="number" 会弹出数字键盘，并且只允许输入整数（不允许小数点/字母）。
++          注意：它只是“限制键盘”，代码里仍然要用 toIntOrNull() 做一次校验。
+ 
 -    <TextView
 -        android:id="@+id/textView"
 -        android:layout_width="wrap_content"
@@ -6078,10 +6161,11 @@ index 9703ee6..a074f98 100644
 -        app:layout_constraintStart_toStartOf="parent"
 -        app:layout_constraintTop_toTopOf="parent"
 -        app:layout_constraintVertical_bias="0.208" />
-+        <!--
-+          步数输入框。
-+          inputType="number" 会弹出数字键盘，并且只允许输入整数（不允许小数点/字母）。
-+          注意：它只是“限制键盘”，代码里仍然要用 toIntOrNull() 做一次校验。
++          【改题点 C4】inputType 的三种常用值：
++            number        → 非负整数（步数、分钟、次数）
++            numberDecimal → 带小数（金额、升数）
++            text          → 任意文字（备注、书名）
++          改完这里记得同步改 MainActivity 的 toIntOrNull()/toDoubleOrNull()（C5）。
 +        -->
 +        <EditText
 +            android:id="@+id/stepsET"
@@ -6423,10 +6507,10 @@ index ec8d83b..0000000
 -</LinearLayout>
 diff --git a/app/src/main/res/layout/item_wellness.xml b/app/src/main/res/layout/item_wellness.xml
 new file mode 100644
-index 0000000..13b4edb
+index 0000000..4673b55
 --- /dev/null
 +++ b/app/src/main/res/layout/item_wellness.xml
-@@ -0,0 +1,46 @@
+@@ -0,0 +1,51 @@
 +<?xml version="1.0" encoding="utf-8"?>
 +<!--
 +  ============================================================================
@@ -6439,6 +6523,11 @@ index 0000000..13b4edb
 +  【为什么单独一个文件】
 +    ListView 的每一行都需要一个布局。如果直接用系统自带的 simple_list_item_1，
 +    只有一行文字、样式也改不了；自定义这个文件后，一行可以显示两行文字。
++
++  【改题点 C8】这里的 id（itemTitle / itemSubtitle）必须和 HistoryActivity 里
++    SimpleAdapter 的 intArrayOf(R.id.itemTitle, R.id.itemSubtitle) 一致。
++    想显示三行信息：加一个 TextView + 在 HistoryActivity 的 rows 里加一个 key，
++    再把 SimpleAdapter 的两个数组各加一项，三处要一起改。
 +-->
 +<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
 +    xmlns:tools="http://schemas.android.com/tools"
@@ -6512,10 +6601,10 @@ index 35e025c..0000000
 -</menu>
 diff --git a/app/src/main/res/menu/menu_main.xml b/app/src/main/res/menu/menu_main.xml
 new file mode 100644
-index 0000000..bbae4b5
+index 0000000..06d1e6b
 --- /dev/null
 +++ b/app/src/main/res/menu/menu_main.xml
-@@ -0,0 +1,38 @@
+@@ -0,0 +1,42 @@
 +<?xml version="1.0" encoding="utf-8"?>
 +<!--
 +  ============================================================================
@@ -6535,6 +6624,10 @@ index 0000000..bbae4b5
 +    · 不要求 AI        → 删掉 menu_ai_advice 这一项。
 +    两项都删掉后，这个文件就没有用了，可以整个删掉，
 +    同时删掉 MainActivity 里的 onCreateOptionsMenu / onOptionsItemSelected。
++
++  【改题点 C11】想加新页面（统计 / 设置 / 关于）：在这里加一个 <item>，
++    在 MainActivity.onOptionsItemSelected() 加一个 when 分支，
++    再去 AndroidManifest.xml 注册新 Activity。三处缺一不可。
 +-->
 +<menu xmlns:android="http://schemas.android.com/apk/res/android"
 +    xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -6621,11 +6714,16 @@ index f78e8eb..30bc7ba 100644
          <item name="colorPrimary">@color/purple_200</item>
          <item name="colorPrimaryVariant">@color/purple_700</item>
 diff --git a/app/src/main/res/values-zh-rCN/strings.xml b/app/src/main/res/values-zh-rCN/strings.xml
-index dd0aa58..4503b60 100644
+index dd0aa58..1d2104d 100644
 --- a/app/src/main/res/values-zh-rCN/strings.xml
 +++ b/app/src/main/res/values-zh-rCN/strings.xml
-@@ -10,44 +10,49 @@
+@@ -8,46 +8,54 @@
+     没有对应的再回落到 res/values/ 里的默认值。
+     所以这里必须保持和 res/values/strings.xml 完全相同的 name（key），
      只是把 value 换成中文。
++
++  【改题点 C3】改了英文文案，这里必须同步改；漏掉一个 key，中文界面就会显示英文，
++    甚至因为占位符数量不一致直接崩溃。
  -->
  <resources>
 -    <string name="app_name">BMI</string>
@@ -6712,10 +6810,10 @@ index dd0aa58..4503b60 100644
 +    <string name="wellness_history_steps">%1$d 步</string>
  </resources>
 diff --git a/app/src/main/res/values/strings.xml b/app/src/main/res/values/strings.xml
-index b9df712..da183f9 100644
+index b9df712..e8faa68 100644
 --- a/app/src/main/res/values/strings.xml
 +++ b/app/src/main/res/values/strings.xml
-@@ -6,67 +6,64 @@
+@@ -6,67 +6,72 @@
    【字符串资源 + 多语言机制（考试高频考点）】
      Android 不推荐把文字直接写死在代码里，而是放在 res/values/strings.xml，
      每个字符串给一个 name（key），代码里用 R.string.xxx 引用。
@@ -6738,6 +6836,14 @@ index b9df712..da183f9 100644
 +    %1$s = 第 1 个参数是字符串；%1$d = 第 1 个参数是整数。
 +    代码里用 getString(R.string.wellness_history_summary, 3, 6500) 填值。
 +    占位符的编号和参数顺序必须一一对应，否则运行时会崩溃。
++
++  >>> 【改题点 C3】换题目时，改这里的 wellness_* 文案即可，不用动代码。
++      · wellness_condition 数组的顺序 = Spinner 的 0/1/2，改顺序会改变存进库的数值；
++      · 改完这里，检查 values-zh-rCN/strings.xml 有没有同名 key（漏一个就崩）；
++      · 如果数字后面要带单位（ml / 元 / 分钟），改 wellness_history_steps 的格式；
++      · 占位符数量变了，要同步改代码里的 getString(..., 参数...) 个数。
++      示例见 docs/adapt-to-other-topic.md 第 5 节。
++  <<<
  -->
  <resources>
 -    <string name="app_name">BMI</string>
@@ -6978,6 +7084,333 @@ index 026d074..38551f0 100644
 +        assertTrue(PromptBuilder.userPrompt(fair, AppLanguage.ENGLISH).contains("Condition: Fair"))
      }
  }
+diff --git a/docs/adapt-to-other-topic.md b/docs/adapt-to-other-topic.md
+new file mode 100644
+index 0000000..c655ad0
+--- /dev/null
++++ b/docs/adapt-to-other-topic.md
+@@ -0,0 +1,321 @@
++# 换题目时改哪里（改题点地图）
++
++这套代码是按“每天记一条健康日志”写的，但**骨架是通用的**：
++`输入 → 校验 → 写 SQLite → 另一个页面读出来展示`。
++考试换了题目（喝水记录、心情日记、学习打卡、记账……），改的都是同一批位置。
++
++代码里的关键位置都标了 `【改题点 C#】`，本文就是这张编号表的使用说明。
++在 Android Studio 里全局搜索 `改题点`，能直接跳到所有该动手的地方。
++
++---
++
++## 1. 先认清三层结构
++
++```
++① 数据层（存什么）
++   WellnessRecord      —— 一条记录有哪些字段、什么类型
++   WellnessDbHelper    —— 表名/列名/建表 SQL/写入/查询
++   Dates               —— 日期格式
++
++② 界面层（怎么填、怎么看）
++   activity_main.xml + MainActivity      —— 输入与保存
++   activity_history.xml + item_wellness.xml + HistoryActivity  —— 历史列表
++
++③ 文案与可选功能（怎么说、要不要联网）
++   strings.xml（中英）、menu_main.xml
++   PromptBuilder / AdviceActivity        —— 只有做 AI 时才相关
++```
++
++**改题顺序永远是 ①→②→③**。反过来做会一路编译错误，很难定位。
++
++---
++
++## 2. 改题点总表
++
++| 编号 | 改什么 | 在哪个文件 | 关键位置 | 连带必须改 |
++| --- | --- | --- | --- | --- |
++| **C0** | 工程身份（包名、主题名、App 名） | `app/build.gradle`、`AndroidManifest.xml`、`themes.xml` | `namespace`/`applicationId`/`Theme.Wellness`/`app_name` | 所有 `.kt` 的 `package`；`R.style` 引用 |
++| **C1** | 一条记录有哪些字段 | `data/WellnessRecord.kt` | 4 个构造参数 | C2、C3、C4、C5、C6、C7、C9、C10 |
++| **C2** | 表名、列名、类型、建表 SQL | `data/WellnessDbHelper.kt` | `onCreate()` 的 CREATE TABLE、`save()`、`allRecords()` | C1（字段要对得上）、`DATABASE_VERSION` |
++| **C3** | 界面文字、下拉选项、列表文案 | `res/values/strings.xml`（英文）+ `values-zh-rCN/strings.xml`（中文） | `wellness_*`、`wellness_condition` 数组 | C4（`@string/` 引用）、C5（`R.string.` 引用） |
++| **C4** | 主界面有哪些控件、id 叫什么 | `res/layout/activity_main.xml` | `stepsET`、`conditionSpinner`、标签 | C5（`findViewById` 必须同名） |
++| **C5** | 输入校验、读取输入 | `MainActivity.saveTodayRecord()` | `toIntOrNull()`、`selectedItemPosition` | C4、C6 |
++| **C6** | 组装记录、决定日期 | `MainActivity.saveTodayRecord()` | `WellnessRecord(...)` | C1、C2 |
++| **C7** | 历史列表显示什么、怎么统计 | `HistoryActivity.kt` | `summary`、`rows`、`conditionText()`、`buildSubtitle()` | C3、C8、C1 |
++| **C8** | 列表一行的布局 | `res/layout/item_wellness.xml` | `itemTitle`、`itemSubtitle` | C7（`SimpleAdapter` 的 id 数组） |
++| **C9** | 发给 AI 的提示词 | `data/PromptBuilder.kt` | `systemPrompt()`、`userPrompt()`、`conditionLabel()` | C1、`PromptBuilderTest` |
++| **C10** | AI 页顶部摘要 | `AdviceActivity.kt` | `ai_record_summary` 的三个参数、`conditionText()` | C3、C1 |
++| **C11** | 有没有菜单、菜单里有什么 | `res/menu/menu_main.xml` + `MainActivity` | `menu_language`、`menu_ai_advice` | 删功能时见 `docs/exam-guide.md` |
++
++---
++
++## 3. 依赖链：改了 A 就要改 B
++
++```
++C1 字段  ──► C2 数据库列 ──► C3 文案 ──► C4 布局控件 ──► C5 读取/校验
++   │                                                        │
++   │                                                        ▼
++   └──────────────► C6 组装记录 ──► C7 历史显示 ──► C8 行布局
++                                        │
++                                        └──► C9 提示词 ──► C10 AI 摘要
++```
++
++三条实用规则：
++
++1. **改字段名/类型，从 C1 出发顺着箭头走到底**，一个都别跳。
++2. **只改文案（C3）最安全**，不会影响逻辑，改完直接 Run。
++3. **改完用“全局搜索”兜底**：搜旧的字段名、旧的中文词、旧的 id，
++   确认每一处都改完。Android Studio 的 `Ctrl+Shift+F` 比肉眼看靠谱。
++
++---
++
++## 4. 先判断：这道题要不要加字段？
++
++拿到题目，用三个问题决定改动量：
++
++| 问题 | 是 | 否 |
++| --- | --- | --- |
++| 还是“每天一条记录”吗？ | 保留 `date` 主键（同一天覆盖） | 改自增主键，见 `docs/wellness-tracker.md` 7.1 |
++| 记录的**字段数量**和现在一样吗？ | 做“同构替换”（示例一），10 分钟 | 做“加/删字段”（示例二），25 分钟 |
++| 数值还是整数吗？ | 不用动类型 | 换 `Double`（示例三），注意连带 6 处 |
++
++---
++
++## 5. 示例一：步数 → 每日喝水量（同构替换，最快）
++
++题目变成：“每天记录饮水量（毫升）和是否达标”。
++
++### 5.1 改动清单（共 9 处）
++
++| 编号 | 文件 | 改法 |
++| --- | --- | --- |
++| C1 | `WellnessRecord.kt` | `val steps: Int` → `val waterMl: Int` |
++| C2 | `WellnessDbHelper.kt` | 列常量 `COL_STEPS = "steps"` → `COL_WATER = "water_ml"`；建表 SQL 里 `steps INTEGER` → `water_ml INTEGER`；`save()` 里 `put(COL_WATER, record.waterMl)`；`allRecords()`/`findByDate()` 里 `c.getInt(2)` 不变（仍是第 3 列） |
++| C2 | `WellnessDbHelper.kt` | `DATABASE_VERSION` 从 1 改成 2（表结构变了） |
++| C3 | 两个 `strings.xml` | `wellness_steps_label` = “今日饮水量 / Water today”；`wellness_steps_hint` = “例如 1200”；`wellness_history_steps` = `%1$d ml` |
++| C4 | `activity_main.xml` | `stepsET` 可以不改 id（省事），只改 `android:hint`；`maxLength` 从 7 调到 5 |
++| C5 | `MainActivity.saveTodayRecord()` | 校验改成 `if (water == null \|\| water !in 0..20000)` |
++| C6 | `MainActivity.saveTodayRecord()` | `steps = steps` → `waterMl = water` |
++| C7 | `HistoryActivity.buildSubtitle()` | `getString(R.string.wellness_history_steps, record.waterMl)` |
++| C9 | `PromptBuilder.userPrompt()` | `append("饮水量：")` / `append("Water: ")`，后面拼 `" ml"` |
++| C10 | `AdviceActivity` | `ai_record_summary` 的第 3 个参数改成 `record.waterMl`，字符串里的 “steps” 改 “ml” |
++
++### 5.2 关键代码长什么样
++
++```kotlin
++// C1
++data class WellnessRecord(
++    val date: String,
++    val condition: Int,
++    val waterMl: Int,      // ← 原来叫 steps
++    val note: String
++)
++
++// C5 + C6
++val waterMl = waterET.text.toString().trim().toIntOrNull()
++if (waterMl == null || waterMl !in 0..20_000) {
++    Toast.makeText(this, R.string.wellness_steps_warning, Toast.LENGTH_SHORT).show()
++    return
++}
++val record = WellnessRecord(
++    date = Dates.today(),
++    condition = conditionSpinner.selectedItemPosition,
++    waterMl = waterMl,
++    note = noteET.text.toString().trim()
++)
++```
++
++### 5.3 验收
++
++- [ ] 输入 1200 保存 → 历史显示 “1200 ml”；
++- [ ] 输入 30000 → 提示非法；
++- [ ] 中文/英文界面文案都换成了“饮水量/Water”。
++
++---
++
++## 6. 示例二：加一个字段（心情 + 学习时长）
++
++题目变成：“每天记录学习时长（分钟）、心情（1–5 星）、备注”。
++
++### 6.1 七步，一步都不能少
++
++**第 1 步（C1）数据类加字段**
++
++```kotlin
++data class WellnessRecord(
++    val date: String,
++    val studyMinutes: Int,   // 学习时长
++    val mood: Int,           // 1–5
++    val note: String
++)
++```
++
++**第 2 步（C2）建表加列 + 版本号 +1**
++
++```sql
++CREATE TABLE wellness_records (
++    date TEXT PRIMARY KEY NOT NULL,
++    study_minutes INTEGER NOT NULL,
++    mood INTEGER NOT NULL,
++    note TEXT NOT NULL,
++    updated_at INTEGER NOT NULL
++)
++```
++
++```kotlin
++const val DATABASE_VERSION = 2      // 改了表结构必须 +1
++```
++
++> 不 +1 的后果：旧手机上的数据库不会重建，查询新列时抛
++> `no such column: study_minutes`。开发期最省事的做法是卸载 App 或
++> 设置里“清除数据”，但代码里该 +1 还是要 +1。
++
++**第 3 步（C2）`save()` 与查询**
++
++```kotlin
++values.put(COL_MINUTES, record.studyMinutes)
++values.put(COL_MOOD, record.mood)
++
++// 查询时列的顺序要和读取时的序号一致
++arrayOf(COL_DATE, COL_MINUTES, COL_MOOD, COL_NOTE)
++// → c.getString(0), c.getInt(1), c.getInt(2), c.getString(3)
++```
++
++**第 4 步（C3）文案**
++
++```xml
++<string name="study_label">学习时长（分钟）</string>
++<string name="mood_label">今天心情</string>
++<string-array name="mood_options">
++    <item>1 星</item><item>2 星</item><item>3 星</item><item>4 星</item><item>5 星</item>
++</string-array>
++```
++
++**第 5 步（C4/C5）布局与读取**
++
++```xml
++<EditText
++    android:id="@+id/studyET"
++    android:inputType="number"
++    android:maxLength="4" />
++
++<Spinner
++    android:id="@+id/moodSpinner"
++    android:entries="@array/mood_options" />
++```
++
++```kotlin
++val studyMinutes = studyET.text.toString().trim().toIntOrNull()
++if (studyMinutes == null || studyMinutes !in 0..1440) { /* Toast + return */ }
++val mood = moodSpinner.selectedItemPosition + 1   // 0–4 → 1–5
++```
++
++**第 6 步（C7/C8）历史行**：`SimpleAdapter` 仍然两个 key，把第二行改成
++“`60 分钟 · 3 星 · 备注`”即可，不需要动 `item_wellness.xml`。
++
++**第 7 步（C9/C10）提示词与摘要**：`userPrompt()` 里加两行参数；
++`ai_record_summary` 的占位符从 3 个改成 4 个（`%1$s %2$s %3$d %4$d`）。
++
++### 6.2 加字段时最容易漏的地方
++
++| 漏了哪里 | 现象 |
++| --- | --- |
++| `DATABASE_VERSION` 没 +1 | 运行时报 `no such column` |
++| `save()` 忘 `put` 新列 | 新列永远存 0，或 NOT NULL 约束直接崩 |
++| `allRecords()` 的列顺序与 `getXxx(序号)` 不一致 | 数据串位（步数显示成心情） |
++| `SimpleAdapter` 的 `intArrayOf(...)` 与行布局 id 不符 | 列表空白或崩溃 |
++| 提示词没加新字段 | AI 建议与输入无关（最难发现） |
++
++---
++
++## 7. 示例三：整数 → 小数（记账：金额）
++
++题目变成：“每天记录一笔支出金额（元）和分类”。
++
++### 7.1 连带 6 处
++
++| 位置 | 改法 |
++| --- | --- |
++| C1 数据类 | `val amount: Double` |
++| C2 建表 | `amount REAL NOT NULL`（SQLite 用 REAL 存小数） |
++| C2 读取 | `c.getDouble(1)`（原来是 `getInt`） |
++| C2 写入 | `put(COL_AMOUNT, record.amount)`（`ContentValues` 支持 Double） |
++| C5 校验 | `toDoubleOrNull()` + `if (amount == null \|\| amount <= 0.0)` |
++| C4 布局 | `android:inputType="numberDecimal"`（否则小数点打不出来） |
++
++### 7.2 显示要格式化
++
++```xml
++<!-- strings.xml：注意 %1$.2f，保留两位小数 -->
++<string name="wellness_history_amount">%1$.2f 元 / ¥%1$.2f</string>
++```
++
++```kotlin
++val text = getString(R.string.wellness_history_amount, record.amount)
++```
++
++不要直接 `"$amount 元"`：`0.1 + 0.2` 之类的浮点误差会显示成 `12.300000000000001`。
++
++### 7.3 日期与金额同时改时
++
++如果题目要求“一天可以记多笔”，`date` 就不能做主键了：
++改成自增 `id`，并且把 `save()` 的 `CONFLICT_REPLACE` 换成普通 `insert`。
++这一步的完整说明在 `docs/wellness-tracker.md` 7.1。
++
++---
++
++## 8. 要不要改名（C0）
++
++**结论：除非题目明确要求，否则不要改。**
++
++| 要改的 | 成本 | 建议 |
++| --- | --- | --- |
++| 类名 `WellnessRecord` → `WaterRecord` | 中：Refactor → Rename（勾选搜索注释/字符串） | 可不改，功能不受影响 |
++| 包名 `com.example.bmi` | 高：namespace + applicationId + 所有 package + 目录 | 不改，题目不检查 |
++| 主题名 `Theme.Wellness` | 低：themes.xml ×2 + Manifest | 可不改 |
++| `app_name`（桌面显示名） | 极低：两个 `strings.xml` | **建议改**，这是老师唯一会看到的“题目对不对” |
++
++改类名一定用 IDE 的重命名（`Shift+F6`），它会连 `import` 和引用一起改；
++手动改文件名会留下 `Unresolved reference`。
++
++---
++
++## 9. 改完的自检清单
++
++**功能**
++
++- [ ] 空输入 → 提示，不崩溃、不写库；
++- [ ] 边界值 → 合法（例如 0、上限值），超界 → 提示；
++- [ ] 保存 → Toast；同一天再保存 → 覆盖，不新增；
++- [ ] 历史 → 数字/单位/备注都对，顺序是最新在上；
++- [ ] 空历史 → 显示空状态文字。
++
++**一致性**
++
++- [ ] 全局搜索旧字段名、旧中文词：没有残留；
++- [ ] 两个 `strings.xml` 的 key 完全一致（漏一个 → 中文界面显示英文或直接崩）；
++- [ ] 改了 `DATABASE_VERSION`（如果表结构变了）；
++- [ ] 布局 id 与 `findViewById` 完全一致；
++- [ ] 中英文都切换看一遍（如果保留了语言切换）。
++
++**AI（如果保留）**
++
++- [ ] 提示词里带上了新字段；
++- [ ] `PromptBuilderTest` 里的断言跟着改，`testDebugUnitTest` 通过；
++- [ ] 摘要文案的占位符数量与 `getString(...)` 的参数数量一致。
++
++**编译**
++
++```bat
++gradlew.bat assembleDebug
++gradlew.bat lintDebug
++gradlew.bat testDebugUnitTest
++```
++
++---
++
++## 10. 一句话总结
++
++> **字段决定一切**：先定下“一条记录有几个字段、各是什么类型”，
++> 然后按 C1 → C2 → C3 → C4 → C5 → C6 → C7 的顺序把这条链子走完，
++> 最后才碰 AI（C9/C10）。每一步都 Run 一次，比最后一起调试快得多。
 diff --git a/docs/exam-guide.md b/docs/exam-guide.md
 new file mode 100644
 index 0000000..d2f219d
@@ -8000,6 +8433,584 @@ index 0000000..4126ecb
 +```
 +
 +把这张卡和 `patch/wellness-tracker.patch` 一起带到考场，就够用了。
+diff --git a/docs/from-scratch.md b/docs/from-scratch.md
+new file mode 100644
+index 0000000..e947952
+--- /dev/null
++++ b/docs/from-scratch.md
+@@ -0,0 +1,572 @@
++# 从零创建一个 Wellness Tracker（考试模拟手册）
++
++这份文档教你在一个**全新的空工程**里，按顺序把功能一块块加出来，最终到达
++`wellness_tracker` 分支现在的状态。用法是：左边开着 GitHub 上这个分支的代码，
++右边新建工程，按本文的顺序复制、修改、验证。
++
++配套文档：
++
++- `docs/adapt-to-other-topic.md` — 题目换了名字/字段时，改代码的哪一处、连带改哪里。
++- `docs/exam-guide.md` — 考场不需要某个功能时，删哪些文件。
++- `docs/wellness-tracker.md` — 每个文件的作用和 SQLite 设计。
++
++**核心原则：一次只加一层，每层都编译并运行一次。** 考试现场最怕的不是写不出来，
++而是写到一半编译不过、又不知道是哪一步引入的。
++
++---
++
++## 0. 开始前的三个决定
++
++### 0.1 包名（`applicationId` / `namespace` / `package`）
++
++本仓库用的是 `com.example.bmi`（沿用作业，题目不检查包名）。
++
++- **建议：新工程直接起名 `BMI`、包名 `com.example.bmi`。**
++  这样所有文件的 `package com.example.bmi` 和 `R` 引用都能原样粘贴，零改动。
++- 如果起了别的包名（例如 `com.example.wellness`），粘贴代码前必须先改每个
++  Kotlin 文件第一行的 `package`，并且 Android Studio 可能提示 `R` 找不到。
++  改包名的正确姿势：右键包名 → **Refactor → Rename**，勾选
++  `Search in comments and strings`，而不是手动一个个改。
++
++### 0.2 构建脚本语言：先看你的向导生成了什么
++
++不同版本的 Android Studio 新建工程时，生成的构建文件不一样：
++
++| 向导生成 | 说明 | 处理方式 |
++| --- | --- | --- |
++| `build.gradle` + `settings.gradle` | Groovy DSL，本仓库就是这种 | 直接粘贴仓库的构建文件（见 1.2） |
++| `build.gradle.kts` + `settings.gradle.kts` + `gradle/libs.versions.toml` | Kotlin DSL + 版本目录，较新版本默认 | 二选一：**推荐**删掉 `.kts` 和 `libs.versions.toml`，改用仓库的 Groovy 版本；或者保留 `.kts`，按下面 0.3 的对照表改写 |
++
++先打开工程根目录看一眼，确定属于哪种，再往下做。
++
++> 判断方法：Android Studio 左侧 Project 视图切到 **Project** 模式，
++> 根目录有没有 `build.gradle.kts`。
++
++### 0.3 如果坚持用 Kotlin DSL：对照表
++
++本仓库所有片段都是 Groovy。若你的工程是 `.kts`，按下表改：
++
++| Groovy（本仓库） | Kotlin DSL（`.kts`） |
++| --- | --- |
++| `id 'com.android.application' version '8.13.0' apply false` | `id("com.android.application") version "8.13.0" apply false` |
++| `compileSdk = 36` | 同左（本来就是赋值语法） |
++| `applicationId = "com.example.bmi"` | 同左 |
++| `buildConfigField "String", "X", "\"v\""` | `buildConfigField("String", "X", "\"v\"")` |
++| `buildFeatures { buildConfig = true }` | 同左 |
++| `implementation 'androidx.core:core-ktx:1.13.1'` | `implementation("androidx.core:core-ktx:1.13.1")` |
++| `sourceCompatibility = JavaVersion.VERSION_17` | 同左 |
++
++读 `local.properties` 那段，`.kts` 写法：
++
++```kotlin
++val localProperties = java.util.Properties().apply {
++    val file = rootProject.file("local.properties")
++    if (file.exists()) file.inputStream().use { load(it) }
++}
++val deepSeekApiKey: String = localProperties.getProperty("deepseek.apiKey") ?: ""
++```
++
++**注意**：`.kts` 工程如果还留着 `gradle/libs.versions.toml`，而你把 `.kts` 删了改
++Groovy，记得把 `libs.versions.toml` 一起删掉，否则 Sync 时会因为“版本目录没有
++被任何构建文件使用”而不报错但让人困惑。反过来，保留 `.kts` 就别混用 Groovy 片段。
++
++---
++
++## 1. 新建工程并对齐构建配置
++
++### 1.1 新建
++
++1. **File → New → New Project**；
++2. 模板选 **Empty Views Activity**（不是 “Empty Activity”，那个是 Compose）；
++3. 参数：
++
++| 项 | 建议值 | 说明 |
++| --- | --- | --- |
++| Name | `BMI` | 工程名，随意，不影响代码 |
++| Package name | `com.example.bmi` | **建议照抄**，省去改包名 |
++| Language | Kotlin | 本仓库是 Kotlin |
++| Minimum SDK | API 21 | 仓库 `minSdk = 21`，选 21 或 24 都能跑 |
++| Build configuration language | 能选 Groovy 就选 Groovy | 不能选就按 0.2/0.3 处理 |
++
++4. 等 Sync 完成，点 **Run**，确认能看到模板自带的 “Hello World!”。
++   **这一步必须先通过**，否则后面出问题分不清是谁的锅。
++
++### 1.2 对齐四个构建文件
++
++要让仓库的代码能直接粘贴，下面四个文件必须一起对齐（缺一个就会版本错配）：
++
++| 文件 | 作用 | 关键内容 |
++| --- | --- | --- |
++| `settings.gradle` | 仓库地址、模块列表、项目名 | `include ':app'` |
++| `build.gradle`（项目级） | 插件版本 | AGP `8.13.0`、Kotlin `2.2.20` |
++| `gradle/wrapper/gradle-wrapper.properties` | Gradle 版本 | `gradle-8.13-bin.zip` |
++| `app/build.gradle`（模块级） | SDK 版本、依赖、BuildConfig | `compileSdk 36`、`targetSdk 34`、`minSdk 21`、Java 17 |
++
++为什么必须四个一起：**AGP 8.13 要求 Gradle ≥ 8.13、JDK ≥ 17、compileSdk 支持 36**。
++只换 `app/build.gradle` 而不换 wrapper，会出现
++“需要 Gradle 8.13，但当前是 8.x 其他版本”之类的报错。
++
++操作：
++
++1. 从 GitHub 打开这四个文件，**全选复制**，粘贴覆盖你工程里的同名文件；
++2. `settings.gradle` 里的 `rootProject.name = "BMI"` 不用改成你的工程名（改名无害）；
++3. Sync（大象按钮）→ 只允许出现 “warning”，不能有 “error”。
++
++> `gradlew` / `gradlew.bat` 这两个脚本一般不用换，它们只负责“启动 wrapper”。
++> 但如果你的向导工程用的是很新的 Gradle（例如 9.x），建议连这两个脚本一起从仓库复制，
++> 保持与 `gradle-wrapper.properties` 配套。
++
++### 1.3 验收
++
++- [ ] Sync 成功；
++- [ ] `Run` 能起模板界面；
++- [ ] Build 面板里 Gradle 版本显示 8.13、AGP 8.13.0。
++
++---
++
++## 2. 资源层：先把“文字”准备好
++
++先做资源的好处：布局和代码引用 `@string/xxx` 时，不会一路红波浪线。
++
++### 2.1 三套资源
++
++| 仓库文件 | 你工程里的位置 | 内容 |
++| --- | --- | --- |
++| `app/src/main/res/values/strings.xml` | 覆盖同名文件 | 英文文案 + 状况数组 |
++| `app/src/main/res/values-zh-rCN/strings.xml` | 新建目录 `values-zh-rCN`，放进去 | 中文文案，key 必须与英文完全一致 |
++| `app/src/main/res/values/colors.xml`、`themes.xml`、`values-night/themes.xml` | 覆盖同名文件 | 主题 `Theme.Wellness` |
++
++`values-zh-rCN` 目录要手动建：右键 `res` → **New → Android Resource Directory** →
++Resource type 选 `values`，Source set 选 `main`，然后在 Available qualifiers 里选
++**Locale** → 语言 `zh`，Region `CN`。
++
++### 2.2 主题必须一起换（容易被忽略）
++
++新建向导可能给你 `Theme.Material3.DayNight.NoActionBar` 这类 Material3 主题。
++本仓库的布局里用到了 `Widget.MaterialComponents.Button.OutlinedButton` 这个样式，
++主题文件里还引用了 `?attr/colorPrimaryVariant`（Material3 没有这个属性）。
++所以：
++
++- **直接用仓库的 `values/themes.xml` + `values-night/themes.xml` + `colors.xml` 覆盖**；
++- 打开 `AndroidManifest.xml`，把 `android:theme="@style/..."` 改成
++  `@style/Theme.Wellness`（仓库里已经是这个名字）。
++
++### 2.3 验收
++
++- [ ] `strings.xml` 没有红色报错（两个文件的 key 完全对应）；
++- [ ] Manifest 里的 `@style/Theme.Wellness` 能点进去；
++- [ ] 编译通过（此时还没有代码引用这些字符串，属于正常）。
++
++---
++
++## 3. 数据层：先做“能存”的部分
++
++顺序是 **数据类 → 日期工具 → 数据库助手**，每一层只依赖上一层。
++
++### 3.1 新建包与数据类
++
++1. 在 `app/src/main/java/com/example/bmi/` 下新建包 `data`
++   （右键 `com.example.bmi` → New → Package）；
++2. 复制 `data/WellnessRecord.kt`；
++3. 复制 `data/Dates.kt`。
++
++### 3.2 数据库助手
++
++复制 `data/WellnessDbHelper.kt`。这个文件里有三块要理解（也是 `【改题点 C2】`）：
++
++```kotlin
++// 建表：date 是主键 → 一天只有一条
++CREATE TABLE wellness_records (
++    date TEXT PRIMARY KEY NOT NULL,
++    condition INTEGER NOT NULL,
++    steps INTEGER NOT NULL,
++    note TEXT NOT NULL,
++    updated_at INTEGER NOT NULL
++)
++```
++
++```kotlin
++// 保存：同一天再存会替换旧行
++insertWithOnConflict(TABLE_RECORDS, null, values, SQLiteDatabase.CONFLICT_REPLACE)
++```
++
++```kotlin
++// 查询：按日期倒序，最新在最上面
++query(TABLE_RECORDS, columns, null, null, null, null, "$COL_DATE DESC")
++```
++
++### 3.3 验收
++
++- [ ] 编译通过；
++- [ ] 没有 UI 变化（这是正常的，数据层还没有人调用）。
++
++---
++
++## 4. 主界面：输入 + 保存
++
++### 4.1 布局
++
++覆盖 `app/src/main/res/layout/activity_main.xml`（向导生成的 ConstraintLayout 版本整份替换）。
++控件和 id 必须与代码一致：
++
++| id | 控件 | 作用 |
++| --- | --- | --- |
++| `dateTV` | TextView | 显示今天日期 |
++| `conditionSpinner` | Spinner | 身体状况，`entries` 指向 `@array/wellness_condition` |
++| `stepsET` | EditText（`inputType="number"`） | 步数 |
++| `noteET` | EditText（多行） | 备注 |
++| `saveBtn` | Button | 保存 |
++| `historyBtn` | Button（描边样式） | 查看历史 |
++
++### 4.2 代码
++
++复制 `MainActivity.kt`。它的结构是：
++
++```
++onCreate()
++ ├── setContentView
++ ├── title = getString(app_name)        ← 可选 A（语言切换）才需要
++ ├── db = WellnessDbHelper(this)
++ ├── findViewById 拿到 6 个控件
++ ├── dateTV.text = getString(wellness_today, Dates.today())
++ ├── saveBtn.setOnClickListener { saveTodayRecord() }
++ └── historyBtn.setOnClickListener { startActivity(...HistoryActivity) }
++
++saveTodayRecord()
++ ├── toIntOrNull() 校验
++ ├── 组装 WellnessRecord
++ └── db.save(record) + Toast
++
++onCreateOptionsMenu / onOptionsItemSelected   ← 可选 A/B 才需要，见第 6 节
++```
++
++### 4.3 验收
++
++- [ ] 界面上能看到“今天：日期”、下拉框、两个输入框、两个按钮；
++- [ ] 不填步数直接保存 → 出现“请输入有效的步数”；
++- [ ] 填 8000 保存 → 出现“已保存今天的记录”；
++- [ ] 点“查看历史” → 因为还没做历史页，先建一个空 Activity 占位，
++      或者先跳过这一步（下一步马上做）。
++
++---
++
++## 5. 历史页：读库 + 列表
++
++### 5.1 三个文件
++
++| 仓库文件 | 作用 |
++| --- | --- |
++| `res/layout/activity_history.xml` | 页面骨架：统计文字、空状态文字、ListView |
++| `res/layout/item_wellness.xml` | 列表“一行”的布局：`itemTitle` + `itemSubtitle` |
++| `HistoryActivity.kt` | 查库、算平均、组装 Map、`SimpleAdapter` |
++
++`activity_history.xml` 的 id：`historySummary`、`historyEmpty`、`historyList`。
++
++### 5.2 在 Manifest 里注册
++
++```xml
++<activity
++    android:name=".HistoryActivity"
++    android:exported="false"
++    android:label="@string/wellness_history_title" />
++```
++
++`exported="false"` 的含义：只允许本 App 内部跳转，不允许别的 App 直接启动它。
++
++### 5.3 验收
++
++- [ ] 保存一条记录后打开历史 → 看到“日期 · 状况”“步数 · 备注”；
++- [ ] 同一天再保存一次 → 仍然只有一条；
++- [ ] 没有任何记录时 → 显示“暂无记录”。
++
++> 到这里，**题目要求的基础功能已经全部完成**。后面的第 6、7 节是可选的加分项，
++> 考试不需要就跳过，或者做完再按 `docs/exam-guide.md` 删掉。
++
++---
++
++## 6. 可选 A：App 内中英文切换
++
++顺序很重要：**先有资源（第 2 步已做）→ 再有语言偏好 → 最后才是菜单入口。**
++
++### 6.1 三个文件
++
++| 文件 | 作用 |
++| --- | --- |
++| `data/AppLanguage.kt` | `ENGLISH("en")` / `CHINESE("zh")` + `fromTag()` |
++| `data/LanguageStore.kt` | SharedPreferences 读写语言选择 |
++| `BaseActivity.kt` | `attachBaseContext` 换 Locale；`switchLanguage()` 保存 + `recreate()` |
++
++### 6.2 三个 Activity 改成继承 BaseActivity
++
++```kotlin
++class MainActivity : BaseActivity() {
++class HistoryActivity : BaseActivity() {
++class AdviceActivity : BaseActivity() {
++```
++
++同时删掉 `import androidx.appcompat.app.AppCompatActivity`（`BaseActivity` 在同一个包，
++不需要 import）。
++
++### 6.3 菜单
++
++复制 `res/menu/menu_main.xml`，在 `MainActivity` 里加：
++
++```kotlin
++override fun onCreateOptionsMenu(menu: Menu): Boolean {
++    menuInflater.inflate(R.menu.menu_main, menu)
++    return true
++}
++
++override fun onOptionsItemSelected(item: MenuItem): Boolean = when (item.itemId) {
++    R.id.menu_language -> { toggleLanguage(); true }
++    R.id.menu_ai_advice -> {
++        startActivity(Intent(this, AdviceActivity::class.java)); true
++    }
++    else -> super.onOptionsItemSelected(item)
++}
++```
++
++### 6.4 标题栏
++
++在每个 Activity 的 `onCreate` 里加一行：
++
++```kotlin
++title = getString(R.string.app_name)     // 历史页用 wellness_history_title，AI 页用 ai_title
++```
++
++原因：标题栏默认取 Manifest 的 `android:label`，那是“系统”按手机语言解析的，
++App 内切换语言后不会自动跟着变。
++
++### 6.5 验收
++
++- [ ] 菜单点“切换语言” → 整页变英文，标题也变；
++- [ ] 再点一次 → 变回中文；
++- [ ] 杀掉进程重开 → 保持上次的语言；
++- [ ] 在系统设置里“清除数据” → 恢复跟随系统语言。
++
++---
++
++## 7. 可选 B：AI 健康建议
++
++顺序：**先能拼提示词（可单测）→ 再能发请求 → 最后才是页面。**
++
++### 7.1 构建配置
++
++1. 在 `local.properties` 里加一行（这个文件不进 Git）：
++
++```properties
++deepseek.apiKey=sk-你的key
++```
++
++2. `app/build.gradle` 里要有三块：
++
++```gradle
++// ① android { } 外面：读 local.properties
++def localProperties = new Properties()
++def localPropertiesFile = rootProject.file('local.properties')
++if (localPropertiesFile.exists()) {
++    localPropertiesFile.withInputStream { stream -> localProperties.load(stream) }
++}
++def deepSeekApiKey = localProperties.getProperty('deepseek.apiKey') ?: ''
++
++// ② defaultConfig 里：注入 BuildConfig 常量
++buildConfigField "String", "DEEPSEEK_API_KEY", "\"${deepSeekApiKey}\""
++buildConfigField "String", "DEEPSEEK_BASE_URL", "\"https://api.deepseek.com\""
++
++// ③ android { } 里：打开 BuildConfig 生成
++buildFeatures { buildConfig = true }
++```
++
++3. 依赖（4 个）：`activity-ktx`、`lifecycle-viewmodel-ktx`、`lifecycle-livedata-ktx`、
++   `kotlinx-coroutines-android`。
++
++### 7.2 Manifest
++
++```xml
++<uses-permission android:name="android.permission.INTERNET" />
++
++<activity
++    android:name=".AdviceActivity"
++    android:exported="false"
++    android:label="@string/ai_title" />
++```
++
++漏掉 `INTERNET` 的典型现象：点开 AI 页立刻闪退（`SecurityException`）。
++
++### 7.3 从纯 Kotlin 开始（可以先不碰界面）
++
++1. `data/PromptBuilder.kt` —— 拼 system / user 提示词，不 import 任何 Android 类；
++2. 复制 `app/src/test/java/com/example/bmi/PromptBuilderTest.kt`；
++3. 跑 `gradlew.bat testDebugUnitTest`，7 个用例应当全绿。
++
++这一步就能验证“语言 → 提示词”的逻辑对不对，不用等界面。
++
++### 7.4 再接通网络
++
++| 顺序 | 文件 | 职责 |
++| --- | --- | --- |
++| 1 | `data/DeepSeekClient.kt` | `HttpURLConnection` 发 POST、解析 JSON |
++| 2 | `data/WellnessAdviceRepository.kt` | `withContext(Dispatchers.IO)` + 统一异常 |
++| 3 | `ui/advice/AdviceUiState.kt` | `Idle/Loading/Success/Error` + 错误原因 |
++| 4 | `ui/advice/AdviceViewModel.kt` | `viewModelScope` 发请求、`LiveData`、`retry()` |
++
++### 7.5 最后是页面
++
++| 文件 | 作用 |
++| --- | --- |
++| `res/layout/activity_advice.xml` | 摘要 + 转圈 + 建议文字 + 重试按钮 |
++| `AdviceActivity.kt` | 查今天记录 → 发请求 → 按状态渲染 |
++
++### 7.6 验收
++
++- [ ] 没有今天的记录时进 AI 页 → 提示“今天还没有记录”，不发请求；
++- [ ] 有记录 → 转圈 → 出现 3 条建议；
++- [ ] 中文界面拿到中文建议，英文界面拿到英文建议；
++- [ ] 断网 → 提示网络错误 + 出现“重试”按钮；
++- [ ] 转屏 → 不重复请求。
++
++---
++
++## 8. 和仓库逐文件对齐
++
++做完后，对着下表检查（左边是仓库，右边是你工程）：
++
++| 仓库路径 | 你工程里应当有 |
++| --- | --- |
++| `app/src/main/java/com/example/bmi/MainActivity.kt` | ✅ |
++| `.../HistoryActivity.kt` | ✅ |
++| `.../BaseActivity.kt`（可选） | ✅ 或按 `exam-guide.md` 删掉 |
++| `.../AdviceActivity.kt`（可选） | ✅ 或删掉 |
++| `.../data/Dates.kt`、`WellnessRecord.kt`、`WellnessDbHelper.kt` | ✅ |
++| `.../data/AppLanguage.kt`、`LanguageStore.kt`（可选） | ✅ 或删掉 |
++| `.../data/PromptBuilder.kt`、`DeepSeekClient.kt`、`WellnessAdviceRepository.kt`（可选） | ✅ 或删掉 |
++| `.../ui/advice/`（可选） | 两文件，或整个目录删掉 |
++| `res/layout/activity_main.xml`、`activity_history.xml`、`item_wellness.xml` | ✅ |
++| `res/layout/activity_advice.xml`（可选） | ✅ 或删掉 |
++| `res/menu/menu_main.xml`（可选） | ✅ 或删掉 |
++| `res/values/strings.xml`、`values-zh-rCN/strings.xml` | ✅ 两套 |
++| `res/values/themes.xml`、`values-night/themes.xml`、`colors.xml` | ✅ |
++| `app/src/test/.../PromptBuilderTest.kt`（可选） | ✅ 或删掉 |
++| `AndroidManifest.xml` | 注册了对应页面 +（AI 才有）INTERNET |
++| `app/build.gradle`、`build.gradle`、`settings.gradle` | 与本仓库同版本 |
++
++验证命令：
++
++```bat
++gradlew.bat clean assembleDebug
++gradlew.bat lintDebug
++gradlew.bat testDebugUnitTest
++```
++
++---
++
++## 9. 版本与环境：会不会冲突，哪里要改
++
++### 9.1 结论：学校电脑（Android Studio 2025.2.1 Patch 1）上不需要改代码
++
++本项目就是按学校那台机器的工具链写的，**源码层面没有问题**，逐项对照：
++
++| 项目 | 本仓库 | 2025.2.1 Patch 1 是否支持 | 结论 |
++| --- | --- | --- | --- |
++| AGP | 8.13.0 | 支持（该版本支持 AGP 4.0 ~ 8.13） | 不用改 |
++| Gradle | 8.13（wrapper 指定） | 会按 wrapper 自动下载 | 不用改 |
++| Kotlin | 2.2.20 | 从 Maven 下载插件，与 IDE 版本无关 | 不用改 |
++| JDK | 17 字节码，需要 JDK ≥ 17 | Studio 自带 JBR 21 | 不用改 |
++| compileSdk | 36 | 该 Studio 默认装 36 | 不用改（前提是机器上装了 Platform 36） |
++| targetSdk | 34 | 支持 | 不用改 |
++| minSdk | 21 | 支持 | 不用改 |
++| Material | 1.12.0 | 支持 | 不用改 |
++| 语言 API | `Locale.forLanguageTag`（21+）、`createConfigurationContext`（17+） | 都低于 minSdk | 不用改 |
++
++**学校机器上真正需要确认的只有三件事**（都不是代码问题）：
++
++1. **SDK Platform 36 已安装**。没装时 Sync 会报 `Failed to find target with hash string 'android-36'`，
++   按提示点 Install，或用 SDK Manager 装。
++2. **首次 Sync 能联网**，或者 Gradle 缓存里已经有这些依赖（你交作业时用过同一套版本，
++   缓存大概率是热的）。机房断网时可以在 Gradle 面板点 **Toggle Offline Mode**
++   再 Sync，前提是之前成功下载过。
++3. **AI 功能**（如果你保留了）：学校机器上没有 `local.properties` 的 key，
++   AI 页会显示“没有配置 API key”，不会崩。想现场演示 AI，需要临时加 key 且
++   机房能访问 `api.deepseek.com`；否则就把 AI 那块删掉（`docs/exam-guide.md` 第 2 节），
++   免得老师在断网环境里看到报错。
++
++> 一句话：**代码不用为学校版本做任何修改**；要改的只有“这台机器装没装 SDK 36”
++> 和“有没有网/有没有 key”。
++
++### 9.2 你自己电脑上的差异：这些是操作层面的坑
++
++你本机 Studio 版本不是 2025.2.1，所以下面是“本机练习”和“学校考试”不一致时
++最容易出问题的地方。**原则：本机为了让工程能跑，做什么临时改动都可以，但绝不提交、
++绝不带到学校。**
++
++| 现象 | 原因 | 处理（不要改仓库里的版本号） |
++| --- | --- | --- |
++| Sync 报 `Dependency requires at least JVM runtime version 11. This build uses a Java 8 JVM` | IDE 的 Gradle JDK 指向了 JRE 8/11 | Settings → Build, Execution, Deployment → Build Tools → **Gradle → Gradle JDK** 选 17 或 21（本机实测：JBR 21 可用；只有 `jre` 没有 `jlink` 的 JDK 会报 `jlink.exe does not exist`，换完整 JDK） |
++| Sync 报找不到 `android-36` | 本机 SDK 只装到 34/35 | SDK Manager 装 Platform 36 + Build-Tools |
++| 打开工程时提示 “Android Gradle Plugin requires newer Studio” | 本机 Studio 比 2025.2.1 旧 | 只能用命令行 `gradlew.bat assembleDebug` 构建；**不要**为了能在 IDE 里打开而降 AGP 版本，否则改完忘了还原，考试就炸 |
++| 打开工程时提示 “Upgrade AGP / Migrate to …” | 本机 Studio 比 2025.2.1 新 | 点 **Don't remind me / Cancel**；如果已经点了，用 `git checkout -- build.gradle app/build.gradle gradle/` 还原 |
++| 向导生成 `build.gradle.kts` + `libs.versions.toml` | 新版模板默认 Kotlin DSL | 见 0.2/0.3；**不要把 `.kts` 片段和本仓库的 Groovy 混着粘** |
++| 粘贴后一片红：`Unresolved reference: R` | 包名 / `namespace` 与新工程不一致 | 改 `namespace` 和每个文件的 `package`，或一开始就用 `com.example.bmi` |
++| 中文注释变乱码 | 文件编码不是 UTF-8 | Settings → Editor → **File Encodings** 全部设 UTF-8；`gradle.properties` 已有 `-Dfile.encoding=UTF-8`，别删 |
++| 用记事本改过文件后 `git apply` 失败/差异巨大 | 记事本把 LF 改成 CRLF 或加了 BOM | 用 Android Studio / VS Code 编辑；不要用记事本“另存为” |
++| `local.properties` 出现在 `git status` 里 | 被手动 `git add -f` 过 | `git rm --cached local.properties`；`.gitignore` 里已有这一行 |
++| 依赖下载卡住 | 本机访问 google()/mavenCentral() 慢 | `settings.gradle` 里已经准备好阿里云镜像，取消注释即可（本机改动，不要提交） |
++| 模拟器跑不起来 | 镜像 API 太高或架构不匹配 | 用 API 33/34 的 x86_64 镜像；项目 minSdk 21，任何近期镜像都行 |
++
++### 9.3 最容易“带错回学校”的 6 个改动
++
++交卷/考试前，用 `git status` 和 `git diff` 自查这 6 项：
++
++1. `build.gradle` / `app/build.gradle` 里的 AGP、Kotlin、compileSdk 被本机 Studio 自动改过；
++2. `gradle/wrapper/gradle-wrapper.properties` 的 `distributionUrl` 被改过；
++3. `.idea/`、`*.iml` 被提交（会在学校机器上覆盖 IDE 配置）；
++4. `local.properties` 被提交（会覆盖学校的 SDK 路径，直接导致 Sync 失败）；
++5. `settings.gradle` 里取消了阿里云镜像注释（学校机器能直连时可以留着，但要知道自己改过）；
++6. 为了本机调试临时改了 `minSdk` / `targetSdk`，忘了改回来。
++
++对应的一键还原（只还原构建配置，不动源码）：
++
++```bat
++git checkout -- build.gradle app/build.gradle gradle/wrapper/gradle-wrapper.properties settings.gradle
++```
++
++---
++
++## 10. 考试时间分配建议（80 分钟版）
++
++| 时间 | 做什么 | 验收 |
++| --- | --- | --- |
++| 0–10 min | 新建工程、对齐四个构建文件、Sync | 能 Run 模板页 |
++| 10–20 min | 资源：strings（中英）、themes、颜色 | 无红色报错 |
++| 20–30 min | 数据层：Record、Dates、DbHelper | 编译通过 |
++| 30–45 min | 主界面：布局 + 保存逻辑 | 能保存 + Toast |
++| 45–55 min | 历史页：布局 + Adapter | 能看到记录 |
++| 55–65 min | 按题目加/删可选功能（语言、AI） | 对应功能可用 |
++| 65–75 min | 自测清单走一遍 | 全绿 |
++| 75–80 min | 清理临时文件、确认没有提交 `.idea`/`local.properties` | `git status` 干净 |
++
++如果时间不够，**优先保证“能保存 + 能看历史”**，语言和 AI 都是加分项。
++
++---
++
++## 11. 一页速查
++
++**建工程的顺序**：构建文件 → 资源 → 数据类 → 数据库 → 主界面 → 历史页 → 可选功能。
++
++**每个文件属于哪一层**：
++
++```
++构建配置  build.gradle / app/build.gradle / settings.gradle / wrapper
++资源      strings.xml（×2）、themes.xml（×2）、colors.xml
++数据      WellnessRecord（字段）、Dates（日期）、WellnessDbHelper（SQLite）
++界面      MainActivity + activity_main、HistoryActivity + activity_history + item_wellness
++可选 A    BaseActivity、AppLanguage、LanguageStore、menu_main
++可选 B    PromptBuilder、DeepSeekClient、WellnessAdviceRepository、
++          ui/advice/*、AdviceActivity + activity_advice、PromptBuilderTest
++```
++
++**改题目的顺序**：字段（C1）→ 数据库（C2）→ 文案（C3）→ 布局（C4）→ 输入与保存（C5/C6）
++→ 历史页（C7/C8）→ AI 提示词（C9/C10）。详见 `docs/adapt-to-other-topic.md`。
++
++**出问题的第一反应**：先看 Build 面板的第一条 error，再全局搜索它提到的类名/资源名，
++确认“定义还在不在、引用有没有漏改”，最后才怀疑版本。
 diff --git a/docs/llm-setup.md b/docs/llm-setup.md
 index aeab845..9924d12 100644
 --- a/docs/llm-setup.md
@@ -8215,10 +9226,10 @@ index aeab845..9924d12 100644
 +所以 adb 那条命令主要用于验证资源，不会覆盖 App 内的选择。
 diff --git a/docs/wellness-tracker.md b/docs/wellness-tracker.md
 new file mode 100644
-index 0000000..229f702
+index 0000000..f7c38b7
 --- /dev/null
 +++ b/docs/wellness-tracker.md
-@@ -0,0 +1,431 @@
+@@ -0,0 +1,433 @@
 +# Wellness Tracker 改造说明（考试练习版）
 +
 +本分支 `wellness_tracker` 从 `cityu_lab` 的最新提交 `d43a3c9` 创建，把原来的
@@ -8646,6 +9657,8 @@ index 0000000..229f702
 +## 10. 相关文档
 +
 +- `README.md`：项目简介、工具链、运行和 patch 用法。
++- `docs/from-scratch.md`：从零建工程（考试模拟），含版本差异与踩坑清单。
++- `docs/adapt-to-other-topic.md`：换题目时改哪里（C1–C11 改题点地图 + 三个示例）。
 +- `docs/exam-guide.md`：考试删减指南（不要语言切换 / 不要 AI 时删什么）。
 +- `docs/llm-setup.md`：AI 与语言切换的实现细节、key 配置、单元测试。
 +- `docs/exam-playbook.md`：把这道题的做法迁移到其他“每日记录类”题目的通用教程。
