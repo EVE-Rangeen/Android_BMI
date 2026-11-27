@@ -8,7 +8,7 @@ import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.example.bmi.data.BmiDates
+import com.example.bmi.data.Dates
 import com.example.bmi.data.WellnessDbHelper
 import com.example.bmi.data.WellnessRecord
 
@@ -36,7 +36,7 @@ import com.example.bmi.data.WellnessRecord
  *
  * ────────────────────────────────────────────────────────────────────────────
  * 【依赖关系】
- *   本文件依赖：WellnessDbHelper、WellnessRecord、BmiDates（日期工具）、
+ *   本文件依赖：WellnessDbHelper、WellnessRecord、Dates（日期工具）、
  *               HistoryActivity、activity_main.xml、strings.xml。
  *   谁依赖本文件：无（它是桌面图标启动的入口页）。
  * ────────────────────────────────────────────────────────────────────────────
@@ -67,8 +67,7 @@ class MainActivity : AppCompatActivity() {
         val historyBtn: Button = findViewById(R.id.historyBtn)
 
         // 把“今天”的日期显示在标题下面，让用户知道这条记录属于哪一天。
-        // BmiDates 是作业里现成的日期工具，虽然名字带 Bmi，但内容只是通用的日期格式化。
-        dateTV.text = getString(R.string.wellness_today, BmiDates.today())
+        dateTV.text = getString(R.string.wellness_today, Dates.today())
 
         // 保存按钮：校验 → 写数据库 → 提示。
         saveBtn.setOnClickListener {
@@ -84,7 +83,7 @@ class MainActivity : AppCompatActivity() {
     /**
      * 读取界面输入，校验后保存“今天”的记录。
      *
-     * 注意：日期不是让用户手填的，而是直接用 BmiDates.today() 取系统日期，
+     * 注意：日期不是让用户手填的，而是直接用 Dates.today() 取系统日期，
      * 这样既符合“每天记录一次”的需求，也避免用户输错日期格式。
      */
     private fun saveTodayRecord() {
@@ -105,7 +104,7 @@ class MainActivity : AppCompatActivity() {
          * 刚好对应 strings.xml 里 wellness_condition 数组的三项。
          */
         val record = WellnessRecord(
-            date = BmiDates.today(),
+            date = Dates.today(),
             condition = conditionSpinner.selectedItemPosition,
             steps = steps,
             note = noteET.text.toString().trim()

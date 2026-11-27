@@ -34,7 +34,7 @@
         android:orientation="vertical"
         android:padding="24dp">
 
-        <!-- 当天日期。文字由 MainActivity 用 getString(..., BmiDates.today()) 填进来。 -->
+        <!-- 当天日期。文字由 MainActivity 用 getString(..., Dates.today()) 填进来。 -->
         <TextView
             android:id="@+id/dateTV"
             android:layout_width="match_parent"

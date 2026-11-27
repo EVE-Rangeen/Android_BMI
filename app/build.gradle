@@ -1,31 +1,15 @@
 // ============================================================================
 // build.gradle（模块级，位于 app/ 目录下）
 // ============================================================================
-// 这是 app 这个模块的构建配置，定义它用什么插件、怎么编译、依赖哪些库。
-// （Android Studio 里每个模块通常都有自己的 build.gradle。）
+// 这是 app 这个模块的构建配置：用什么插件、编译到哪个 API、依赖哪些库。
 //
-// 注意：本分支（cityu_lab）的版本号是为了适配学校的 Android Studio 2025.2.1，
+// 注意：本分支的版本号是为了适配学校的 Android Studio 2025.2.1，
 // main 分支用的是旧工具链（compileSdk 32 / Java 8 字节码），两者不要互相覆盖。
 
-// 声明这个模块用到的两个插件：Android 应用插件 + Kotlin 插件。
 plugins {
     id 'com.android.application'      // Android 应用插件
     id 'org.jetbrains.kotlin.android' // Kotlin 语言支持
 }
-
-// ----------------------------------------------------------------------------
-// 【考试可能问】BuildConfig 注入：把密钥在“编译时”写进代码里的常量。
-// ----------------------------------------------------------------------------
-// 这里从根目录的 local.properties 里读 deepseek.apiKey（不会被提交到 git），
-// 编译时注入到 BuildConfig 类里，代码里就能用 BuildConfig.DEEPSEEK_API_KEY。
-// 好处：真正的密钥不会出现在源码里；换机器只要改 local.properties 重新编译即可。
-// ----------------------------------------------------------------------------
-def localProperties = new Properties()
-def localPropertiesFile = rootProject.file('local.properties')
-if (localPropertiesFile.exists()) {
-    localPropertiesFile.withInputStream { stream -> localProperties.load(stream) }
-}
-def deepSeekApiKey = localProperties.getProperty('deepseek.apiKey') ?: ''
 
 android {
     namespace = 'com.example.bmi'   // 应用的命名空间（包名）
@@ -33,33 +17,23 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.bmi"   // App 的唯一标识（应用商店里区分 App 用）
+        applicationId = "com.example.bmi"   // App 的唯一标识
         minSdk = 21                          // 最低支持的 Android 版本（21 = Android 5.0）
-        // targetSdk 特意保留为 34：设成 35 及以上时，Android 15+ 会强制边到边
-        // （edge-to-edge）绘制，这个作业原本的布局会变形。
+        // targetSdk 特意保留为 34：设成 35 及以上时，Android 15+ 会强制边到边绘制，
+        // 界面布局可能变形。
         targetSdk = 34
-        versionCode = 1                      // 版本号（整数，商店用）
-        versionName = "1.0"                  // 版本名（给人看的）
+        versionCode = 1
+        versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
-        // 把上面的密钥注入到 BuildConfig：
-        // buildConfigField 三个参数 = 类型 / 常量名 / 值。
-        buildConfigField "String", "DEEPSEEK_API_KEY", "\"${deepSeekApiKey}\""
-        buildConfigField "String", "DEEPSEEK_BASE_URL", "\"https://api.deepseek.com\""
     }
 
     buildTypes {
         release {
-            // release 版本是否混淆（这里关闭混淆，教学项目方便调试）。
+            // 教学项目关闭混淆，方便调试。
             minifyEnabled = false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
-    }
-
-    buildFeatures {
-        // 打开 BuildConfig 生成（AGP 8.x 默认关闭，这里显式打开）。
-        buildConfig = true
     }
 
     compileOptions {
@@ -78,30 +52,20 @@ kotlin {
 
 // ----------------------------------------------------------------------------
 // dependencies：这个模块用到的第三方库。
-// ----------------------------------------------------------------------------
-// implementation 表示“这个库只给本模块用”。
-// 版本比 main 分支新，是 AGP 8.x / compileSdk 36 环境下对应的一批版本。
+// 健康日志只用到最基础的 UI + SQLite，所以依赖很少：
+//   core-ktx      → Kotlin 扩展（isVisible 等）
+//   appcompat     → AppCompatActivity
+//   material      → Material 主题和按钮样式
+//   junit/espresso→ 测试
+// SQLite 是 Android 系统自带的，不需要额外依赖。
 // ----------------------------------------------------------------------------
 dependencies {
 
-    implementation 'androidx.core:core-ktx:1.13.1'                      // 核心扩展（Kotlin 便利 API）
+    implementation 'androidx.core:core-ktx:1.13.1'                      // 核心扩展
     implementation 'androidx.appcompat:appcompat:1.7.0'                // AppCompat（向后兼容）
-    implementation 'com.google.android.material:material:1.12.0'        // Material 组件库（MaterialCardView 等）
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'  // 约束布局 ConstraintLayout
-
-    // MVVM：Activity 的 viewModels 委托、ViewModel、LiveData、协程作用域
-    implementation 'androidx.activity:activity-ktx:1.5.1'
-    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.5.1'
-    implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.5.1'
-    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.5.1'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'  // 协程
+    implementation 'com.google.android.material:material:1.12.0'        // Material 组件库
 
     testImplementation 'junit:junit:4.13.2'                        // 单元测试（本地 JVM 测试）
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'      // 仪器测试（跑在设备上）
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'  // UI 测试框架
-
-    // ── 【备用方案】如果考试要求“用图表库画图”，取消下面这行注释，
-    //    再参考 ui/trend/BmiTrendChartView.kt 文件末尾的说明替换掉自定义 View：
-    // implementation 'com.github.PhilJay:MPAndroidChart:v3.1.0'
-    // ──────────────────────────────────────────────────────────────────────
 }

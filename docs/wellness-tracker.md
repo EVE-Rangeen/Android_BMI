@@ -20,7 +20,7 @@ MVP（Minimum Viable Product，最小可用版本）。
 | 查看历史记录 | “View history” 打开 `HistoryActivity`，按日期倒序列出全部记录 |
 
 没有做的内容（刻意不做，属于冗余）：BMI 计算、AI 建议、折线图、登录、云同步、
-编辑/删除单条记录。旧 BMI 代码仍然留在仓库里，但已经无法从界面进入（见第 8 节）。
+编辑/删除单条记录。旧 BMI/AI 代码已经全部删除（见 4.3 节），项目只保留健康日志功能。
 
 ---
 
@@ -93,6 +93,7 @@ git apply --3way patch/wellness-tracker.patch
 
 | 文件 | 作用 |
 | --- | --- |
+| `app/src/main/java/com/example/bmi/data/Dates.kt` | 通用日期工具：取今天的 `yyyy-MM-dd` |
 | `app/src/main/java/com/example/bmi/data/WellnessRecord.kt` | 一条健康记录的数据类：日期、状况、步数、备注 |
 | `app/src/main/java/com/example/bmi/data/WellnessDbHelper.kt` | SQLite 建表、保存、读取全部记录 |
 | `app/src/main/java/com/example/bmi/HistoryActivity.kt` | 历史记录页：读库、统计、显示列表 |
@@ -105,26 +106,46 @@ git apply --3way patch/wellness-tracker.patch
 | --- | --- |
 | `app/src/main/java/com/example/bmi/MainActivity.kt` | 整体换成“选状况 + 填步数/备注 + 保存 + 查看历史”，删掉 BMI 计算、跳转报告页、菜单、对话框、自动填充 |
 | `app/src/main/res/layout/activity_main.xml` | 整体换成纵向 `LinearLayout` + `ScrollView`，只保留本题需要的控件 |
-| `app/src/main/AndroidManifest.xml` | 注册 `HistoryActivity` |
-| `app/src/main/res/values/strings.xml` | 新增 wellness 相关文案和状况数组，`app_name` 改为 Wellness Tracker |
+| `app/src/main/AndroidManifest.xml` | 只注册 `MainActivity` 和 `HistoryActivity`；删除 `INTERNET` 权限和旧页面注册；主题改为 `Theme.Wellness` |
+| `app/src/main/res/values/strings.xml` | 只保留 wellness 文案和状况数组，`app_name` 改为 Wellness Tracker |
 | `app/src/main/res/values-zh-rCN/strings.xml` | 同上，中文文案 |
+| `app/build.gradle` | 删除 DeepSeek 密钥注入、`buildConfig` 开关，以及只有旧 MVVM/AI 才用的依赖（ConstraintLayout、lifecycle、协程等） |
+| `app/src/main/res/values/themes.xml` | `Theme.BMI` 重命名为 `Theme.Wellness` |
+| `app/src/main/res/values-night/themes.xml` | 同上，深色主题同步改名 |
+| `README.md` | 改成健康日志的项目说明，保留工具链/网络/构建部分 |
 
 ### 4.3 删除文件
 
-| 文件 | 为什么删 |
-| --- | --- |
-| `app/src/main/res/layout-land/activity_main.xml` | 这是原 BMI 主界面的**横屏**布局。Android 在横屏时会优先加载 `layout-land/`，如果保留，横屏下 `findViewById(R.id.stepsET)` 会找不到控件并崩溃。删掉后横屏会自动回落到 `layout/activity_main.xml`。 |
+| 类别 | 删除的文件 | 为什么删 |
+| --- | --- | --- |
+| 旧页面 | `ReportActivity.kt`、`TrendActivity.kt` | 本题没有报告页和趋势页 |
+| 旧数据模型 | `BmiDbHelper.kt`、`BmiHistoryRepository.kt`、`BmiPreferences.kt`、`BmiProfile.kt`、`BmiRecord.kt`、`BmiDates.kt`、`Gender.kt` | 已由 `Wellness*` 和 `Dates` 取代 |
+| AI 功能 | `DeepSeekClient.kt`、`HealthAdviceRepository.kt`、`PromptBuilder.kt`、`AppLanguage.kt` | 本题不联网，AI 和“回答语言枚举”都不需要 |
+| MVVM/图表 | `ui/report/`、`ui/trend/` 整个目录 | 只服务于已删除的报告页和趋势页 |
+| 旧布局 | `activity_report.xml`、`activity_trend.xml` 及 `layout-land/` 下对应文件 | 页面已删除 |
+| 横屏旧主布局 | `layout-land/activity_main.xml` | Android 横屏时会优先加载它；不删会因找不到 `stepsET` 等控件而崩溃 |
+| 菜单/图片 | `menu/menu_options.xml`、`menu/menu_context.xml`、`drawable/bot_*.png` | 旧主界面和报告页专用 |
+| 旧测试 | `PromptBuilderTest.kt` | 被测的 `PromptBuilder` 已删除 |
+| 旧文档 | `docs/llm-setup.md` | AI 功能已删除 |
 
-### 4.4 没有动的文件
+> 原始 BMI 代码没有丢，仍然完整保存在 `cityu_lab` 分支和它之前的提交里，
+> 需要对照学习时 `git checkout cityu_lab` 就能看到。
 
-`app/build.gradle`、`settings.gradle`、主题、颜色、图标、旧 BMI 的 Activity 和
-data 类全部没动。这带来两个好处：
+### 4.4 清理后的最终结构
 
-1. 补丁很小，打上去不会牵连构建配置；
-2. 旧代码仍然能编译，不会因为删文件漏改引用而报错。
+```
+app/src/main/java/com/example/bmi/
+├── MainActivity.kt          # 输入、校验、保存、跳转
+├── HistoryActivity.kt       # 历史列表
+└── data/
+    ├── Dates.kt             # 今天的日期
+    ├── WellnessRecord.kt    # 数据类
+    └── WellnessDbHelper.kt  # SQLite
+```
 
-代价是仓库里留着用不到的 BMI/AI 代码。考试时完全可以保留；如果老师明确要求
-“不能有无关代码”，按第 8 节的清单清理，并在清理后完整编译一次。
+包名仍然是 `com.example.bmi`。改包名要动 `namespace`、`applicationId`、所有
+`package` 声明和目录结构，既费时又容易出错，题目也不检查包名，所以保留不动。
+界面主题名已经改成 `Theme.Wellness`，不再出现 BMI 字样。
 
 ---
 
@@ -160,7 +181,7 @@ if (steps == null || steps < 0) {
 }
 
 val record = WellnessRecord(
-    date = BmiDates.today(),
+    date = Dates.today(),
     condition = conditionSpinner.selectedItemPosition,
     steps = steps,
     note = noteET.text.toString().trim()
@@ -175,9 +196,9 @@ db.save(record)
 - 日期不让用户输入，直接取系统当天，避免格式错误，也符合“每天记录”；
 - `selectedItemPosition` 是 `0/1/2`，和 `strings.xml` 里数组的顺序一一对应。
 
-`BmiDates` 虽然名字里有 BMI，但内容只是 `yyyy-MM-dd` 的日期格式化，属于通用工具。
-为了少改文件，这里直接复用了它。如果考试要求代码里不能出现 BMI 字样，把
-`data/BmiDates.kt` 重命名为 `data/Dates.kt`，再把引用处的 `BmiDates` 全局替换即可。
+`Dates` 是一个通用的日期工具，只负责把系统时间格式化成 `yyyy-MM-dd`。
+如果考试要求“不能出现任何与题目无关的名字”，它本身已经不含 BMI 字样，
+不需要再改。
 
 ### 6.2 数据库（`WellnessDbHelper`）
 
@@ -277,7 +298,7 @@ CREATE TABLE wellness_records (
 ### 7.2 “要能选择日期”
 
 在主界面加一个按钮显示日期，点击弹 `DatePickerDialog`，把选中的日期存进变量，
-保存时用它代替 `BmiDates.today()`。这样演示历史记录时不用真的等几天。
+保存时用它代替 `Dates.today()`。这样演示历史记录时不用真的等几天。
 
 ### 7.3 “要能删除一条记录”
 
@@ -287,33 +308,45 @@ CREATE TABLE wellness_records (
 
 ### 7.4 “要画趋势图”
 
-原项目的 `BmiTrendChartView` 是专门画 `BmiRecord` 的，不能直接复用。
-考试最省事的做法是引入 MPAndroidChart（`app/build.gradle` 里已有注释示例），
-用 `LineChart` + `LineDataSet`；或者只显示“最近 7 天步数”的柱状图。
+原项目的 `BmiTrendChartView` 已经随旧代码一起删除，不能在当前分支直接复用。
+考试最省事的做法是引入 MPAndroidChart（在 `app/build.gradle` 的
+`dependencies` 里加一行依赖），用 `LineChart` + `LineDataSet`；
+或者只显示“最近 7 天步数”的柱状图。
 如果题目只说“查看历史”，列表就够，不要主动加图表。
 
 ---
 
-## 8. 可选：清理旧 BMI 代码
+## 8. 旧代码清理记录（已完成）
 
-考试时不建议动这些文件——它们不影响运行，删了反而可能漏改引用。交卷前如果
-确实需要一份“干净”的代码，按下面的顺序删，并且每删一组就编译一次。
+当前分支已经清理完毕，最终只剩健康日志相关代码。清理顺序如下——如果你在考试
+现场也想做同样的清理，建议按这个顺序，每完成一组就编译一次：
 
-1. 删页面：`ReportActivity.kt`、`TrendActivity.kt`；
-2. 删 UI：`ui/report/`、`ui/trend/` 整个目录；
-3. 删数据：`data/BmiDbHelper.kt`、`BmiHistoryRepository.kt`、`BmiPreferences.kt`、
+1. **先换日期工具**：新增 `data/Dates.kt`，把 `MainActivity` 里的 `BmiDates`
+   全部替换成 `Dates`，编译通过后再删 `BmiDates.kt`；
+2. 删页面：`ReportActivity.kt`、`TrendActivity.kt`；
+3. 删 UI：`ui/report/`、`ui/trend/` 整个目录；
+4. 删数据/AI：`BmiDbHelper.kt`、`BmiHistoryRepository.kt`、`BmiPreferences.kt`、
    `BmiProfile.kt`、`BmiRecord.kt`、`Gender.kt`、`DeepSeekClient.kt`、
-   `HealthAdviceRepository.kt`、`PromptBuilder.kt`；
-4. `data/BmiDates.kt` **先别删**：`MainActivity` 还在用它。可以重命名为
-   `Dates.kt` 并全局替换，或者把 `today()` 直接写进 `MainActivity`；
-5. 删布局：`activity_report.xml`、`activity_trend.xml` 以及 `layout-land/` 下对应文件；
-6. 删菜单：`res/menu/menu_options.xml`、`menu_context.xml`；
-7. 删图片：`drawable/bot_thin.png`、`bot_fit.png`、`bot_fat.png`；
-8. 删测试：`app/src/test/java/com/example/bmi/PromptBuilderTest.kt`；
-9. 清 `AndroidManifest.xml` 里 `ReportActivity`、`TrendActivity` 的注册；
-10. 清 `strings.xml` 里不再使用的 BMI / AI 文案（可选，留着不会报错）。
+   `HealthAdviceRepository.kt`、`PromptBuilder.kt`、`AppLanguage.kt`；
+5. 删布局：`activity_report.xml`、`activity_trend.xml` 及 `layout-land/` 下对应文件；
+6. 删菜单和图片：`res/menu/` 下两个文件、`drawable/bot_*.png`；
+7. 删旧测试：`PromptBuilderTest.kt`；
+8. 清 `AndroidManifest.xml`：删除 `ReportActivity`、`TrendActivity` 注册和
+   `INTERNET` 权限；
+9. 清 `strings.xml`：只保留 `app_name` 和 `wellness_*`，中英文两个文件同步；
+10. 清 `app/build.gradle`：删除 DeepSeek 密钥读取、`buildConfigField`、
+    `buildFeatures { buildConfig = true }`，以及不再使用的
+    ConstraintLayout / lifecycle / 协程依赖；
+11. 主题改名：`Theme.BMI` → `Theme.Wellness`（`values/` 和 `values-night/` 两处，
+    以及 Manifest 的引用）；
+12. **Build → Clean Project → Rebuild Project**，再跑一遍第 9 节的自测清单。
 
-最后 **Build → Clean Project → Rebuild Project**，确认没有 “Unresolved reference”。
+删除时最容易踩的坑是“漏改引用”。规则很简单：**先全局搜索类名，确认只剩定义
+文件本身，再删。** 例如 `AppLanguage` 同时被 `PromptBuilder`、`ReportViewModel`
+和 `ReportActivity` 使用，必须等 AI 那一组文件一起删；`BmiDates` 被
+`MainActivity` 使用，必须先替换成 `Dates`。
+
+原始 BMI 代码在 `cityu_lab` 分支仍然完整保留，需要对照时随时可以切回去看。
 
 ---
 
@@ -334,5 +367,6 @@ CREATE TABLE wellness_records (
 
 ## 10. 相关文档
 
+- `README.md`：项目简介、工具链、运行和 patch 用法。
 - `docs/exam-playbook.md`：把这道题的做法迁移到其他“每日记录类”题目的通用教程。
-- `patch/wellness-tracker.patch`：可直接应用到 `d43a3c9` 的补丁。
+- `patch/wellness-tracker.patch`：可直接应用到 `d43a3c9` 的补丁（包含旧代码删除）。

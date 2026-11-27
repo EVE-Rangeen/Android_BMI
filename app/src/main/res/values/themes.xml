@@ -11,7 +11,7 @@
       主题里定义的 colorPrimary 等颜色，会被按钮、标题栏、开关等控件自动使用。
       深色模式下，系统会优先用 values-night/themes.xml（同名 style，深色配色）。
     -->
-    <style name="Theme.BMI" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+    <style name="Theme.Wellness" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
         <!-- 主品牌色（按钮、标题栏等的主要颜色） -->
         <item name="colorPrimary">@color/purple_500</item>
         <!-- 主色的“深色变体”（状态栏等） -->

@@ -6,71 +6,21 @@
   【字符串资源 + 多语言机制（考试高频考点）】
     Android 不推荐把文字直接写死在代码里，而是放在 res/values/strings.xml，
     每个字符串给一个 name（key），代码里用 R.string.xxx 引用。
-    这样做的好处是“国际化”：系统会根据手机语言自动选资源目录——
-      - res/values/strings.xml          ：默认文案（本文件，英文）；
-      - res/values-zh-rCN/strings.xml   ：中文文案（同名 key、中文 value）。
-    手机语言是中文时，R.string.bmi_height 自动变成“高度（cm）”，
-    是英文时就显示 “Height (cm)”。代码完全不用改。
+
+    系统会根据手机语言自动选资源目录：
+      - res/values/strings.xml         ：默认文案（本文件，英文）；
+      - res/values-zh-rCN/strings.xml  ：中文文案（同名 key、中文 value）。
+    手机语言是中文时显示中文，英文时显示英文，代码完全不用改。
 
   【占位符】
-    有些字符串里有 %1$d、%2$.1f 这样的占位符：
-      %1$d   第 1 个参数，整数（d = decimal）；
-      %2$.1f 第 2 个参数，保留 1 位小数（f = float）。
-    代码里用 getString(R.string.trend_summary, 5, 24.8) 把真实值填进去。
+    %1$s = 第 1 个参数是字符串；%1$d = 第 1 个参数是整数。
+    代码里用 getString(R.string.wellness_history_summary, 3, 6500) 填值。
+    占位符的编号和参数顺序必须一一对应，否则运行时会崩溃。
 -->
 <resources>
     <string name="app_name">Wellness Tracker</string>
-    <string name="bmi_height">Height (cm)</string>
-    <string name="bmi_weight">Weight (kg)</string>
-    <string name="bmi_age">Age</string>
-    <string name="bmi_gender">Gender</string>
-    <string name="bmi_btn">See BMI Report Now</string>
-    <string name="bmi_result">Your BMI value is</string>
-    <string name="bmi_warning">Height/Weight cannot be empty.</string>
-    <string name="advice_light">You need more calories!</string>
-    <string name="advice_average">You look great!</string>
-    <string name="advice_heavy">You should be on diet!</string>
-    <string name="about_button">About BMI</string>
-    <string name="about_msg">BMI = Body Mass Index = Weight (kg) / Height (m)^2; a BMI between 20 and 25 means ideal weight.</string>
-    <string name="menu_wiki">BMI Wiki</string>
-    <string name="menu_trend">BMI Trend</string>
-    <string name="menu_exit">Exit</string>
-    <string name="trend_title">BMI Trend</string>
-    <string name="trend_range">Last 30 days</string>
-    <!-- %1$d = 记录数，%2$.1f = 最新 BMI（保留 1 位小数） -->
-    <string name="trend_summary">%1$d records · latest BMI %2$.1f</string>
-    <string name="trend_empty">No BMI records yet.\nGenerate a BMI report to start your trend.</string>
-    <string name="trend_legend">Each point is the latest BMI recorded on that day.</string>
-    <string name="trend_chart_description">BMI trend chart with %1$d records; latest BMI %2$.1f</string>
-    <string name="button_ok">OK</string>
-    <string name="no_browser">No browser app found.</string>
-    <string name="bmi_icon">BMI icon</string>
-    <string name="gender_male">Male</string>
-    <string name="gender_female">Female</string>
-    <!-- translatable="false"：这个字符串不需要翻译（网址中英文都一样）。 -->
-    <string name="wiki_url" translatable="false">https://en.m.wikipedia.org/wiki/Body_mass_index</string>
 
-    <!-- 报告页 AI 建议相关文案 -->
-    <string name="report_ai_title">AI health suggestions</string>
-    <string name="llm_loading">Asking the AI for suggestions…</string>
-    <string name="llm_retry">Retry</string>
-    <string name="llm_error_missing_key">API key is missing. Add deepseek.apiKey to local.properties and rebuild the app.</string>
-    <string name="llm_error_network">Cannot reach the AI service. Check your network and tap Retry.</string>
-    <string name="llm_error_api">The AI service returned an error. Tap Retry.</string>
-    <string name="llm_error_unknown">Something went wrong. Tap Retry.</string>
-
-    <!--
-      性别下拉框的选项数组。
-      第 0 项“男”，第 1 项“女”。Spinner 的 entries 引用它。
-      注意：这里每一项又是对上面 gender_male/gender_female 的引用，
-      所以它会跟随语言切换。
-    -->
-    <string-array name="gender">
-        <item>@string/gender_male</item>
-        <item>@string/gender_female</item>
-    </string-array>
-
-    <!-- ==================== Wellness Tracker（健康日志）==================== -->
+    <!-- ==================== 主界面 ==================== -->
     <string name="wellness_today">Today: %1$s</string>
     <string name="wellness_condition_label">How do you feel today?</string>
     <string name="wellness_condition_good">Good</string>
@@ -84,11 +34,6 @@
     <string name="wellness_view_history">View history</string>
     <string name="wellness_saved">Saved for today.</string>
     <string name="wellness_steps_warning">Please enter a valid step count.</string>
-    <string name="wellness_history_title">History</string>
-    <string name="wellness_history_empty">No records yet.\nSave today to start your log.</string>
-    <string name="wellness_history_summary">%1$d days recorded · average %2$d steps</string>
-    <string name="wellness_history_title_row">%1$s · %2$s</string>
-    <string name="wellness_history_steps">%1$d steps</string>
 
     <!-- 身体状况下拉框的选项，顺序必须和代码里的 0/1/2 对应。 -->
     <string-array name="wellness_condition">
@@ -96,4 +41,11 @@
         <item>@string/wellness_condition_fair</item>
         <item>@string/wellness_condition_poor</item>
     </string-array>
+
+    <!-- ==================== 历史页 ==================== -->
+    <string name="wellness_history_title">History</string>
+    <string name="wellness_history_empty">No records yet.\nSave today to start your log.</string>
+    <string name="wellness_history_summary">%1$d days recorded · average %2$d steps</string>
+    <string name="wellness_history_title_row">%1$s · %2$s</string>
+    <string name="wellness_history_steps">%1$d steps</string>
 </resources>

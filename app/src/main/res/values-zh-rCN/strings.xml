@@ -11,47 +11,8 @@
 -->
 <resources>
     <string name="app_name">健康日志</string>
-    <string name="bmi_height">高度（cm）</string>
-    <string name="bmi_weight">重量（kg）</string>
-    <string name="bmi_age">年龄</string>
-    <string name="bmi_gender">性别</string>
-    <string name="bmi_btn">选择BMI立即报告</string>
-    <string name="bmi_result">你的BMI指数是</string>
-    <string name="bmi_warning">高度/重量不能为空。</string>
-    <string name="advice_light">你需要更多卡路里！</string>
-    <string name="advice_average">你的体重非常好！</string>
-    <string name="advice_heavy">你应该节食！</string>
-    <string name="about_button">关于BMI</string>
-    <string name="about_msg">BMI = 身体质量指数 = 重量（kg）/ 高度（m）^2；BMI在20至25表示体重理想。</string>
-    <string name="menu_wiki">BMI 维基</string>
-    <string name="menu_trend">BMI 趋势</string>
-    <string name="menu_exit">离开</string>
-    <string name="trend_title">BMI 趋势</string>
-    <string name="trend_range">最近 30 天</string>
-    <string name="trend_summary">共 %1$d 条记录 · 最新BMI %2$.1f</string>
-    <string name="trend_empty">暂无BMI记录。\n先生成一次BMI报告来开始记录趋势。</string>
-    <string name="trend_legend">每个点表示当天最后一次记录的BMI。</string>
-    <string name="trend_chart_description">BMI趋势图，共%1$d条记录，最新BMI %2$.1f</string>
-    <string name="button_ok">确定</string>
-    <string name="no_browser">未找到可用的浏览器。</string>
-    <string name="bmi_icon">BMI图标</string>
-    <string name="gender_male">男</string>
-    <string name="gender_female">女</string>
 
-    <string name="report_ai_title">AI 健康建议</string>
-    <string name="llm_loading">正在向 AI 获取建议…</string>
-    <string name="llm_retry">重试</string>
-    <string name="llm_error_missing_key">未配置 API Key。请在 local.properties 中添加 deepseek.apiKey 后重新构建应用。</string>
-    <string name="llm_error_network">无法连接 AI 服务，请检查网络后点击重试。</string>
-    <string name="llm_error_api">AI 服务返回错误，请点击重试。</string>
-    <string name="llm_error_unknown">出现未知错误，请点击重试。</string>
-
-    <string-array name="gender">
-        <item>@string/gender_male</item>
-        <item>@string/gender_female</item>
-    </string-array>
-
-    <!-- ==================== Wellness Tracker（健康日志）==================== -->
+    <!-- ==================== 主界面 ==================== -->
     <string name="wellness_today">今天：%1$s</string>
     <string name="wellness_condition_label">今天的身体状况</string>
     <string name="wellness_condition_good">良好</string>
@@ -65,15 +26,17 @@
     <string name="wellness_view_history">查看历史</string>
     <string name="wellness_saved">已保存今天的记录。</string>
     <string name="wellness_steps_warning">请输入有效的步数。</string>
-    <string name="wellness_history_title">历史记录</string>
-    <string name="wellness_history_empty">暂无记录。\n保存今天的健康日志后，这里就会显示历史。</string>
-    <string name="wellness_history_summary">已记录 %1$d 天 · 平均 %2$d 步</string>
-    <string name="wellness_history_title_row">%1$s · %2$s</string>
-    <string name="wellness_history_steps">%1$d 步</string>
 
     <string-array name="wellness_condition">
         <item>@string/wellness_condition_good</item>
         <item>@string/wellness_condition_fair</item>
         <item>@string/wellness_condition_poor</item>
     </string-array>
+
+    <!-- ==================== 历史页 ==================== -->
+    <string name="wellness_history_title">历史记录</string>
+    <string name="wellness_history_empty">暂无记录。\n保存今天的健康日志后，这里就会显示历史。</string>
+    <string name="wellness_history_summary">已记录 %1$d 天 · 平均 %2$d 步</string>
+    <string name="wellness_history_title_row">%1$s · %2$s</string>
+    <string name="wellness_history_steps">%1$d 步</string>
 </resources>

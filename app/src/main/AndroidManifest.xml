@@ -8,7 +8,12 @@
     告诉系统：
       1. 这个 App 叫什么名字、用什么图标、用什么主题（<application>）；
       2. 有哪些屏幕（Activity），每个 Activity 叫什么类、是否对外开放（<activity>）；
-      3. 需要哪些权限（<uses-permission>），比如联网。
+      3. 需要哪些权限（<uses-permission>）。
+
+  【本项目不需要任何权限】
+    健康日志只把数据写进本机 SQLite，不联网、不读通讯录、不拍照，
+    所以这里没有 <uses-permission>。考试时如果不确定，宁可不加：
+    多申请权限可能被老师扣分，而少申请会直接崩溃（比如联网没加 INTERNET）。
 
   【android:exported 是什么】
     表示“这个 Activity 能不能被别的 App 启动”。
@@ -22,14 +27,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- 联网权限：AI 建议功能要访问 DeepSeek 接口，必须有这个权限。 -->
-    <uses-permission android:name="android.permission.INTERNET" />
-
     <!--
       application 是应用的全局配置：
-        android:icon       = 桌面图标；
-        android:label      = 应用名（引用 strings.xml 里的 app_name）；
-        android:theme      = 使用的主题（引用 themes.xml 里的 Theme.BMI）；
+        android:icon        = 桌面图标；
+        android:label       = 应用名（引用 strings.xml 里的 app_name）；
+        android:theme       = 使用的主题（引用 themes.xml 里的 Theme.Wellness）；
         android:supportsRtl = 是否支持从右到左的语言（阿拉伯语等）。
     -->
     <application
@@ -40,37 +42,14 @@
         android:label="@string/app_name"
         android:roundIcon="@drawable/icon_128"
         android:supportsRtl="true"
-        android:theme="@style/Theme.BMI"
+        android:theme="@style/Theme.Wellness"
         tools:targetApi="31">
 
-        <!-- 历史记录页（健康日志分支新增；不对外开放）。 -->
+        <!-- 历史记录页（不对外开放，只能从主界面跳转进来）。 -->
         <activity
             android:name=".HistoryActivity"
             android:exported="false"
-            android:label="@string/wellness_history_title">
-            <meta-data
-                android:name="android.app.lib_name"
-                android:value="" />
-        </activity>
-
-        <!-- 趋势页（不对外开放，只能 App 内部跳转）。 -->
-        <activity
-            android:name=".TrendActivity"
-            android:exported="false"
-            android:label="@string/trend_title">
-            <meta-data
-                android:name="android.app.lib_name"
-                android:value="" />
-        </activity>
-
-        <!-- 报告页（不对外开放）。 -->
-        <activity
-            android:name=".ReportActivity"
-            android:exported="false">
-            <meta-data
-                android:name="android.app.lib_name"
-                android:value="" />
-        </activity>
+            android:label="@string/wellness_history_title" />
 
         <!-- 主界面（入口页，对外开放）。 -->
         <activity
@@ -81,10 +60,6 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-
-            <meta-data
-                android:name="android.app.lib_name"
-                android:value="" />
         </activity>
     </application>
 

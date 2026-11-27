@@ -1,14 +1,35 @@
-# BMI
+# Wellness Tracker（健康日志）
 
-> **`wellness_tracker` 分支（考试练习）**：本分支已把项目改造成考试练习题
-> “Wellness Tracker（健康日志）”——每天记录身体状况、步数、备注，保存后可查看历史。
-> 改造说明见 [`docs/wellness-tracker.md`](docs/wellness-tracker.md)，
-> 可迁移到同类题目的考场教程见 [`docs/exam-playbook.md`](docs/exam-playbook.md)，
-> 补丁文件见 `patch/wellness-tracker.patch`。
-> 下面关于 `cityu_lab` / BMI 的说明仍然适用于工具链部分。
+一个 Android 考试练习项目：每天记录身体状况、步数和备注，保存到 SQLite，
+并在历史页按日期查看全部记录。
 
-一个 Android BMI 计算小应用（作业项目）。本分支 `cityu_lab` 已调整为可直接在
-**学校的 Android Studio 2025.2.1 Patch 1（Otter）** 上打开并运行。
+本项目从原始的 BMI 作业（`cityu_lab` 分支）改造而来，保留了学校电脑要求的
+工具链配置，但源码已经清理成只包含健康日志功能。改造过程、逐文件讲解和
+可迁移到同类题目的考场教程见文末文档。
+
+## 功能
+
+- 自动显示当天日期，不需要手输
+- 选择身体状况：Good / Fair / Poor（中文：良好 / 一般 / 较差）
+- 输入当天步数，做非空、非负校验
+- 填写备注（可留空）
+- 保存到 SQLite；同一天重复保存会覆盖旧记录
+- 历史页按日期倒序显示全部记录，并统计记录天数和平均步数
+- 支持中英文资源（`values/` 与 `values-zh-rCN/`）
+
+## 代码结构
+
+```
+app/src/main/java/com/example/bmi/
+├── MainActivity.kt              # 主界面：输入、校验、保存、跳转
+├── HistoryActivity.kt           # 历史页：读库、空状态、ListView
+└── data/
+    ├── WellnessRecord.kt        # 数据类：日期/状况/步数/备注
+    ├── WellnessDbHelper.kt      # SQLite：建表、保存、读取
+    └── Dates.kt                 # 日期工具：今天的 yyyy-MM-dd
+```
+
+没有网络请求、没有 AI、没有图表，也不需要任何权限。
 
 ## 工具链版本
 
@@ -25,11 +46,11 @@
 ## 第一次打开
 
 1. 从 GitHub 下载 ZIP（或 `git clone`），解压到本地任意目录。
-   路径里尽量不要有中文和空格，例如 `D:\AndroidProjects\BMI`。
+   路径里尽量不要有中文和空格，例如 `D:\AndroidProjects\Wellness`。
 2. Android Studio → **Open** → 选择**包含 `settings.gradle` 的那一层目录**
    （不要选里面的 `app` 目录）。
 3. 首次打开会自动下载 Gradle 8.13 和所有依赖，需要联网，请耐心等待。
-4. 如果右下角 / 通知栏提示缺少 SDK 组件（例如 *Android SDK Platform 36*、
+4. 如果提示缺少 SDK 组件（例如 *Android SDK Platform 36*、
    *Build-Tools 35.0.0*），直接点 **Install** 让它自动安装。
 5. Gradle Sync 结束后，选中 `app` 运行配置，点 **Run** 即可。
 
@@ -66,102 +87,32 @@ gradlew.bat assembleDebug
 
 生成的文件在 `app/build/outputs/apk/debug/app-debug.apk`。
 
-## 分支工作流（main → cityu_lab）
+## 考试补丁
 
-`main` 是日常开发分支，保持原来的旧工具链（AGP 7.3.1），可以继续在本地旧版
-Android Studio 里打开；`cityu_lab` 只负责“学校电脑上能跑”的适配，**不要直接
-在这个分支上写业务代码**，否则以后每次合并都会更麻烦。
-
-每做完一次作业，按这个顺序操作：
+`patch/wellness-tracker.patch` 记录的是从 `cityu_lab` 的提交 `d43a3c9`
+到本分支的全部改动，可以直接应用到你已提交的作业代码上：
 
 ```bat
-git checkout main
-git add -A
-git commit -m "assignment04"
-git push origin main
-
-git checkout cityu_lab
-git pull
-git merge main
+git checkout -b exam d43a3c9
+git apply --check patch/wellness-tracker.patch
+git apply patch/wellness-tracker.patch
 ```
 
-合并时可能冲突的只有构建配置文件，处理规则如下：
+## 文档
 
-| 冲突文件 | 处理方式 |
-| --- | --- |
-| `build.gradle` | 用 `cityu_lab` 的（必须保持 AGP 8.13.0 / Kotlin 2.2.20） |
-| `app/build.gradle` | `plugins`、`android {}`（含 `buildFeatures { buildConfig = true }`）用 `cityu_lab` 的；`defaultConfig` 里的两行 `buildConfigField` 必须留着；`dependencies {}` 里 `main` 新加的库要保留 |
-| `settings.gradle` | 用 `cityu_lab` 的（镜像仓库配置） |
-| `.gitignore`、`gradle/wrapper/*`、`gradlew*` | 用 `cityu_lab` 的 |
-
-assignment04 之后，合并时特别注意 `app/build.gradle` 里的这几行不能丢：
-
-```groovy
-buildFeatures {
-    buildConfig = true          // AGP 8.x 默认不生成 BuildConfig
-}
-...
-defaultConfig {
-    buildConfigField "String", "DEEPSEEK_API_KEY", "\"${deepSeekApiKey}\""
-    buildConfigField "String", "DEEPSEEK_BASE_URL", "\"https://api.deepseek.com\""
-}
-```
-
-丢了 `buildFeatures` 会直接编译失败；丢了 `buildConfigField` 则 AI 建议区域会一直
-提示“未配置 API Key”。
-
-assignment07（SharedPreferences 记住资料 + SQLite 每日记录 + 趋势折线图）之后：
-
-- 没有新增第三方依赖。趋势图是自定义 View（`ui/trend/BmiTrendChartView.kt`），
-  没有用 MPAndroidChart，所以 `dependencies {}` 不需要跟着改
-- 数据库用的是系统自带的 `android.database.sqlite`，不需要额外配置或权限
-- 新增的 `TrendActivity`、`BmiDbHelper`、`BmiPreferences` 等业务文件两个分支一致，
-  合并时自动处理
-- 冲突范围不变，仍然只有 `build.gradle`、`app/build.gradle`、`settings.gradle`
-  三个文件，按上面表格处理即可
-
-### 学校电脑上的 API Key
-
-`local.properties` 不会提交到仓库，所以换电脑后要在学校的机器上补一行：
-
-```properties
-deepseek.apiKey=sk-xxxxxxxxxxxxxxxxxxxx
-```
-
-然后 Sync + Run（key 是在编译时写进 `BuildConfig` 的，改完必须重新编译）。
-没有 key 时 App 仍能正常计算 BMI，只是 AI 建议区域会显示配置提示。
-详细说明见 `docs/llm-setup.md`。
-
-源码、布局、`strings.xml` 这些业务文件两个分支本来就一样，正常都会自动合并，
-不需要处理。
-
-新作业如果加了新依赖，需要注意：
-
-- 要求 compileSdk 33 ~ 36 的库：没问题（这里已经是 36）
-- 要求更高 minSdk（例如 24）的库：把 `android { defaultConfig { minSdk } }`
-  一起改掉
-- 要求 compileSdk 37 或 AGP 9.x 的库：学校那台 Studio 2025.2.1 不支持
-  （它最高只到 AGP 8.13 / API 36.1），需要换一个低版本的库
-
-合并完成后，先本地验证一次再推送（本地旧版 Studio 打不开这个分支，用命令行）：
-
-```bat
-set JAVA_HOME=<本机 JDK 17 或更高的路径>
-gradlew.bat assembleDebug
-```
-
-成功之后推送：
-
-```bat
-git push origin cityu_lab
-```
-
-学校电脑上只需要在 `cityu_lab` 分支上 `git pull`，然后 Sync + Run 即可。
+- [`docs/wellness-tracker.md`](docs/wellness-tracker.md)
+  —— 本次改造的逐文件说明、数据库设计、patch 用法、自测清单。
+- [`docs/exam-playbook.md`](docs/exam-playbook.md)
+  —— 把 BMI 作业改成任意“每日记录类”题目的七步教程、变体对照表、常见错误。
+- [`docs/开发指南.md`](docs/开发指南.md)
+  —— 原始 BMI 作业版本的概念讲解，保留作 Android 知识点参考
+  （文中提到的 BMI 源码已在本分支删除）。
 
 ## 已知限制
 
 - 本项目使用的是 AGP 8.13，只能由 Android Studio 2025.2.1 或更新的版本打开。
-  更老的 Studio（例如 2021.3 / Dolphin、2022.x）会提示 AGP 版本不支持，
-  这时只能用上面的命令行方式构建。
+  更老的 Studio 会提示 AGP 版本不支持，这时可以用命令行构建。
 - `targetSdk` 特意保留为 34：如果设成 35 及以上，在 Android 15+ 上系统会强制
-  边到边（edge-to-edge）绘制，这个作业原本的布局会变形。
+  边到边（edge-to-edge）绘制，界面可能变形。
+- 同一天只保留一条记录。如果考试要求一天多条，把 `date` 主键换成自增 `id`，
+  详见 `docs/exam-playbook.md` 的“按天唯一 vs 一天多条”。
