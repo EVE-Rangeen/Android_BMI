@@ -427,6 +427,8 @@ chart.invalidate()             // 数据变了必须调用，否则不刷新
 ```
 
 完整带注释的版本见本分支的 `TrendActivity.kt` 和 `activity_trend.xml`。
+从零工程的完整搭建顺序（仓库 → 依赖 → 布局 → Activity → Manifest）见
+`docs/from-scratch.md` 7.6。
 还要补三处（和新增页面一样）：Manifest 注册 `TrendActivity`、菜单里加一项、
 `strings.xml` 加 `trend_*` 文案。
 

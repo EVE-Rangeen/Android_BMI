@@ -499,6 +499,8 @@ core-ktx / appcompat / material / 测试依赖的状态。
 5. 菜单项 + `MainActivity` 分支 + Manifest 注册 + `trend_*` 文案。
 
 完整代码直接抄本分支的 `TrendActivity.kt` / `activity_trend.xml`。
+从零搭建的顺序（仓库 → 依赖 → 布局 → Activity → Manifest → 编译）见
+`docs/from-scratch.md` 7.6。
 如果机房装不了依赖，就在文档
 `docs/wellness-tracker.md` 的 7.4 节找“自己写自定义 View”的骨架。
 

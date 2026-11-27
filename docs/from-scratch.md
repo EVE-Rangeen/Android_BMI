@@ -10,16 +10,16 @@
 - `docs/exam-guide.md` — 考场不需要某个功能时，删哪些文件。
 - `docs/wellness-tracker.md` — 每个文件的作用和 SQLite 设计（含两种画趋势图的写法，7.4 节）。
 
-> 本文只讲“基础功能 + 语言切换 + AI”的搭建顺序。第三块可选功能
-> “最近 7 天趋势折线图”依赖 MPAndroidChart，不是每题都需要，所以没有放进
-> 从零步骤；需要时按 `docs/wellness-tracker.md` 7.4 节加，或直接复制本分支的
-> `TrendActivity.kt` / `activity_trend.xml`。
+> 本文覆盖全部三块可选功能：语言切换（第 6 节）、AI（第 7 节）、
+> 最近 7 天趋势折线图（7.6）。趋势图依赖第三方库 MPAndroidChart，第一次 Sync 需要联网；
+> 机房网络不通就跳过 7.6，并按 `docs/exam-guide.md` 第 3 节把菜单项和引用删掉。
 
 **核心原则：一次只加一层；编译点按层给，不是每节都给。**
 数据层（第 3 节）可以单独编译；从第 4 节起，`MainActivity`、`HistoryActivity`、`BaseActivity`、
-`AdviceActivity` 这四个文件互相引用，缺任何一个都会报“找不到”，所以**第 4–7 节一路复制、
-中途不编译也不运行，第一次编译放在第 7 节末尾（7.6）**。这也正好对上考试现场：题目要不要
-语言切换和 AI，决定第 6、7 节是留下还是按 `docs/exam-guide.md` 删掉，删完再编译，一次成型。
+`AdviceActivity`、`TrendActivity` 这五个文件互相引用，缺任何一个都会报“找不到”，所以
+**第 4–7 节一路复制、中途不编译也不运行，第一次编译放在第 7 节末尾（7.7）**。
+这也正好对上考试现场：题目要不要语言切换 / AI / 图表，决定第 6、7 节和 7.6 是留下
+还是按 `docs/exam-guide.md` 删掉，删完再编译，一次成型。
 
 ---
 
@@ -69,7 +69,7 @@ Kotlin 文件第一行的 `package`，并且 Android Studio 可能提示 `R` 找
    如果第一行是别的（比如网页标题），说明你复制多了。
 3. **一次只复制一个文件**，粘完先核对第一行。
   第 4 节之前（数据层）每粘一个就编译一次，出错好定位；第 4 节起界面层的文件互相引用，
-  中途不编译，统一到 7.6（见本文开头的“核心原则”）。
+  中途不编译，统一到 7.7（见本文开头的“核心原则”）。
 4. 不要下载 ZIP 后整个覆盖到工程里：ZIP 里没有 `.idea` 和 `local.properties`，
   但会用仓库的 `settings.gradle`、主题名等覆盖你向导生成的配置，
    容易出现“明明代码一样却跑不起来”。
@@ -314,7 +314,7 @@ query(TABLE_RECORDS, columns, null, null, null, null, "$COL_DATE DESC")
 
 ### 4.2 代码
 
-复制 `MainActivity.kt`。注意它是仓库的**最终版**（含可选 A/B 的代码），结构是：
+复制 `MainActivity.kt`。注意它是仓库的**最终版**（含可选 A/B/C 的代码），结构是：
 
 ```
 onCreate()
@@ -331,11 +331,11 @@ saveTodayRecord()
  ├── 组装 WellnessRecord
  └── db.save(record) + Toast
 
-onCreateOptionsMenu / onOptionsItemSelected   ← 可选 A/B 才需要，见第 6 节
+onCreateOptionsMenu / onOptionsItemSelected   ← 可选 A/B/C 才需要，见第 6 节和 7.6
 ```
 
 > **⚠️ 本步不要编译。** 仓库里的 `MainActivity.kt` 是最终版：原样复制后点 Build 会报一屏错，
-> 这是**预期状态**——它提前引用了第 5、6、7 节才创建的文件。**第一次编译放在 7.6。**
+> 这是**预期状态**——它提前引用了第 5、6、7 节和 7.6 才创建的文件。**第一次编译放在 7.7。**
 >
 > 报错很长，但全部能对上号（这张表也用来确认“是缺文件，不是复制坏了”）：
 >
@@ -346,20 +346,22 @@ onCreateOptionsMenu / onOptionsItemSelected   ← 可选 A/B 才需要，见第 
 > | `HistoryActivity`                                              | `HistoryActivity.kt`                    | 5.1       |
 > | `R.menu.menu_main`、`menu_language`、`menu_ai_advice`            | `res/menu/menu_main.xml`                | 6.3       |
 > | `AdviceActivity`                                               | `AdviceActivity.kt`                     | 7.5       |
+> | `TrendActivity`                                                | `TrendActivity.kt`                      | 7.6       |
 > | `title`、`findViewById`、`getString` 等一片红                        | 上面 `BaseActivity` 没解析出来导致的连锁错误，不是真的少了东西 | —         |
 >
 >
 > **做法：原样复制，不做减法，第 7 节末尾一次编译成型。**
 >
 > 1. 第 4 节照抄 `MainActivity.kt`，**报错先不管、不要点 Run、不要删任何一行**；
-> 2. 继续第 5 节（`HistoryActivity`）、第 6 节（`BaseActivity` + 菜单）、第 7 节（AI 页）；
-> 3. 到 7.6 再点 Build / Run，这一屏红会自己消失，一次编译通过。
+> 2. 继续第 5 节（`HistoryActivity`）、第 6 节（`BaseActivity` + 菜单）、第 7 节（AI 页）、
+>    7.6（趋势页）；
+> 3. 到 7.7 再点 Build / Run，这一屏红会自己消失，一次编译通过。
 >
 > 代价是第 4–6 节中途不能运行、看不到界面，这是正常状态。好处是每份文件都和仓库一致，
 > 最后对 `git diff` 时不用回忆自己删过什么。
 >
-> **例外：如果你决定不要第 6、7 节的功能**（题目不要求语言切换 / AI），这条路走不通：
-> 照 `docs/exam-guide.md` 的删除清单把相关代码删掉，删完同样在 7.6 做首次编译。
+> **例外：如果你决定不要第 6、7 节或 7.6 的功能**（题目不要求语言切换 / AI / 图表），这条路走不通：
+> 照 `docs/exam-guide.md` 的删除清单把相关代码删掉，删完同样在 7.7 做首次编译。
 > 那是“按题目裁功能”，和这里的临时减法不是一回事。
 
 
@@ -370,7 +372,7 @@ onCreateOptionsMenu / onOptionsItemSelected   ← 可选 A/B 才需要，见第 
 `AdviceActivity`，Android Studio 会整片标红。这是**预期状态**，不是复制坏了：
 
 - 不要点 Run，也不要按 `Alt+Enter` 让 IDE “自动修复”，更不要为了消红去删行；
-- 主界面的运行验收（日期显示、保存提示、Toast 文案）统一放在 **7.6**，那里是第一次编译点。
+- 主界面的运行验收（日期显示、保存提示、Toast 文案）统一放在 **7.7**，那里是第一次编译点。
 
 本节只核对一件事：`activity_main.xml` 和 `MainActivity.kt` 都已经完整粘进来，第一行分别是
 `<?xml version="1.0" encoding="utf-8"?>` 和 `package com.example.bmi`。
@@ -402,7 +404,7 @@ HistoryActivity.kt报错是因为没有创建BaseActivity，因为这个文件�
 > 创建方式：右键 `res/layout` → New → Layout Resource File
 
 > 本节仍然不编译（`BaseActivity`、`AdviceActivity` 还没创建，红标照旧）。要收的尾只有一个：
-> **在 Manifest 里注册** `HistoryActivity`（见 5.2）。漏了这一步，7.6 之后点“查看历史”会直接崩
+> **在 Manifest 里注册** `HistoryActivity`（见 5.2）。漏了这一步，7.7 之后点“查看历史”会直接崩
 > （`ActivityNotFoundException`），而编译阶段不会给你任何提示。
 
 
@@ -425,8 +427,8 @@ HistoryActivity.kt报错是因为没有创建BaseActivity，因为这个文件�
 - [ ] 历史页要用的文案 key 已在 `values/strings.xml` 里（`wellness_history_title`、
   `wellness_history_empty`、`wellness_history_summary` 等），第 2 节整份覆盖时就已经带上了。
 
-> 到这里，**题目要求的基础功能代码已经写完**，运行验收统一在 7.6。
-> 第 6、7 节是可选的加分项；不要就按 `docs/exam-guide.md` 删掉，删完同样在 7.6 编译。
+> 到这里，**题目要求的基础功能代码已经写完**，运行验收统一在 7.7。
+> 第 6、7 节和 7.6 是可选的加分项；不要就按 `docs/exam-guide.md` 删掉，删完同样在 7.7 编译。
 
 ---
 
@@ -459,7 +461,8 @@ HistoryActivity.kt报错是因为没有创建BaseActivity，因为这个文件�
 > - 你按 `docs/exam-guide.md` 删过语言切换（那时父类是 `AppCompatActivity`），现在又想加回来；
 > - 你之前自己写过基础版的 `MainActivity`（父类是 `AppCompatActivity`）。
 >
-> 本节仍不编译：`AdviceActivity` 到第 7 节才有，`MainActivity` 的红标会一直留到 7.6。
+> 本节仍不编译：`AdviceActivity` 到 7.5、`TrendActivity` 到 7.6 才有，`MainActivity`
+> 的红标会一直留到 7.7。
 
 ```kotlin
 class MainActivity : BaseActivity() {
@@ -532,7 +535,7 @@ App 内切换语言后不会自动跟着变。
 - [ ] `res/menu/menu_main.xml` 已新建并粘好，`MainActivity` 里有 `onCreateOptionsMenu()`
   和 `onOptionsItemSelected()` 两个方法。
 
-> 语言切换的运行验证（切英文、重启保持、清数据恢复系统语言）在 7.6 做。
+> 语言切换的运行验证（切英文、重启保持、清数据恢复系统语言）在 7.7 做。
 > 菜单里的 `menu_ai_advice` 依赖第 7 节的 `AdviceActivity`：不做 AI，就把
 > `menu_main.xml` 里的这一项、`onOptionsItemSelected()` 里的对应分支一起删掉。
 
@@ -575,7 +578,7 @@ buildFeatures { buildConfig = true }
   `kotlinx-coroutines-android`。
 
 > `build.gradle` 改完要点一次 **Sync Now**（编辑器右上角的提示条，或大象图标）。不 Sync
-> 的话，7.6 编译会报找不到 `ViewModel`、`viewModelScope`、`LiveData`——不是代码写错，
+> 的话，7.7 编译会报找不到 `ViewModel`、`viewModelScope`、`LiveData`——不是代码写错，
 > 是依赖还没下载。
 
 
@@ -628,9 +631,9 @@ buildFeatures { buildConfig = true }
 1. `data/PromptBuilder.kt` —— 拼 system / user 提示词，不 import 任何 Android 类；
 2. 复制 `app/src/test/java/com/example/bmi/PromptBuilderTest.kt`；！！！ 记得复制这个文件
 3. **先不要跑测试**：`testDebugUnitTest` 会连带编译主源码，而 `AdviceActivity` 还没建，
-  现在跑一定失败。测试放到 7.6 一起跑。
+  现在跑一定失败。测试放到 7.7 一起跑。
 
-这一步的意义是把“语言 → 提示词”的逻辑单独写出来，等 7.6 编译通过后，用那 7 个用例
+这一步的意义是把“语言 → 提示词”的逻辑单独写出来，等 7.7 编译通过后，用那 7 个用例
 验证它，不用等界面。
 
 ### 7.4 再接通网络
@@ -656,7 +659,7 @@ Studio 会报 "Package name does not match directory"，`import com.example.bmi.
 
 
 
-### 7.5 最后是页面
+### 7.5 AI 页面
 
 
 | 文件                               | 作用                    |
@@ -667,9 +670,101 @@ Studio 会报 "Package name does not match directory"，`import com.example.bmi.
 
 
 
-### 7.6 首次编译 + 统一验收
+### 7.6 可选 C：最近 7 天趋势折线图
 
-**走到这里，四个互相引用的文件才第一次凑齐。现在才点编译：**
+顺序：**先加仓库和依赖（要 Sync）→ 布局 → Activity → Manifest → 到 7.7 一起编译。**
+
+这一节用 MPAndroidChart，不手写 Canvas。它只发布在 JitPack，第一次 Sync 要联网下载 aar。
+如果机房访问不了 JitPack，直接跳过本节，并按 `docs/exam-guide.md` 第 3 节把菜单项和
+`MainActivity` 里的 `menu_trend` 分支删掉，否则 7.7 编译会报
+`Unresolved reference: TrendActivity`。
+
+#### 7.6.1 仓库和依赖
+
+1. `settings.gradle` 的 `dependencyResolutionManagement` → `repositories` 里加一行：
+
+```gradle
+maven { url 'https://jitpack.io' }
+```
+
+2. `app/build.gradle` 的 `dependencies` 里加一行：
+
+```gradle
+implementation 'com.github.PhilJay:MPAndroidChart:v3.1.0'
+```
+
+3. 点 **Sync Now**（或大象图标）。
+
+> 只加依赖、不加仓库，Sync 会报
+> `Could not find com.github.PhilJay:MPAndroidChart:v3.1.0`；
+> 两处都加了但没 Sync，XML 里的 `LineChart` 会标红，7.7 也编译不过。
+
+#### 7.6.2 布局
+
+复制 `res/layout/activity_trend.xml`。三个 id：
+
+| id             | 控件                                                | 作用                   |
+| -------------- | ------------------------------------------------- | -------------------- |
+| `trendSummary` | TextView                                          | “最近 N 天 · 平均 X 步”    |
+| `trendChart`   | `com.github.mikephil.charting.charts.LineChart`   | 折线图本体                |
+| `trendEmpty`   | TextView                                          | 没有记录时的提示（默认 `gone`）  |
+
+图表控件必须写**完整类名**，高度必须**固定**：
+
+```xml
+<com.github.mikephil.charting.charts.LineChart
+    android:id="@+id/trendChart"
+    android:layout_width="match_parent"
+    android:layout_height="280dp"
+    android:layout_marginTop="12dp" />
+```
+
+> `layout_height` 写成 `wrap_content` 不会报错，但运行时图是**一片空白**：
+> `LineChart` 不会自己撑开，必须给确定高度。
+
+#### 7.6.3 `TrendActivity.kt`
+
+复制 `TrendActivity.kt`。代码只有三步：
+
+```
+allRecords().take(7).reversed()        读最近 7 条，翻成从早到晚
+mapIndexed { i, r -> Entry(...) }      第 i 个点 + 步数作为高度
+LineDataSet → LineData → invalidate()  一条线 + 数据 + 刷新
+```
+
+再把坐标轴调成“日期在横轴、数值从 0 开始”：`xAxis` 用 `ValueFormatter` 把序号换回
+`MM-DD`，`axisRight` 关掉，`description` / `legend` 关掉。完整写法在文件里都有注释。
+
+> 父类：如果做了第 6 节，`class TrendActivity : BaseActivity()` 保持不动；
+> 没做语言切换就改成 `AppCompatActivity`（和 `HistoryActivity` 的处理一样）。
+
+#### 7.6.4 菜单和 Manifest
+
+- 菜单项 `menu_trend`：第 6 节整份覆盖 `menu_main.xml` 时已经带过来了；
+- `R.id.menu_trend` 分支：第 4 节整份复制 `MainActivity.kt` 时已经带过来了；
+- 如果第 6 节没做（没有菜单），按 6.3 新建 `menu_main.xml`，只保留
+  `menu_ai_advice` / `menu_trend` 里你要的项。
+
+Manifest 里注册，位置和 `HistoryActivity` 平级：
+
+```xml
+<activity
+    android:name=".TrendActivity"
+    android:exported="false"
+    android:label="@string/trend_title" />
+```
+
+`strings.xml` 的 `trend_*` 和 `menu_trend` 在第 2 节已经整份复制过，不需要再动。
+
+#### 7.6.5 本步不验收
+
+`MainActivity` 从第 4 节起就引用了 `TrendActivity`，所以本节也不能单独编译。
+和前面几节一样：**原样复制，到 7.7 一次编译**。
+
+### 7.7 首次编译 + 统一验收
+
+**走到这里，五个互相引用的文件（`MainActivity`、`HistoryActivity`、`BaseActivity`、
+`AdviceActivity`、`TrendActivity`）才第一次凑齐。现在才点编译：**
 
 - 命令行：`gradlew.bat assembleDebug`
 - IDE：`Build → Make Project`（或直接 Run）
@@ -677,7 +772,7 @@ Studio 会报 "Package name does not match directory"，`import com.example.bmi.
 那一屏红应当全部消失。如果还有错，回到 4.2 的表对照一下缺的是哪一节的文件，
 不要靠猜着删代码“消红”。
 
-> 跳过第 6、7 节的情况：按 `docs/exam-guide.md` 删完相关代码后，首次编译同样在这里做，
+> 跳过第 6、7 节或 7.6 的情况：按 `docs/exam-guide.md` 删完相关代码后，首次编译同样在这里做，
 > 验收只取下面“编译与安装”“主界面”“历史页”三组。
 
 **编译与安装**
@@ -713,6 +808,15 @@ Studio 会报 "Package name does not match directory"，`import com.example.bmi.
 - [ ] 断网 → 提示网络错误 + 出现“重试”按钮；
 - [ ] 转屏 → 不重复请求。
 
+**趋势图（7.6，可选）**
+
+- [ ] 菜单点“趋势图”能打开页面，不闪退；
+- [ ] 一条记录都没有 → 显示“还没有记录”，不出现空坐标轴；
+- [ ] 有 2 条以上记录 → 折线按日期从早到晚排列，点数与记录数一致；
+- [ ] 同一天保存两次 → 图上仍然只有一个点（覆盖，不是两条）；
+- [ ] 只有一条记录 → 点画在中间，不崩；
+- [ ] 页面能上下滚动，图表不抢手势。
+
 ---
 
 
@@ -728,12 +832,14 @@ Studio 会报 "Package name does not match directory"，`import com.example.bmi.
 | `.../HistoryActivity.kt`                                                          | ✅                        |
 | `.../BaseActivity.kt`（可选）                                                         | ✅ 或按 `exam-guide.md` 删掉  |
 | `.../AdviceActivity.kt`（可选）                                                       | ✅ 或删掉                    |
+| `.../TrendActivity.kt`（可选 C）                                                      | ✅ 或删掉                    |
 | `.../data/Dates.kt`、`WellnessRecord.kt`、`WellnessDbHelper.kt`                     | ✅                        |
 | `.../data/AppLanguage.kt`、`LanguageStore.kt`（可选）                                  | ✅ 或删掉                    |
 | `.../data/PromptBuilder.kt`、`DeepSeekClient.kt`、`WellnessAdviceRepository.kt`（可选） | ✅ 或删掉                    |
 | `.../ui/advice/`（可选）                                                              | 两文件，或整个目录删掉              |
 | `res/layout/activity_main.xml`、`activity_history.xml`、`item_wellness.xml`         | ✅                        |
 | `res/layout/activity_advice.xml`（可选）                                              | ✅ 或删掉                    |
+| `res/layout/activity_trend.xml`（可选 C）                                             | ✅ 或删掉                    |
 | `res/menu/menu_main.xml`（可选）                                                      | ✅ 或删掉                    |
 | `res/values/strings.xml`、`values-zh-rCN/strings.xml`                              | ✅ 两套                     |
 | `res/values/themes.xml`、`values-night/themes.xml`、`colors.xml`                    | ✅                        |
@@ -847,12 +953,12 @@ git checkout -- build.gradle app/build.gradle gradle/wrapper/gradle-wrapper.prop
 | 10–20 min | 资源：strings（中英）、themes、颜色                 | 无红色报错                |
 | 20–30 min | 数据层：Record、Dates、DbHelper                | 编译通过（界面层之前的最后一次单独编译） |
 | 30–45 min | 主界面 + 历史页：布局与代码全部复制，**不编译**              | 文件与仓库一致，红标属正常        |
-| 45–60 min | 可选功能：语言切换 + AI（按题目取舍）                    | 文件与 Manifest 到位      |
-| 60–72 min | 首次编译 + 自测清单（7.6）                         | 编译通过，各功能逐项打勾         |
+| 45–60 min | 可选功能：语言切换 + AI + 趋势图（按题目取舍）              | 文件与 Manifest 到位      |
+| 60–72 min | 首次编译 + 自测清单（7.7）                         | 编译通过，各功能逐项打勾         |
 | 72–80 min | 清理临时文件、确认没有提交 `.idea`/`local.properties` | `git status` 干净      |
 
 
-如果时间不够，**优先保证“能保存 + 能看历史”**，语言和 AI 都是加分项；但注意：既然第 4–7 节
+如果时间不够，**优先保证“能保存 + 能看历史”**，语言、AI 和图表都是加分项；但注意：既然第 4–7 节
 是“复制完再统一编译”，中途砍功能要用 `docs/exam-guide.md` 的删除清单，不能只删文件不删引用。
 
 ---
@@ -863,8 +969,8 @@ git checkout -- build.gradle app/build.gradle gradle/wrapper/gradle-wrapper.prop
 
 **建工程的顺序**：构建文件 → 资源 → 数据类 → 数据库 → 主界面 → 历史页 → 可选功能。
 
-**编译点只有两个**：第 3 节末（数据层，能单独跑）、第 7 节末（四个互相引用的文件到齐，见 7.6）。
-中间第 4–6 节只复制、不编译也不运行，那时的满屏红属于预期状态。
+**编译点只有两个**：第 3 节末（数据层，能单独跑）、第 7 节末（五个互相引用的文件到齐，见 7.7）。
+中间第 4–7 节只复制、不编译也不运行，那时的满屏红属于预期状态。
 
 **每个文件属于哪一层**：
 
@@ -876,6 +982,7 @@ git checkout -- build.gradle app/build.gradle gradle/wrapper/gradle-wrapper.prop
 可选 A    BaseActivity、AppLanguage、LanguageStore、menu_main
 可选 B    PromptBuilder、DeepSeekClient、WellnessAdviceRepository、
           ui/advice/*、AdviceActivity + activity_advice、PromptBuilderTest
+可选 C    TrendActivity + activity_trend、menu_trend、MPAndroidChart 依赖
 ```
 
 **改题目的顺序**：字段（C1）→ 数据库（C2）→ 文案（C3）→ 布局（C4）→ 输入与保存（C5/C6）

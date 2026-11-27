@@ -1747,60 +1747,98 @@ index 650d314..0000000
 -    }
 -}
 diff --git a/app/src/main/java/com/example/bmi/TrendActivity.kt b/app/src/main/java/com/example/bmi/TrendActivity.kt
-deleted file mode 100644
-index 3c189d3..0000000
+index 3c189d3..891a206 100644
 --- a/app/src/main/java/com/example/bmi/TrendActivity.kt
-+++ /dev/null
-@@ -1,77 +0,0 @@
--package com.example.bmi
--
--import android.os.Bundle
--import android.widget.TextView
++++ b/app/src/main/java/com/example/bmi/TrendActivity.kt
+@@ -1,77 +1,149 @@
+ package com.example.bmi
+ 
++import android.graphics.Color
+ import android.os.Bundle
+ import android.widget.TextView
 -import androidx.activity.viewModels
 -import androidx.appcompat.app.AppCompatActivity
--import androidx.core.view.isVisible
+ import androidx.core.view.isVisible
 -import com.example.bmi.ui.trend.BmiTrendChartView
 -import com.example.bmi.ui.trend.TrendViewModel
--
--/*
-- * ============================================================================
++import com.example.bmi.data.WellnessDbHelper
++import com.github.mikephil.charting.charts.LineChart
++import com.github.mikephil.charting.components.XAxis
++import com.github.mikephil.charting.data.Entry
++import com.github.mikephil.charting.data.LineData
++import com.github.mikephil.charting.data.LineDataSet
++import com.github.mikephil.charting.formatter.ValueFormatter
++import kotlin.math.roundToInt
+ 
+ /*
+  * ============================================================================
 - * TrendActivity.kt —— 趋势页（显示最近 30 天 BMI 变化的折线图）
-- * ============================================================================
-- * 【这个文件是干什么的】
++ * TrendActivity.kt —— 最近 7 天步数折线图（【图表 · 考试可删】）
+  * ============================================================================
+  * 【这个文件是干什么的】
 - *   从数据库读出最近 30 天的 BMI 记录，交给自定义控件 BmiTrendChartView 画成折线图。
 - *   它自己不做任何计算，只负责“读状态 → 喂给图表 → 更新摘要文字”。
-- *
++ *   从 SQLite 读出最近 7 条记录，把「日期 → 步数」画成一条折线。
++ *   题目只说“查看历史”时，HistoryActivity 的列表就够了，这个页面属于加分项。
+  *
 - * 【这个页面没有 Intent 传值】
 - *   因为它不需要 MainActivity 给它数据，而是自己从 SQLite 数据库里读历史。
 - *   这正是“持久化存储”的意义：数据存在数据库里，任何页面都能随时读取。
-- *
-- * ────────────────────────────────────────────────────────────────────────────
++ * 【为什么用 MPAndroidChart 而不是自己画】
++ *   自定义 View（main 分支的 BmiTrendChartView）要用 Canvas + Paint 手动画坐标轴、
++ *   网格、刻度、文字，代码 200 行左右；MPAndroidChart 只要准备好 Entry 列表，
++ *   坐标轴、网格、缩放、点击高亮都由库负责。
++ *   代价是它只发布在 JitPack 仓库（见 settings.gradle），第一次 Sync 需要联网。
++ *
++ * 【MVVM 在这里为什么没用 ViewModel】
++ *   图表是“一次性读库 + 画一次”，没有跨屏幕旋转要保住的状态，
++ *   也不涉及网络请求，所以直接在 onCreate 里读库 + 设置数据即可。
+  *
+  * ────────────────────────────────────────────────────────────────────────────
 - * 【依赖关系】（考试删文件前先看这里）
 - *   本文件依赖：BmiTrendChartView、TrendViewModel（都在 ui/trend/ 下）。
 - *   谁依赖本文件：MainActivity（菜单里跳转到本页）。
 - *   删除指引：TrendActivity 就是“趋势页”，属于【趋势/历史】功能。
 - *             砍掉趋势时：删本文件 + ui/trend/ 整个目录 + activity_trend.xml
 - *             + AndroidManifest 里的 TrendActivity 注册 + MainActivity 里跳转入口。
-- * ────────────────────────────────────────────────────────────────────────────
-- */
++ * 【依赖关系 / 考试删除指引】
++ *   本文件依赖：WellnessDbHelper、Dates 不直接用到、activity_trend.xml、
++ *               strings.xml 里的 trend_* 文案、MPAndroidChart 依赖。
++ *   谁依赖本文件：MainActivity（菜单“趋势图”跳转）、AndroidManifest 注册。
++ *   ★ 不需要图表时，按 docs/exam-guide.md 的 C 部分删除：
++ *     本文件、activity_trend.xml、菜单项、Manifest 注册、build.gradle 依赖、
++ *     settings.gradle 的 jitpack 仓库。
+  * ────────────────────────────────────────────────────────────────────────────
+  */
 -class TrendActivity : AppCompatActivity() {
--
++class TrendActivity : BaseActivity() {
+ 
 -    // by viewModels() 自动创建 TrendViewModel。
 -    private val viewModel: TrendViewModel by viewModels()
--
--    override fun onCreate(savedInstanceState: Bundle?) {
--        super.onCreate(savedInstanceState)
--        setContentView(R.layout.activity_trend)
--
++    /** 折线展示最近多少天。改这里就能变成 14 天 / 30 天。 */
++    private val days = 7
+ 
+     override fun onCreate(savedInstanceState: Bundle?) {
+         super.onCreate(savedInstanceState)
+         setContentView(R.layout.activity_trend)
+ 
 -        // 绑定控件：图表、摘要、空状态提示、图例说明。
 -        val chart: BmiTrendChartView = findViewById(R.id.trend_chart)
 -        val summary: TextView = findViewById(R.id.trend_summary)
 -        val empty: TextView = findViewById(R.id.trend_empty)
 -        val legend: TextView = findViewById(R.id.trend_legend)
--
--        /*
++        // 【语言切换 · 考试可删】标题跟着 App 内语言走（原因见 MainActivity 的说明）。
++        title = getString(R.string.trend_title)
++
++        val chart: LineChart = findViewById(R.id.trendChart)
++        val summary: TextView = findViewById(R.id.trendSummary)
++        val empty: TextView = findViewById(R.id.trendEmpty)
+ 
+         /*
 -         * 观察 ViewModel 里的记录列表。列表一变（比如第一次加载完成），就执行下面代码。
--         */
++         * allRecords() 是按日期倒序（最新在前）返回的。
++         * 折线图的横轴要从“早”到“晚”，所以 take(最近 N 条) 之后要 reversed()。
+          */
 -        viewModel.records.observe(this) { records ->
 -            // 把数据交给自定义控件，它会自己 invalidate() 重画。
 -            chart.setRecords(records)
@@ -1822,13 +1860,94 @@ index 3c189d3..0000000
 -                summary.text = getString(R.string.trend_summary, records.size, latest.bmi)
 -                chart.contentDescription =
 -                    getString(R.string.trend_chart_description, records.size, latest.bmi)
--            }
--        }
--
++        val records = WellnessDbHelper(this).allRecords().take(days).reversed()
++
++        if (records.isEmpty()) {
++            // 一条记录都没有：隐藏图表和统计，只留提示文字。
++            chart.isVisible = false
++            summary.isVisible = false
++            empty.isVisible = true
++            return
++        }
++
++        chart.isVisible = true
++        summary.isVisible = true
++        empty.isVisible = false
++
++        // 统计行：最近 N 天平均步数。average() 返回 Double，四舍五入成整数显示。
++        summary.text = getString(
++            R.string.trend_summary,
++            records.size,
++            records.map { it.steps }.average().roundToInt()
++        )
++
++        drawChart(chart, records.map { it.date }, records.map { it.steps })
++    }
++
++    /**
++     * 把数据画进 LineChart。
++     *
++     * MPAndroidChart 的数据模型分两层：
++     *   Entry(x, y)   —— 一个点，x 是“第几个”，y 是数值（这里是步数）；
++     *   LineDataSet   —— 一组点 + 这条线的样式（颜色、线宽、圆点、填充）；
++     *   LineData      —— 整个图表的数据，可以放多条线（这里只有一条）。
++     */
++    private fun drawChart(chart: LineChart, dates: List<String>, steps: List<Int>) {
++        // x 用下标 0、1、2…，y 用步数。
++        val entries = steps.mapIndexed { index, value ->
++            Entry(index.toFloat(), value.toFloat())
++        }
++
++        val lineColor = Color.parseColor("#2E7D32")   // 绿色，和 wellness 主题一致
++
++        val dataSet = LineDataSet(entries, getString(R.string.trend_series_steps)).apply {
++            color = lineColor                 // 线的颜色
++            lineWidth = 2.5f                  // 线宽（单位 dp）
++            setCircleColor(lineColor)         // 数据点圆点的颜色
++            circleRadius = 4f                 // 圆点半径
++            setDrawCircleHole(false)          // 实心圆点
++            setDrawValues(false)              // 不在点旁边标数值，避免 7 个数字挤在一起
++            setDrawFilled(true)               // 线下方面积填充
++            fillColor = lineColor
++            fillAlpha = 40                    // 填充透明度（0-255）
++            mode = LineDataSet.Mode.LINEAR    // 直线连接；想要平滑曲线改成 CUBIC_BEZIER
++        }
++
++        // ── 横轴：显示日期（把 2026-11-26 截成 11-26，7 个标签才放得下）──
++        chart.xAxis.apply {
++            position = XAxis.XAxisPosition.BOTTOM
++            granularity = 1f                            // 刻度间隔为 1，一天一个点
++            setDrawGridLines(false)                      // 不画竖向网格线，画面更干净
++            labelCount = dates.size                      // 让所有点都显示刻度，不被自动跳过
++            labelRotationAngle = -30f                    // 倾斜，避免日期互相压住
++            valueFormatter = object : ValueFormatter() {
++                override fun getFormattedValue(value: Float): String {
++                    val index = value.toInt()
++                    return if (index in dates.indices) dates[index].takeLast(5) else ""
++                }
+             }
+         }
+ 
 -        // 触发加载：从数据库读最近 30 天记录。
 -        viewModel.load()
--    }
--}
++        // ── 纵轴：步数从 0 开始，右侧轴和描述文字都不需要 ──
++        chart.axisRight.isEnabled = false
++        chart.axisLeft.axisMinimum = 0f
++        chart.description.isEnabled = false
++        chart.legend.isEnabled = false
++
++        // 关掉双指缩放：这个页面套在 ScrollView 里，缩放会和页面滚动抢手势。
++        chart.setScaleEnabled(false)
++        chart.setPinchZoom(false)
++
++        // 没数据时库自己显示这行字（本项目在 records 为空时直接隐藏图表，属于双保险）。
++        chart.setNoDataText(getString(R.string.trend_empty))
++
++        chart.data = LineData(dataSet)
++        chart.invalidate()      // 数据变了必须调用，否则界面不刷新
++        chart.animateX(500)     // 横向展开动画，0.5 秒
+     }
+ }
 diff --git a/app/src/main/java/com/example/bmi/data/AppLanguage.kt b/app/src/main/java/com/example/bmi/data/AppLanguage.kt
 index e769776..6894cdf 100644
 --- a/app/src/main/java/com/example/bmi/data/AppLanguage.kt
@@ -6442,34 +6561,44 @@ index 26a1500..0000000
 -    </androidx.core.widget.NestedScrollView>
 -</androidx.constraintlayout.widget.ConstraintLayout>
 diff --git a/app/src/main/res/layout/activity_trend.xml b/app/src/main/res/layout/activity_trend.xml
-deleted file mode 100644
-index ec8d83b..0000000
+index ec8d83b..56bde00 100644
 --- a/app/src/main/res/layout/activity_trend.xml
-+++ /dev/null
-@@ -1,96 +0,0 @@
--<?xml version="1.0" encoding="utf-8"?>
--<!--
--  ============================================================================
++++ b/app/src/main/res/layout/activity_trend.xml
+@@ -1,96 +1,63 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <!--
+   ============================================================================
 -  activity_trend.xml —— 趋势页布局（竖屏）
--  ============================================================================
--  【这个文件是干什么的】
++  activity_trend.xml —— 最近 7 天步数折线图（【图表 · 考试可删】）
+   ============================================================================
+   【这个文件是干什么的】
 -    定义 TrendActivity 的界面：标题、摘要、折线图卡片、空状态提示、图例。
--
--  【控件 id 与代码的对应关系】
++    上面一行统计文字（最近 N 天平均步数），下面是 MPAndroidChart 的 LineChart。
+ 
+   【控件 id 与代码的对应关系】
 -    trend_chart   → 自定义的折线图控件 BmiTrendChartView
 -    trend_summary → “共 N 条记录 · 最新BMI x.x” 摘要
 -    trend_empty   → 没有记录时显示的空状态提示
 -    trend_legend  → 图例说明
---->
++    trendSummary → 统计文字（TrendActivity 用 getString 填）
++    trendChart   → 折线图本体，类型是全类名 com.github.mikephil.charting.charts.LineChart
++    trendEmpty   → 没有任何记录时的提示文字（默认 gone）
++
++  【为什么图表高度写死 280dp】
++    LineChart 不会自己“撑开”，必须给一个确定高度；写在 dp 里保证不同屏幕一样高。
++    外面包一层 ScrollView，小屏时如果统计文字换行也能滚动。
+ -->
 -<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
 -    xmlns:app="http://schemas.android.com/apk/res-auto"
--    xmlns:tools="http://schemas.android.com/tools"
--    android:layout_width="match_parent"
--    android:layout_height="match_parent"
++<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+     xmlns:tools="http://schemas.android.com/tools"
+     android:layout_width="match_parent"
+     android:layout_height="match_parent"
 -    android:orientation="vertical"
 -    android:padding="16dp"
--    tools:context=".TrendActivity">
--
++    android:fillViewport="true"
+     tools:context=".TrendActivity">
+ 
 -    <!-- 标题：最近 30 天 -->
 -    <TextView
 -        android:id="@+id/trend_range"
@@ -6482,13 +6611,16 @@ index ec8d83b..0000000
 -    <!-- 摘要（记录数 + 最新 BMI）。 -->
 -    <TextView
 -        android:id="@+id/trend_summary"
--        android:layout_width="match_parent"
--        android:layout_height="wrap_content"
++    <LinearLayout
+         android:layout_width="match_parent"
+         android:layout_height="wrap_content"
 -        android:layout_marginTop="4dp"
 -        android:textColor="?android:attr/textColorSecondary"
 -        android:textSize="13sp"
 -        tools:text="5 records · latest BMI 24.2" />
--
++        android:orientation="vertical"
++        android:padding="16dp">
+ 
 -    <!--
 -      FrameLayout：用来把“图表卡片”和“空状态提示”叠在同一个位置。
 -      有数据时显示卡片、隐藏提示；没数据时反过来（由 TrendActivity 控制）。
@@ -6501,7 +6633,10 @@ index ec8d83b..0000000
 -
 -        <!-- 图表外层的卡片（MaterialCardView = 带圆角和阴影的卡片）。 -->
 -        <com.google.android.material.card.MaterialCardView
--            android:layout_width="match_parent"
++        <!-- 统计文字：例如“Last 7 days · average 6500 steps”。 -->
++        <TextView
++            android:id="@+id/trendSummary"
+             android:layout_width="match_parent"
 -            android:layout_height="match_parent"
 -            app:cardCornerRadius="12dp"
 -            app:cardElevation="2dp"
@@ -6515,24 +6650,40 @@ index ec8d83b..0000000
 -                android:layout_height="match_parent"
 -                android:padding="8dp" />
 -        </com.google.android.material.card.MaterialCardView>
--
--        <!--
++            android:layout_height="wrap_content"
++            android:textSize="15sp"
++            android:textStyle="bold"
++            tools:text="Last 7 days · average 6500 steps" />
+ 
+         <!--
 -          空状态提示。android:elevation="4dp" 比上面的卡片更高，
 -          保证在“没有数据、卡片还没被隐藏”时它也能显示在卡片上面。
 -          默认 gone（隐藏），没有记录时由代码设为可见。
--        -->
--        <TextView
++          折线图。android:id 必须和 TrendActivity 里 findViewById(R.id.trendChart) 一致。
++          自定义控件在 XML 里要写完整类名（包名 + 类名），不能只写 LineChart。
+         -->
++        <com.github.mikephil.charting.charts.LineChart
++            android:id="@+id/trendChart"
++            android:layout_width="match_parent"
++            android:layout_height="280dp"
++            android:layout_marginTop="12dp" />
++
++        <!-- 没有任何记录时的提示，默认隐藏。 -->
+         <TextView
 -            android:id="@+id/trend_empty"
--            android:layout_width="match_parent"
++            android:id="@+id/trendEmpty"
+             android:layout_width="match_parent"
 -            android:layout_height="match_parent"
--            android:gravity="center"
--            android:padding="24dp"
--            android:text="@string/trend_empty"
--            android:textSize="16sp"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="24dp"
+             android:gravity="center"
+             android:padding="24dp"
+             android:text="@string/trend_empty"
+             android:textSize="16sp"
 -            android:elevation="4dp"
--            android:visibility="gone" />
+             android:visibility="gone" />
 -    </FrameLayout>
--
+ 
 -    <!-- 图例说明。 -->
 -    <TextView
 -        android:id="@+id/trend_legend"
@@ -6543,6 +6694,8 @@ index ec8d83b..0000000
 -        android:textColor="?android:attr/textColorSecondary"
 -        android:textSize="12sp" />
 -</LinearLayout>
++    </LinearLayout>
++</ScrollView>
 diff --git a/app/src/main/res/layout/item_wellness.xml b/app/src/main/res/layout/item_wellness.xml
 new file mode 100644
 index 0000000..4673b55
@@ -7474,10 +7627,10 @@ index 0000000..12761bc
 +> 最后才碰 AI（C9/C10）。每一步都 Run 一次，比最后一起调试快得多。
 diff --git a/docs/exam-guide.md b/docs/exam-guide.md
 new file mode 100644
-index 0000000..9c24eff
+index 0000000..b77504d
 --- /dev/null
 +++ b/docs/exam-guide.md
-@@ -0,0 +1,560 @@
+@@ -0,0 +1,562 @@
 +# 考试删减指南：中英文切换 / AI 健康建议 / 趋势折线图
 +
 +这份文档回答一个问题：**考试题目不需要某个功能时，应该删掉哪些文件、哪些代码。**
@@ -7979,6 +8132,8 @@ index 0000000..9c24eff
 +5. 菜单项 + `MainActivity` 分支 + Manifest 注册 + `trend_*` 文案。
 +
 +完整代码直接抄本分支的 `TrendActivity.kt` / `activity_trend.xml`。
++从零搭建的顺序（仓库 → 依赖 → 布局 → Activity → Manifest → 编译）见
++`docs/from-scratch.md` 7.6。
 +如果机房装不了依赖，就在文档
 +`docs/wellness-tracker.md` 的 7.4 节找“自己写自定义 View”的骨架。
 +
@@ -8860,10 +9015,10 @@ index 0000000..79dec45
 +把这张卡和 `patch/wellness-tracker.patch` 一起带到考场，就够用了。
 diff --git a/docs/from-scratch.md b/docs/from-scratch.md
 new file mode 100644
-index 0000000..e80a5ee
+index 0000000..7ded38a
 --- /dev/null
 +++ b/docs/from-scratch.md
-@@ -0,0 +1,885 @@
+@@ -0,0 +1,992 @@
 +# 从零创建一个 Wellness Tracker（考试模拟手册）
 +
 +这份文档教你在一个**全新的空工程**里，按顺序把功能一块块加出来，最终到达
@@ -8876,16 +9031,16 @@ index 0000000..e80a5ee
 +- `docs/exam-guide.md` — 考场不需要某个功能时，删哪些文件。
 +- `docs/wellness-tracker.md` — 每个文件的作用和 SQLite 设计（含两种画趋势图的写法，7.4 节）。
 +
-+> 本文只讲“基础功能 + 语言切换 + AI”的搭建顺序。第三块可选功能
-+> “最近 7 天趋势折线图”依赖 MPAndroidChart，不是每题都需要，所以没有放进
-+> 从零步骤；需要时按 `docs/wellness-tracker.md` 7.4 节加，或直接复制本分支的
-+> `TrendActivity.kt` / `activity_trend.xml`。
++> 本文覆盖全部三块可选功能：语言切换（第 6 节）、AI（第 7 节）、
++> 最近 7 天趋势折线图（7.6）。趋势图依赖第三方库 MPAndroidChart，第一次 Sync 需要联网；
++> 机房网络不通就跳过 7.6，并按 `docs/exam-guide.md` 第 3 节把菜单项和引用删掉。
 +
 +**核心原则：一次只加一层；编译点按层给，不是每节都给。**
 +数据层（第 3 节）可以单独编译；从第 4 节起，`MainActivity`、`HistoryActivity`、`BaseActivity`、
-+`AdviceActivity` 这四个文件互相引用，缺任何一个都会报“找不到”，所以**第 4–7 节一路复制、
-+中途不编译也不运行，第一次编译放在第 7 节末尾（7.6）**。这也正好对上考试现场：题目要不要
-+语言切换和 AI，决定第 6、7 节是留下还是按 `docs/exam-guide.md` 删掉，删完再编译，一次成型。
++`AdviceActivity`、`TrendActivity` 这五个文件互相引用，缺任何一个都会报“找不到”，所以
++**第 4–7 节一路复制、中途不编译也不运行，第一次编译放在第 7 节末尾（7.7）**。
++这也正好对上考试现场：题目要不要语言切换 / AI / 图表，决定第 6、7 节和 7.6 是留下
++还是按 `docs/exam-guide.md` 删掉，删完再编译，一次成型。
 +
 +---
 +
@@ -8935,7 +9090,7 @@ index 0000000..e80a5ee
 +   如果第一行是别的（比如网页标题），说明你复制多了。
 +3. **一次只复制一个文件**，粘完先核对第一行。
 +  第 4 节之前（数据层）每粘一个就编译一次，出错好定位；第 4 节起界面层的文件互相引用，
-+  中途不编译，统一到 7.6（见本文开头的“核心原则”）。
++  中途不编译，统一到 7.7（见本文开头的“核心原则”）。
 +4. 不要下载 ZIP 后整个覆盖到工程里：ZIP 里没有 `.idea` 和 `local.properties`，
 +  但会用仓库的 `settings.gradle`、主题名等覆盖你向导生成的配置，
 +   容易出现“明明代码一样却跑不起来”。
@@ -9180,7 +9335,7 @@ index 0000000..e80a5ee
 +
 +### 4.2 代码
 +
-+复制 `MainActivity.kt`。注意它是仓库的**最终版**（含可选 A/B 的代码），结构是：
++复制 `MainActivity.kt`。注意它是仓库的**最终版**（含可选 A/B/C 的代码），结构是：
 +
 +```
 +onCreate()
@@ -9197,11 +9352,11 @@ index 0000000..e80a5ee
 + ├── 组装 WellnessRecord
 + └── db.save(record) + Toast
 +
-+onCreateOptionsMenu / onOptionsItemSelected   ← 可选 A/B 才需要，见第 6 节
++onCreateOptionsMenu / onOptionsItemSelected   ← 可选 A/B/C 才需要，见第 6 节和 7.6
 +```
 +
 +> **⚠️ 本步不要编译。** 仓库里的 `MainActivity.kt` 是最终版：原样复制后点 Build 会报一屏错，
-+> 这是**预期状态**——它提前引用了第 5、6、7 节才创建的文件。**第一次编译放在 7.6。**
++> 这是**预期状态**——它提前引用了第 5、6、7 节和 7.6 才创建的文件。**第一次编译放在 7.7。**
 +>
 +> 报错很长，但全部能对上号（这张表也用来确认“是缺文件，不是复制坏了”）：
 +>
@@ -9212,20 +9367,22 @@ index 0000000..e80a5ee
 +> | `HistoryActivity`                                              | `HistoryActivity.kt`                    | 5.1       |
 +> | `R.menu.menu_main`、`menu_language`、`menu_ai_advice`            | `res/menu/menu_main.xml`                | 6.3       |
 +> | `AdviceActivity`                                               | `AdviceActivity.kt`                     | 7.5       |
++> | `TrendActivity`                                                | `TrendActivity.kt`                      | 7.6       |
 +> | `title`、`findViewById`、`getString` 等一片红                        | 上面 `BaseActivity` 没解析出来导致的连锁错误，不是真的少了东西 | —         |
 +>
 +>
 +> **做法：原样复制，不做减法，第 7 节末尾一次编译成型。**
 +>
 +> 1. 第 4 节照抄 `MainActivity.kt`，**报错先不管、不要点 Run、不要删任何一行**；
-+> 2. 继续第 5 节（`HistoryActivity`）、第 6 节（`BaseActivity` + 菜单）、第 7 节（AI 页）；
-+> 3. 到 7.6 再点 Build / Run，这一屏红会自己消失，一次编译通过。
++> 2. 继续第 5 节（`HistoryActivity`）、第 6 节（`BaseActivity` + 菜单）、第 7 节（AI 页）、
++>    7.6（趋势页）；
++> 3. 到 7.7 再点 Build / Run，这一屏红会自己消失，一次编译通过。
 +>
 +> 代价是第 4–6 节中途不能运行、看不到界面，这是正常状态。好处是每份文件都和仓库一致，
 +> 最后对 `git diff` 时不用回忆自己删过什么。
 +>
-+> **例外：如果你决定不要第 6、7 节的功能**（题目不要求语言切换 / AI），这条路走不通：
-+> 照 `docs/exam-guide.md` 的删除清单把相关代码删掉，删完同样在 7.6 做首次编译。
++> **例外：如果你决定不要第 6、7 节或 7.6 的功能**（题目不要求语言切换 / AI / 图表），这条路走不通：
++> 照 `docs/exam-guide.md` 的删除清单把相关代码删掉，删完同样在 7.7 做首次编译。
 +> 那是“按题目裁功能”，和这里的临时减法不是一回事。
 +
 +
@@ -9236,7 +9393,7 @@ index 0000000..e80a5ee
 +`AdviceActivity`，Android Studio 会整片标红。这是**预期状态**，不是复制坏了：
 +
 +- 不要点 Run，也不要按 `Alt+Enter` 让 IDE “自动修复”，更不要为了消红去删行；
-+- 主界面的运行验收（日期显示、保存提示、Toast 文案）统一放在 **7.6**，那里是第一次编译点。
++- 主界面的运行验收（日期显示、保存提示、Toast 文案）统一放在 **7.7**，那里是第一次编译点。
 +
 +本节只核对一件事：`activity_main.xml` 和 `MainActivity.kt` 都已经完整粘进来，第一行分别是
 +`<?xml version="1.0" encoding="utf-8"?>` 和 `package com.example.bmi`。
@@ -9268,7 +9425,7 @@ index 0000000..e80a5ee
 +> 创建方式：右键 `res/layout` → New → Layout Resource File
 +
 +> 本节仍然不编译（`BaseActivity`、`AdviceActivity` 还没创建，红标照旧）。要收的尾只有一个：
-+> **在 Manifest 里注册** `HistoryActivity`（见 5.2）。漏了这一步，7.6 之后点“查看历史”会直接崩
++> **在 Manifest 里注册** `HistoryActivity`（见 5.2）。漏了这一步，7.7 之后点“查看历史”会直接崩
 +> （`ActivityNotFoundException`），而编译阶段不会给你任何提示。
 +
 +
@@ -9291,8 +9448,8 @@ index 0000000..e80a5ee
 +- [ ] 历史页要用的文案 key 已在 `values/strings.xml` 里（`wellness_history_title`、
 +  `wellness_history_empty`、`wellness_history_summary` 等），第 2 节整份覆盖时就已经带上了。
 +
-+> 到这里，**题目要求的基础功能代码已经写完**，运行验收统一在 7.6。
-+> 第 6、7 节是可选的加分项；不要就按 `docs/exam-guide.md` 删掉，删完同样在 7.6 编译。
++> 到这里，**题目要求的基础功能代码已经写完**，运行验收统一在 7.7。
++> 第 6、7 节和 7.6 是可选的加分项；不要就按 `docs/exam-guide.md` 删掉，删完同样在 7.7 编译。
 +
 +---
 +
@@ -9325,7 +9482,8 @@ index 0000000..e80a5ee
 +> - 你按 `docs/exam-guide.md` 删过语言切换（那时父类是 `AppCompatActivity`），现在又想加回来；
 +> - 你之前自己写过基础版的 `MainActivity`（父类是 `AppCompatActivity`）。
 +>
-+> 本节仍不编译：`AdviceActivity` 到第 7 节才有，`MainActivity` 的红标会一直留到 7.6。
++> 本节仍不编译：`AdviceActivity` 到 7.5、`TrendActivity` 到 7.6 才有，`MainActivity`
++> 的红标会一直留到 7.7。
 +
 +```kotlin
 +class MainActivity : BaseActivity() {
@@ -9398,7 +9556,7 @@ index 0000000..e80a5ee
 +- [ ] `res/menu/menu_main.xml` 已新建并粘好，`MainActivity` 里有 `onCreateOptionsMenu()`
 +  和 `onOptionsItemSelected()` 两个方法。
 +
-+> 语言切换的运行验证（切英文、重启保持、清数据恢复系统语言）在 7.6 做。
++> 语言切换的运行验证（切英文、重启保持、清数据恢复系统语言）在 7.7 做。
 +> 菜单里的 `menu_ai_advice` 依赖第 7 节的 `AdviceActivity`：不做 AI，就把
 +> `menu_main.xml` 里的这一项、`onOptionsItemSelected()` 里的对应分支一起删掉。
 +
@@ -9441,7 +9599,7 @@ index 0000000..e80a5ee
 +  `kotlinx-coroutines-android`。
 +
 +> `build.gradle` 改完要点一次 **Sync Now**（编辑器右上角的提示条，或大象图标）。不 Sync
-+> 的话，7.6 编译会报找不到 `ViewModel`、`viewModelScope`、`LiveData`——不是代码写错，
++> 的话，7.7 编译会报找不到 `ViewModel`、`viewModelScope`、`LiveData`——不是代码写错，
 +> 是依赖还没下载。
 +
 +
@@ -9494,9 +9652,9 @@ index 0000000..e80a5ee
 +1. `data/PromptBuilder.kt` —— 拼 system / user 提示词，不 import 任何 Android 类；
 +2. 复制 `app/src/test/java/com/example/bmi/PromptBuilderTest.kt`；！！！ 记得复制这个文件
 +3. **先不要跑测试**：`testDebugUnitTest` 会连带编译主源码，而 `AdviceActivity` 还没建，
-+  现在跑一定失败。测试放到 7.6 一起跑。
++  现在跑一定失败。测试放到 7.7 一起跑。
 +
-+这一步的意义是把“语言 → 提示词”的逻辑单独写出来，等 7.6 编译通过后，用那 7 个用例
++这一步的意义是把“语言 → 提示词”的逻辑单独写出来，等 7.7 编译通过后，用那 7 个用例
 +验证它，不用等界面。
 +
 +### 7.4 再接通网络
@@ -9522,7 +9680,7 @@ index 0000000..e80a5ee
 +
 +
 +
-+### 7.5 最后是页面
++### 7.5 AI 页面
 +
 +
 +| 文件                               | 作用                    |
@@ -9533,9 +9691,101 @@ index 0000000..e80a5ee
 +
 +
 +
-+### 7.6 首次编译 + 统一验收
++### 7.6 可选 C：最近 7 天趋势折线图
 +
-+**走到这里，四个互相引用的文件才第一次凑齐。现在才点编译：**
++顺序：**先加仓库和依赖（要 Sync）→ 布局 → Activity → Manifest → 到 7.7 一起编译。**
++
++这一节用 MPAndroidChart，不手写 Canvas。它只发布在 JitPack，第一次 Sync 要联网下载 aar。
++如果机房访问不了 JitPack，直接跳过本节，并按 `docs/exam-guide.md` 第 3 节把菜单项和
++`MainActivity` 里的 `menu_trend` 分支删掉，否则 7.7 编译会报
++`Unresolved reference: TrendActivity`。
++
++#### 7.6.1 仓库和依赖
++
++1. `settings.gradle` 的 `dependencyResolutionManagement` → `repositories` 里加一行：
++
++```gradle
++maven { url 'https://jitpack.io' }
++```
++
++2. `app/build.gradle` 的 `dependencies` 里加一行：
++
++```gradle
++implementation 'com.github.PhilJay:MPAndroidChart:v3.1.0'
++```
++
++3. 点 **Sync Now**（或大象图标）。
++
++> 只加依赖、不加仓库，Sync 会报
++> `Could not find com.github.PhilJay:MPAndroidChart:v3.1.0`；
++> 两处都加了但没 Sync，XML 里的 `LineChart` 会标红，7.7 也编译不过。
++
++#### 7.6.2 布局
++
++复制 `res/layout/activity_trend.xml`。三个 id：
++
++| id             | 控件                                                | 作用                   |
++| -------------- | ------------------------------------------------- | -------------------- |
++| `trendSummary` | TextView                                          | “最近 N 天 · 平均 X 步”    |
++| `trendChart`   | `com.github.mikephil.charting.charts.LineChart`   | 折线图本体                |
++| `trendEmpty`   | TextView                                          | 没有记录时的提示（默认 `gone`）  |
++
++图表控件必须写**完整类名**，高度必须**固定**：
++
++```xml
++<com.github.mikephil.charting.charts.LineChart
++    android:id="@+id/trendChart"
++    android:layout_width="match_parent"
++    android:layout_height="280dp"
++    android:layout_marginTop="12dp" />
++```
++
++> `layout_height` 写成 `wrap_content` 不会报错，但运行时图是**一片空白**：
++> `LineChart` 不会自己撑开，必须给确定高度。
++
++#### 7.6.3 `TrendActivity.kt`
++
++复制 `TrendActivity.kt`。代码只有三步：
++
++```
++allRecords().take(7).reversed()        读最近 7 条，翻成从早到晚
++mapIndexed { i, r -> Entry(...) }      第 i 个点 + 步数作为高度
++LineDataSet → LineData → invalidate()  一条线 + 数据 + 刷新
++```
++
++再把坐标轴调成“日期在横轴、数值从 0 开始”：`xAxis` 用 `ValueFormatter` 把序号换回
++`MM-DD`，`axisRight` 关掉，`description` / `legend` 关掉。完整写法在文件里都有注释。
++
++> 父类：如果做了第 6 节，`class TrendActivity : BaseActivity()` 保持不动；
++> 没做语言切换就改成 `AppCompatActivity`（和 `HistoryActivity` 的处理一样）。
++
++#### 7.6.4 菜单和 Manifest
++
++- 菜单项 `menu_trend`：第 6 节整份覆盖 `menu_main.xml` 时已经带过来了；
++- `R.id.menu_trend` 分支：第 4 节整份复制 `MainActivity.kt` 时已经带过来了；
++- 如果第 6 节没做（没有菜单），按 6.3 新建 `menu_main.xml`，只保留
++  `menu_ai_advice` / `menu_trend` 里你要的项。
++
++Manifest 里注册，位置和 `HistoryActivity` 平级：
++
++```xml
++<activity
++    android:name=".TrendActivity"
++    android:exported="false"
++    android:label="@string/trend_title" />
++```
++
++`strings.xml` 的 `trend_*` 和 `menu_trend` 在第 2 节已经整份复制过，不需要再动。
++
++#### 7.6.5 本步不验收
++
++`MainActivity` 从第 4 节起就引用了 `TrendActivity`，所以本节也不能单独编译。
++和前面几节一样：**原样复制，到 7.7 一次编译**。
++
++### 7.7 首次编译 + 统一验收
++
++**走到这里，五个互相引用的文件（`MainActivity`、`HistoryActivity`、`BaseActivity`、
++`AdviceActivity`、`TrendActivity`）才第一次凑齐。现在才点编译：**
 +
 +- 命令行：`gradlew.bat assembleDebug`
 +- IDE：`Build → Make Project`（或直接 Run）
@@ -9543,7 +9793,7 @@ index 0000000..e80a5ee
 +那一屏红应当全部消失。如果还有错，回到 4.2 的表对照一下缺的是哪一节的文件，
 +不要靠猜着删代码“消红”。
 +
-+> 跳过第 6、7 节的情况：按 `docs/exam-guide.md` 删完相关代码后，首次编译同样在这里做，
++> 跳过第 6、7 节或 7.6 的情况：按 `docs/exam-guide.md` 删完相关代码后，首次编译同样在这里做，
 +> 验收只取下面“编译与安装”“主界面”“历史页”三组。
 +
 +**编译与安装**
@@ -9579,6 +9829,15 @@ index 0000000..e80a5ee
 +- [ ] 断网 → 提示网络错误 + 出现“重试”按钮；
 +- [ ] 转屏 → 不重复请求。
 +
++**趋势图（7.6，可选）**
++
++- [ ] 菜单点“趋势图”能打开页面，不闪退；
++- [ ] 一条记录都没有 → 显示“还没有记录”，不出现空坐标轴；
++- [ ] 有 2 条以上记录 → 折线按日期从早到晚排列，点数与记录数一致；
++- [ ] 同一天保存两次 → 图上仍然只有一个点（覆盖，不是两条）；
++- [ ] 只有一条记录 → 点画在中间，不崩；
++- [ ] 页面能上下滚动，图表不抢手势。
++
 +---
 +
 +
@@ -9594,12 +9853,14 @@ index 0000000..e80a5ee
 +| `.../HistoryActivity.kt`                                                          | ✅                        |
 +| `.../BaseActivity.kt`（可选）                                                         | ✅ 或按 `exam-guide.md` 删掉  |
 +| `.../AdviceActivity.kt`（可选）                                                       | ✅ 或删掉                    |
++| `.../TrendActivity.kt`（可选 C）                                                      | ✅ 或删掉                    |
 +| `.../data/Dates.kt`、`WellnessRecord.kt`、`WellnessDbHelper.kt`                     | ✅                        |
 +| `.../data/AppLanguage.kt`、`LanguageStore.kt`（可选）                                  | ✅ 或删掉                    |
 +| `.../data/PromptBuilder.kt`、`DeepSeekClient.kt`、`WellnessAdviceRepository.kt`（可选） | ✅ 或删掉                    |
 +| `.../ui/advice/`（可选）                                                              | 两文件，或整个目录删掉              |
 +| `res/layout/activity_main.xml`、`activity_history.xml`、`item_wellness.xml`         | ✅                        |
 +| `res/layout/activity_advice.xml`（可选）                                              | ✅ 或删掉                    |
++| `res/layout/activity_trend.xml`（可选 C）                                             | ✅ 或删掉                    |
 +| `res/menu/menu_main.xml`（可选）                                                      | ✅ 或删掉                    |
 +| `res/values/strings.xml`、`values-zh-rCN/strings.xml`                              | ✅ 两套                     |
 +| `res/values/themes.xml`、`values-night/themes.xml`、`colors.xml`                    | ✅                        |
@@ -9713,12 +9974,12 @@ index 0000000..e80a5ee
 +| 10–20 min | 资源：strings（中英）、themes、颜色                 | 无红色报错                |
 +| 20–30 min | 数据层：Record、Dates、DbHelper                | 编译通过（界面层之前的最后一次单独编译） |
 +| 30–45 min | 主界面 + 历史页：布局与代码全部复制，**不编译**              | 文件与仓库一致，红标属正常        |
-+| 45–60 min | 可选功能：语言切换 + AI（按题目取舍）                    | 文件与 Manifest 到位      |
-+| 60–72 min | 首次编译 + 自测清单（7.6）                         | 编译通过，各功能逐项打勾         |
++| 45–60 min | 可选功能：语言切换 + AI + 趋势图（按题目取舍）              | 文件与 Manifest 到位      |
++| 60–72 min | 首次编译 + 自测清单（7.7）                         | 编译通过，各功能逐项打勾         |
 +| 72–80 min | 清理临时文件、确认没有提交 `.idea`/`local.properties` | `git status` 干净      |
 +
 +
-+如果时间不够，**优先保证“能保存 + 能看历史”**，语言和 AI 都是加分项；但注意：既然第 4–7 节
++如果时间不够，**优先保证“能保存 + 能看历史”**，语言、AI 和图表都是加分项；但注意：既然第 4–7 节
 +是“复制完再统一编译”，中途砍功能要用 `docs/exam-guide.md` 的删除清单，不能只删文件不删引用。
 +
 +---
@@ -9729,8 +9990,8 @@ index 0000000..e80a5ee
 +
 +**建工程的顺序**：构建文件 → 资源 → 数据类 → 数据库 → 主界面 → 历史页 → 可选功能。
 +
-+**编译点只有两个**：第 3 节末（数据层，能单独跑）、第 7 节末（四个互相引用的文件到齐，见 7.6）。
-+中间第 4–6 节只复制、不编译也不运行，那时的满屏红属于预期状态。
++**编译点只有两个**：第 3 节末（数据层，能单独跑）、第 7 节末（五个互相引用的文件到齐，见 7.7）。
++中间第 4–7 节只复制、不编译也不运行，那时的满屏红属于预期状态。
 +
 +**每个文件属于哪一层**：
 +
@@ -9742,6 +10003,7 @@ index 0000000..e80a5ee
 +可选 A    BaseActivity、AppLanguage、LanguageStore、menu_main
 +可选 B    PromptBuilder、DeepSeekClient、WellnessAdviceRepository、
 +          ui/advice/*、AdviceActivity + activity_advice、PromptBuilderTest
++可选 C    TrendActivity + activity_trend、menu_trend、MPAndroidChart 依赖
 +```
 +
 +**改题目的顺序**：字段（C1）→ 数据库（C2）→ 文案（C3）→ 布局（C4）→ 输入与保存（C5/C6）
@@ -9965,10 +10227,10 @@ index aeab845..d643151 100644
 +所以 adb 那条命令只用于验证资源，不会覆盖 App 内的选择。
 diff --git a/docs/wellness-tracker.md b/docs/wellness-tracker.md
 new file mode 100644
-index 0000000..27b35b4
+index 0000000..039ba6e
 --- /dev/null
 +++ b/docs/wellness-tracker.md
-@@ -0,0 +1,647 @@
+@@ -0,0 +1,649 @@
 +# Wellness Tracker 改造说明（考试练习版）
 +
 +本分支 `wellness_tracker` 从 `cityu_lab` 的最新提交 `d43a3c9` 创建，把原来的
@@ -10398,6 +10660,8 @@ index 0000000..27b35b4
 +```
 +
 +完整带注释的版本见本分支的 `TrendActivity.kt` 和 `activity_trend.xml`。
++从零工程的完整搭建顺序（仓库 → 依赖 → 布局 → Activity → Manifest）见
++`docs/from-scratch.md` 7.6。
 +还要补三处（和新增页面一样）：Manifest 注册 `TrendActivity`、菜单里加一项、
 +`strings.xml` 加 `trend_*` 文案。
 +
