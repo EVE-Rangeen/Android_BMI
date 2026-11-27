@@ -18,9 +18,15 @@ MVP（Minimum Viable Product，最小可用版本）。
 | 保存 | “Save today record” 按钮写入 SQLite |
 | 每天记录一下 | 日期自动取系统当天，同一天再保存会覆盖旧记录 |
 | 查看历史记录 | “View history” 打开 `HistoryActivity`，按日期倒序列出全部记录 |
+| （可选 A）中英文切换 | 菜单 “Switch language” → 保存选择 + `recreate()`，见 `docs/llm-setup.md` |
+| （可选 B）AI 健康建议 | 菜单 “AI advice” → 取今天记录发 DeepSeek，显示 3 条建议 |
 
-没有做的内容（刻意不做，属于冗余）：BMI 计算、AI 建议、折线图、登录、云同步、
-编辑/删除单条记录。旧 BMI/AI 代码已经全部删除（见 4.3 节），项目只保留健康日志功能。
+没有做的内容（刻意不做，属于冗余）：BMI 计算、趋势折线图、登录、云同步、
+编辑/删除单条记录。旧 BMI 代码已经全部删除（见 4.3 节）。
+
+两块可选功能（语言切换、AI）都做成了“可以整块删除”的形式，代码里用
+`【语言切换 · 考试可删】` / `【AI 功能 · 考试可删】` 标记，删除清单见
+`docs/exam-guide.md`。基础功能不依赖它们，删掉照样能编译运行。
 
 ---
 
@@ -99,17 +105,29 @@ git apply --3way patch/wellness-tracker.patch
 | `app/src/main/java/com/example/bmi/HistoryActivity.kt` | 历史记录页：读库、统计、显示列表 |
 | `app/src/main/res/layout/activity_history.xml` | 历史页布局（统计 + 空状态 + ListView） |
 | `app/src/main/res/layout/item_wellness.xml` | 历史列表每一行的布局（两行文字） |
+| `BaseActivity.kt`（可选 A） | 语言切换：`attachBaseContext` 里替换 Locale |
+| `data/AppLanguage.kt`（可选 A/B） | `ENGLISH` / `CHINESE` 枚举 + `fromTag()` |
+| `data/LanguageStore.kt`（可选 A） | SharedPreferences 记住用户选的语言 |
+| `res/menu/menu_main.xml`（可选 A/B） | 右上角菜单：切换语言、AI 建议 |
+| `AdviceActivity.kt`（可选 B） | AI 页：取今天记录 → 请求 → 渲染状态 |
+| `res/layout/activity_advice.xml`（可选 B） | AI 页布局（摘要 + 转圈 + 建议 + 重试） |
+| `data/PromptBuilder.kt`（可选 B） | 拼提示词，纯 Kotlin，可单元测试 |
+| `data/DeepSeekClient.kt`（可选 B） | HTTP 客户端（`HttpURLConnection` + `org.json`） |
+| `data/WellnessAdviceRepository.kt`（可选 B） | 切 IO 线程发请求、统一异常 |
+| `ui/advice/AdviceUiState.kt`（可选 B） | 四种状态 + 错误原因枚举 |
+| `ui/advice/AdviceViewModel.kt`（可选 B） | ViewModel + LiveData + 重试 |
+| `app/src/test/.../PromptBuilderTest.kt`（可选 B） | 提示词单元测试（7 个用例） |
 
 ### 4.2 修改文件
 
 | 文件 | 改了什么 |
 | --- | --- |
-| `app/src/main/java/com/example/bmi/MainActivity.kt` | 整体换成“选状况 + 填步数/备注 + 保存 + 查看历史”，删掉 BMI 计算、跳转报告页、菜单、对话框、自动填充 |
+| `app/src/main/java/com/example/bmi/MainActivity.kt` | 整体换成“选状况 + 填步数/备注 + 保存 + 查看历史”；再叠加两项：继承 `BaseActivity`（语言）+ 选项菜单（语言 / AI） |
 | `app/src/main/res/layout/activity_main.xml` | 整体换成纵向 `LinearLayout` + `ScrollView`，只保留本题需要的控件 |
-| `app/src/main/AndroidManifest.xml` | 只注册 `MainActivity` 和 `HistoryActivity`；删除 `INTERNET` 权限和旧页面注册；主题改为 `Theme.Wellness` |
-| `app/src/main/res/values/strings.xml` | 只保留 wellness 文案和状况数组，`app_name` 改为 Wellness Tracker |
+| `app/src/main/AndroidManifest.xml` | 注册 `MainActivity`、`HistoryActivity`、`AdviceActivity`；只保留 AI 需要的 `INTERNET` 权限；主题改为 `Theme.Wellness` |
+| `app/src/main/res/values/strings.xml` | wellness 文案 + 状况数组 + 菜单/AI 文案，`app_name` 改为 Wellness Tracker |
 | `app/src/main/res/values-zh-rCN/strings.xml` | 同上，中文文案 |
-| `app/build.gradle` | 删除 DeepSeek 密钥注入、`buildConfig` 开关，以及只有旧 MVVM/AI 才用的依赖（ConstraintLayout、lifecycle、协程等） |
+| `app/build.gradle` | 只保留健康日志依赖；再为 AI 加回密钥注入、`buildConfig` 开关、ViewModel/协程依赖 |
 | `app/src/main/res/values/themes.xml` | `Theme.BMI` 重命名为 `Theme.Wellness` |
 | `app/src/main/res/values-night/themes.xml` | 同上，深色主题同步改名 |
 | `README.md` | 改成健康日志的项目说明，保留工具链/网络/构建部分 |
@@ -120,28 +138,39 @@ git apply --3way patch/wellness-tracker.patch
 | --- | --- | --- |
 | 旧页面 | `ReportActivity.kt`、`TrendActivity.kt` | 本题没有报告页和趋势页 |
 | 旧数据模型 | `BmiDbHelper.kt`、`BmiHistoryRepository.kt`、`BmiPreferences.kt`、`BmiProfile.kt`、`BmiRecord.kt`、`BmiDates.kt`、`Gender.kt` | 已由 `Wellness*` 和 `Dates` 取代 |
-| AI 功能 | `DeepSeekClient.kt`、`HealthAdviceRepository.kt`、`PromptBuilder.kt`、`AppLanguage.kt` | 本题不联网，AI 和“回答语言枚举”都不需要 |
 | MVVM/图表 | `ui/report/`、`ui/trend/` 整个目录 | 只服务于已删除的报告页和趋势页 |
 | 旧布局 | `activity_report.xml`、`activity_trend.xml` 及 `layout-land/` 下对应文件 | 页面已删除 |
 | 横屏旧主布局 | `layout-land/activity_main.xml` | Android 横屏时会优先加载它；不删会因找不到 `stepsET` 等控件而崩溃 |
 | 菜单/图片 | `menu/menu_options.xml`、`menu/menu_context.xml`、`drawable/bot_*.png` | 旧主界面和报告页专用 |
-| 旧测试 | `PromptBuilderTest.kt` | 被测的 `PromptBuilder` 已删除 |
-| 旧文档 | `docs/llm-setup.md` | AI 功能已删除 |
 
-> 原始 BMI 代码没有丢，仍然完整保存在 `cityu_lab` 分支和它之前的提交里，
-> 需要对照学习时 `git checkout cityu_lab` 就能看到。
+> 首轮清理时还删掉了 `DeepSeekClient.kt`、`HealthAdviceRepository.kt`、
+> `PromptBuilder.kt`、`AppLanguage.kt`、`ui/report/` 和 `docs/llm-setup.md`。
+> 后来为了留作考试参考，又按 4.1 节的清单重新加回了**新写的**语言切换和 AI 代码
+> （文件名和职责与旧版不同：`WellnessAdviceRepository`、`ui/advice/`）。
+> 旧的 BMI 相关代码没有恢复，仍然只存在于 `cityu_lab` 分支。
 
 ### 4.4 清理后的最终结构
 
 ```
 app/src/main/java/com/example/bmi/
-├── MainActivity.kt          # 输入、校验、保存、跳转
+├── MainActivity.kt          # 输入、校验、保存、跳转、菜单
 ├── HistoryActivity.kt       # 历史列表
-└── data/
-    ├── Dates.kt             # 今天的日期
-    ├── WellnessRecord.kt    # 数据类
-    └── WellnessDbHelper.kt  # SQLite
+├── BaseActivity.kt          # 【可选 A】语言切换
+├── AdviceActivity.kt        # 【可选 B】AI 建议页
+├── data/
+│   ├── Dates.kt             # 今天的日期
+│   ├── WellnessRecord.kt    # 数据类
+│   ├── WellnessDbHelper.kt  # SQLite
+│   ├── AppLanguage.kt       # 【可选 A/B】语言枚举
+│   ├── LanguageStore.kt     # 【可选 A】语言偏好
+│   ├── PromptBuilder.kt     # 【可选 B】提示词
+│   ├── DeepSeekClient.kt    # 【可选 B】HTTP
+│   └── WellnessAdviceRepository.kt  # 【可选 B】仓库
+└── ui/advice/               # 【可选 B】状态 + ViewModel
 ```
+
+删掉两个可选功能后，就回到只有 6 个 Kotlin 文件的最小版本，
+清单见 `docs/exam-guide.md` 第 3 节。
 
 包名仍然是 `com.example.bmi`。改包名要动 `namespace`、`applicationId`、所有
 `package` 声明和目录结构，既费时又容易出错，题目也不检查包名，所以保留不动。
@@ -318,8 +347,13 @@ CREATE TABLE wellness_records (
 
 ## 8. 旧代码清理记录（已完成）
 
-当前分支已经清理完毕，最终只剩健康日志相关代码。清理顺序如下——如果你在考试
-现场也想做同样的清理，建议按这个顺序，每完成一组就编译一次：
+当前分支已经清理完毕：BMI 相关代码全部删除。之后为了留作考试参考，又在健康日志
+之上加回了**新写**的语言切换和 AI 代码（见 4.1 节），它们用
+`【语言切换 · 考试可删】` / `【AI 功能 · 考试可删】` 标记，删除清单在
+`docs/exam-guide.md`。本节记录的是“删旧 BMI 代码”的过程。
+
+清理顺序如下——如果你在考试现场也想做同样的清理，建议按这个顺序，
+每完成一组就编译一次：
 
 1. **先换日期工具**：新增 `data/Dates.kt`，把 `MainActivity` 里的 `BmiDates`
    全部替换成 `Dates`，编译通过后再删 `BmiDates.kt`；
@@ -346,11 +380,18 @@ CREATE TABLE wellness_records (
 和 `ReportActivity` 使用，必须等 AI 那一组文件一起删；`BmiDates` 被
 `MainActivity` 使用，必须先替换成 `Dates`。
 
+> 注意：第 4、7、10 步是“删掉旧版 AI”的动作。现在分支里又有了**新版**的
+> `DeepSeekClient`、`PromptBuilder`、`AppLanguage` 和 `PromptBuilderTest`，
+> 它们是新写的、服务于可选功能 B。要删它们请照 `docs/exam-guide.md` 第 2 节，
+> 不要照本节。
+
 原始 BMI 代码在 `cityu_lab` 分支仍然完整保留，需要对照时随时可以切回去看。
 
 ---
 
 ## 9. 自测清单
+
+**基础功能**
 
 - [ ] 什么都不填，直接点保存：出现“请输入有效的步数”，不崩溃、不写库。
 - [ ] 输入 `abc`：数字键盘通常打不出来；如果能输入，仍然被校验拦住。
@@ -359,14 +400,32 @@ CREATE TABLE wellness_records (
 - [ ] 同一天保存两次：历史里只有一条，显示第二次的内容。
 - [ ] 历史为空时：显示“暂无记录”，不显示空白列表。
 - [ ] 旋转屏幕：不崩溃（因为已删除旧的横屏主布局）。
-- [ ] 切换系统语言为中文：界面和历史记录都变成中文。
 - [ ] 从历史页按返回键：回到主界面，输入内容还在。
 - [ ] 杀掉 App 再打开：历史记录仍然存在（数据真的写进了 SQLite）。
+
+**可选 A：中英文切换**
+
+- [ ] 菜单点“切换语言”：界面立刻变英文，标题栏也变。
+- [ ] 再点一次：变回中文。
+- [ ] 切换后进历史页 / AI 页：语言保持一致。
+- [ ] 杀掉 App 再打开：还是上次选的语言（SharedPreferences 生效）。
+- [ ] 清除 App 数据后重开：跟随手机系统语言。
+
+**可选 B：AI 健康建议**
+
+- [ ] 今天没有记录时进 AI 页：提示“今天还没有记录”，不发请求。
+- [ ] 有记录时进 AI 页：先转圈，然后显示 3 条建议。
+- [ ] 中文界面拿到中文建议；英文界面拿到英文建议。
+- [ ] 断开网络再进：提示网络错误，出现“重试”按钮。
+- [ ] 把 `local.properties` 的 key 清空后重编译：提示“没有配置 API key”。
+- [ ] 转屏：不重复请求（ViewModel 存活，`hasRequested` 生效）。
 
 ---
 
 ## 10. 相关文档
 
 - `README.md`：项目简介、工具链、运行和 patch 用法。
+- `docs/exam-guide.md`：考试删减指南（不要语言切换 / 不要 AI 时删什么）。
+- `docs/llm-setup.md`：AI 与语言切换的实现细节、key 配置、单元测试。
 - `docs/exam-playbook.md`：把这道题的做法迁移到其他“每日记录类”题目的通用教程。
 - `patch/wellness-tracker.patch`：可直接应用到 `d43a3c9` 的补丁（包含旧代码删除）。

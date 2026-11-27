@@ -18,10 +18,14 @@ BMI 作业把这套骨架完整演示了一遍。考试无论换成健康日志�
 配套的完整示例就是本仓库的 `wellness_tracker` 分支（见
 `docs/wellness-tracker.md`），可以对照着看。
 
-> 注意：`wellness_tracker` 分支已经删除了旧 BMI/AI 代码。本文提到的
+> 注意：`wellness_tracker` 分支已经删除了旧 BMI 代码。本文提到的
 > `BmiDbHelper.kt`、`BmiRecord.kt`、`BmiPreferences.kt` 等文件名，指的是
 > `cityu_lab` 分支（你已提交的作业）里的代码，用来对照抄写；
 > 当前分支只剩 `Wellness*` 和 `Dates`。
+
+> 额外参考：当前分支保留了**新写的**“App 内中英文切换”和“AI 健康建议”两块
+> 可选功能。如果考题正好要求其中之一，直接照抄；如果考题用不上，
+> 按 `docs/exam-guide.md` 的清单整块删除即可（本文不涉及这两块）。
 
 ---
 

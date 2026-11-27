@@ -1,13 +1,18 @@
 # Wellness Tracker（健康日志）
 
 一个 Android 考试练习项目：每天记录身体状况、步数和备注，保存到 SQLite，
-并在历史页按日期查看全部记录。
+并在历史页按日期查看全部记录。在基础功能之上，还加了两块上课学过的内容：
+App 内中英文切换 和 AI 健康建议（DeepSeek）。
 
 本项目从原始的 BMI 作业（`cityu_lab` 分支）改造而来，保留了学校电脑要求的
-工具链配置，但源码已经清理成只包含健康日志功能。改造过程、逐文件讲解和
-可迁移到同类题目的考场教程见文末文档。
+工具链配置，源码已经清理成只包含健康日志功能；BMI 相关代码仍然是删除状态。
+改造过程、逐文件讲解、可迁移到同类题目的考场教程见文末文档。
+
+两块可选功能都可以整块删除，删除清单见 [`docs/exam-guide.md`](docs/exam-guide.md)。
 
 ## 功能
+
+**基础功能（题目要求）**
 
 - 自动显示当天日期，不需要手输
 - 选择身体状况：Good / Fair / Poor（中文：良好 / 一般 / 较差）
@@ -15,21 +20,44 @@
 - 填写备注（可留空）
 - 保存到 SQLite；同一天重复保存会覆盖旧记录
 - 历史页按日期倒序显示全部记录，并统计记录天数和平均步数
-- 支持中英文资源（`values/` 与 `values-zh-rCN/`）
+- 中英文两套资源（`values/` 与 `values-zh-rCN/`）
+
+**可选功能 A：App 内中英文切换**
+
+- 右上角菜单 → “Switch language / 切换语言”，整个 App 立刻换语言
+- 选择用 SharedPreferences 记住，下次打开保持
+- 没手动选过时，跟随手机系统语言
+
+**可选功能 B：AI 健康建议**
+
+- 右上角菜单 → “AI advice / AI 健康建议”
+- 取今天的记录，发给 DeepSeek，显示 3 条可执行的建议
+- 回答语言跟随界面语言：中文界面拿到中文建议，英文界面拿到英文建议
+- 失败时显示原因（没配 key / 网络错误 / 接口错误）并支持重试
 
 ## 代码结构
 
 ```
 app/src/main/java/com/example/bmi/
-├── MainActivity.kt              # 主界面：输入、校验、保存、跳转
+├── MainActivity.kt              # 主界面：输入、校验、保存、菜单
 ├── HistoryActivity.kt           # 历史页：读库、空状态、ListView
-└── data/
-    ├── WellnessRecord.kt        # 数据类：日期/状况/步数/备注
-    ├── WellnessDbHelper.kt      # SQLite：建表、保存、读取
-    └── Dates.kt                 # 日期工具：今天的 yyyy-MM-dd
+├── BaseActivity.kt              # 【可选 A】语言切换：attachBaseContext
+├── AdviceActivity.kt            # 【可选 B】AI 页：取记录、请求、渲染状态
+├── data/
+│   ├── WellnessRecord.kt        # 数据类：日期/状况/步数/备注
+│   ├── WellnessDbHelper.kt      # SQLite：建表、保存、读取
+│   ├── Dates.kt                 # 日期工具：今天的 yyyy-MM-dd
+│   ├── AppLanguage.kt           # 【可选 A/B】en / zh 枚举
+│   ├── LanguageStore.kt         # 【可选 A】SharedPreferences 记语言
+│   ├── PromptBuilder.kt         # 【可选 B】拼提示词（纯 Kotlin，可单测）
+│   ├── DeepSeekClient.kt        # 【可选 B】HTTP + JSON 客户端
+│   └── WellnessAdviceRepository.kt  # 【可选 B】切 IO 线程、统一异常
+└── ui/advice/
+    ├── AdviceUiState.kt         # 【可选 B】Idle/Loading/Success/Error
+    └── AdviceViewModel.kt       # 【可选 B】ViewModel + LiveData + 重试
 ```
 
-没有网络请求、没有 AI、没有图表，也不需要任何权限。
+只有 AI 功能需要 `INTERNET` 权限和 API key；基础功能不联网、不需要权限。
 
 ## 工具链版本
 
@@ -56,6 +84,30 @@ app/src/main/java/com/example/bmi/
 
 `local.properties`（本机 SDK 路径）和 `.idea/`（IDE 配置）都没有提交到仓库，
 Android Studio 打开项目时会自动生成，不需要手动创建。
+
+### 想用 AI 功能：配置 DeepSeek key（可选）
+
+AI 页面需要一个 API key。在项目根目录的 `local.properties` 里加一行：
+
+```properties
+deepseek.apiKey=sk-你的key
+```
+
+然后重新 Sync + Run（key 是编译期注入 `BuildConfig` 的，改完必须重新编译）。
+不配也能正常使用记录和历史功能，只是 AI 页会提示“没有配置 API key”。
+
+## 考试时用哪一版
+
+同一份代码可以按题目要求删掉可选功能，删除清单写得很具体：
+
+| 题目要求 | 操作 |
+| --- | --- |
+| 只要记录 + 历史 | 按 `docs/exam-guide.md` 第 1、2 节删除 |
+| 不要 App 内切换语言 | 按 `docs/exam-guide.md` 第 1 节删除 |
+| 不要 AI | 按 `docs/exam-guide.md` 第 2 节删除 |
+| 都要 | 直接用当前版本 |
+
+建议先 `git checkout -b exam-minimal` 再动手，删坏了 `git checkout -- .` 就能恢复。
 
 ## 校园网访问不了 Google / Maven 时
 
@@ -100,8 +152,12 @@ git apply patch/wellness-tracker.patch
 
 ## 文档
 
+- [`docs/exam-guide.md`](docs/exam-guide.md)
+  —— **考试删减指南**：不要中英文切换 / 不要 AI 时，具体删哪些文件、哪些代码。
 - [`docs/wellness-tracker.md`](docs/wellness-tracker.md)
   —— 本次改造的逐文件说明、数据库设计、patch 用法、自测清单。
+- [`docs/llm-setup.md`](docs/llm-setup.md)
+  —— AI 健康建议与语言切换的实现、API key 配置、单元测试说明。
 - [`docs/exam-playbook.md`](docs/exam-playbook.md)
   —— 把 BMI 作业改成任意“每日记录类”题目的七步教程、变体对照表、常见错误。
 - [`docs/开发指南.md`](docs/开发指南.md)
