@@ -8435,10 +8435,10 @@ index 0000000..4126ecb
 +把这张卡和 `patch/wellness-tracker.patch` 一起带到考场，就够用了。
 diff --git a/docs/from-scratch.md b/docs/from-scratch.md
 new file mode 100644
-index 0000000..e947952
+index 0000000..9070f32
 --- /dev/null
 +++ b/docs/from-scratch.md
-@@ -0,0 +1,572 @@
+@@ -0,0 +1,589 @@
 +# 从零创建一个 Wellness Tracker（考试模拟手册）
 +
 +这份文档教你在一个**全新的空工程**里，按顺序把功能一块块加出来，最终到达
@@ -8456,7 +8456,7 @@ index 0000000..e947952
 +
 +---
 +
-+## 0. 开始前的三个决定
++## 0. 开始前的准备
 +
 +### 0.1 包名（`applicationId` / `namespace` / `package`）
 +
@@ -8476,14 +8476,31 @@ index 0000000..e947952
 +| 向导生成 | 说明 | 处理方式 |
 +| --- | --- | --- |
 +| `build.gradle` + `settings.gradle` | Groovy DSL，本仓库就是这种 | 直接粘贴仓库的构建文件（见 1.2） |
-+| `build.gradle.kts` + `settings.gradle.kts` + `gradle/libs.versions.toml` | Kotlin DSL + 版本目录，较新版本默认 | 二选一：**推荐**删掉 `.kts` 和 `libs.versions.toml`，改用仓库的 Groovy 版本；或者保留 `.kts`，按下面 0.3 的对照表改写 |
++| `build.gradle.kts` + `settings.gradle.kts` + `gradle/libs.versions.toml` | Kotlin DSL + 版本目录，较新版本默认 | 二选一：**推荐**删掉 `.kts` 和 `libs.versions.toml`，改用仓库的 Groovy 版本；或者保留 `.kts`，按下面 0.4 的对照表改写 |
 +
 +先打开工程根目录看一眼，确定属于哪种，再往下做。
 +
 +> 判断方法：Android Studio 左侧 Project 视图切到 **Project** 模式，
 +> 根目录有没有 `build.gradle.kts`。
 +
-+### 0.3 如果坚持用 Kotlin DSL：对照表
++### 0.3 从 GitHub 网页复制代码的正确姿势
++
++考试时你只能看仓库（多半是网页版），所以复制这一步也有讲究：
++
++1. **点文件名 → 点右上角 `Raw`**，在纯文本页面 `Ctrl+A`、`Ctrl+C`。
++   直接在代码高亮页面上拖选，容易把行号、折叠箭头一起复制进去。
++2. 复制完先看**第一行**：`.kt` 文件必须从 `package com.example.bmi` 开始；
++   `.xml` 文件必须从 `<?xml version="1.0" encoding="utf-8"?>` 开始。
++   如果第一行是别的（比如网页标题），说明你复制多了。
++3. **一次只复制一个文件**，粘进 Android Studio 后立刻编译一次。
++   一次复制五个文件再编译，报错时很难判断是哪一个引入的。
++4. 不要下载 ZIP 后整个覆盖到工程里：ZIP 里没有 `.idea` 和 `local.properties`，
++   但会用仓库的 `settings.gradle`、主题名等覆盖你向导生成的配置，
++   容易出现“明明代码一样却跑不起来”。
++5. 中文注释在网页上复制一般是正常的；如果粘进去变乱码，先把
++   **File → File Encodings** 全部设为 UTF-8，再重新粘贴。
++
++### 0.4 如果坚持用 Kotlin DSL：对照表
 +
 +本仓库所有片段都是 Groovy。若你的工程是 `.kts`，按下表改：
 +
@@ -8527,7 +8544,7 @@ index 0000000..e947952
 +| Package name | `com.example.bmi` | **建议照抄**，省去改包名 |
 +| Language | Kotlin | 本仓库是 Kotlin |
 +| Minimum SDK | API 21 | 仓库 `minSdk = 21`，选 21 或 24 都能跑 |
-+| Build configuration language | 能选 Groovy 就选 Groovy | 不能选就按 0.2/0.3 处理 |
++| Build configuration language | 能选 Groovy 就选 Groovy | 不能选就按 0.2/0.4 处理 |
 +
 +4. 等 Sync 完成，点 **Run**，确认能看到模板自带的 “Hello World!”。
 +   **这一步必须先通过**，否则后面出问题分不清是谁的锅。
@@ -8946,7 +8963,7 @@ index 0000000..e947952
 +| Sync 报找不到 `android-36` | 本机 SDK 只装到 34/35 | SDK Manager 装 Platform 36 + Build-Tools |
 +| 打开工程时提示 “Android Gradle Plugin requires newer Studio” | 本机 Studio 比 2025.2.1 旧 | 只能用命令行 `gradlew.bat assembleDebug` 构建；**不要**为了能在 IDE 里打开而降 AGP 版本，否则改完忘了还原，考试就炸 |
 +| 打开工程时提示 “Upgrade AGP / Migrate to …” | 本机 Studio 比 2025.2.1 新 | 点 **Don't remind me / Cancel**；如果已经点了，用 `git checkout -- build.gradle app/build.gradle gradle/` 还原 |
-+| 向导生成 `build.gradle.kts` + `libs.versions.toml` | 新版模板默认 Kotlin DSL | 见 0.2/0.3；**不要把 `.kts` 片段和本仓库的 Groovy 混着粘** |
++| 向导生成 `build.gradle.kts` + `libs.versions.toml` | 新版模板默认 Kotlin DSL | 见 0.2/0.4；**不要把 `.kts` 片段和本仓库的 Groovy 混着粘** |
 +| 粘贴后一片红：`Unresolved reference: R` | 包名 / `namespace` 与新工程不一致 | 改 `namespace` 和每个文件的 `package`，或一开始就用 `com.example.bmi` |
 +| 中文注释变乱码 | 文件编码不是 UTF-8 | Settings → Editor → **File Encodings** 全部设 UTF-8；`gradle.properties` 已有 `-Dfile.encoding=UTF-8`，别删 |
 +| 用记事本改过文件后 `git apply` 失败/差异巨大 | 记事本把 LF 改成 CRLF 或加了 BOM | 用 Android Studio / VS Code 编辑；不要用记事本“另存为” |
