@@ -16,6 +16,14 @@
     %1$s = 第 1 个参数是字符串；%1$d = 第 1 个参数是整数。
     代码里用 getString(R.string.wellness_history_summary, 3, 6500) 填值。
     占位符的编号和参数顺序必须一一对应，否则运行时会崩溃。
+
+  >>> 【改题点 C3】换题目时，改这里的 wellness_* 文案即可，不用动代码。
+      · wellness_condition 数组的顺序 = Spinner 的 0/1/2，改顺序会改变存进库的数值；
+      · 改完这里，检查 values-zh-rCN/strings.xml 有没有同名 key（漏一个就崩）；
+      · 如果数字后面要带单位（ml / 元 / 分钟），改 wellness_history_steps 的格式；
+      · 占位符数量变了，要同步改代码里的 getString(..., 参数...) 个数。
+      示例见 docs/adapt-to-other-topic.md 第 5 节。
+  <<<
 -->
 <resources>
     <string name="app_name">Wellness Tracker</string>

@@ -425,6 +425,8 @@ CREATE TABLE wellness_records (
 ## 10. 相关文档
 
 - `README.md`：项目简介、工具链、运行和 patch 用法。
+- `docs/from-scratch.md`：从零建工程（考试模拟），含版本差异与踩坑清单。
+- `docs/adapt-to-other-topic.md`：换题目时改哪里（C1–C11 改题点地图 + 三个示例）。
 - `docs/exam-guide.md`：考试删减指南（不要语言切换 / 不要 AI 时删什么）。
 - `docs/llm-setup.md`：AI 与语言切换的实现细节、key 配置、单元测试。
 - `docs/exam-playbook.md`：把这道题的做法迁移到其他“每日记录类”题目的通用教程。

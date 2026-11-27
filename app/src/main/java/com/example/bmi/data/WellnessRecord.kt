@@ -15,6 +15,14 @@ package com.example.bmi.data
  *   steps     当天步数（整数）；
  *   note      备注，可以为空字符串，但不要用 null（数据库列设了 NOT NULL）。
  *
+ * >>> 【改题点 C1】这一行 4 个字段就是“一道题要记什么”。
+ *     换题目时第一个动手的地方：改字段名、类型、含义。
+ *     改完必须顺着改：C2（数据库列）→ C3（文案）→ C4（布局）→ C5（校验）
+ *     → C6（组装记录）→ C7（历史显示）→ C9/C10（AI）。
+ *     少改任何一处，要么编译不过，要么运行起来数据串位。
+ *     完整清单和示例见 docs/adapt-to-other-topic.md 第 5、6、7 节。
+ * <<<
+ *
  * ────────────────────────────────────────────────────────────────────────────
  * 【依赖关系】
  *   本文件依赖：无。
@@ -23,7 +31,7 @@ package com.example.bmi.data
  */
 data class WellnessRecord(
     val date: String,
-    val condition: Int,
-    val steps: Int,
+    val condition: Int,   // 【改题点 C1】换题目就改这里
+    val steps: Int,       // 【改题点 C1】例如改成 waterMl: Int / amount: Double
     val note: String
 )

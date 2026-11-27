@@ -42,6 +42,14 @@ class WellnessDbHelper(context: Context) : SQLiteOpenHelper(
      *
      * date 设成 PRIMARY KEY：同一天只能有一行；
      * updated_at 记录最后修改时间，方便以后按“最近修改”排序或显示。
+     *
+     * >>> 【改题点 C2】建表 SQL：列名、类型、NOT NULL 必须和 WellnessRecord 的字段
+     *     一一对应。加字段 / 改类型时，除了改这里，还要：
+     *       ① 把 DATABASE_VERSION 加 1（否则旧库不会重建，查询时报 no such column）；
+     *       ② 改 save() 里的每一个 put；
+     *       ③ 改 allRecords()/findByDate() 里的列数组和 getXxx(序号)。
+     *     示例见 docs/adapt-to-other-topic.md 第 6 节。
+     * <<<
      */
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
@@ -74,6 +82,7 @@ class WellnessDbHelper(context: Context) : SQLiteOpenHelper(
      *   而不是报错。这样“一天多条”最终只留最后一条。
      */
     fun save(record: WellnessRecord) {
+        // 【改题点 C2】每个 put 对应建表 SQL 里的一列；改了字段记得这里同步改。
         val values = ContentValues().apply {
             put(COL_DATE, record.date)
             put(COL_CONDITION, record.condition)
@@ -111,6 +120,8 @@ class WellnessDbHelper(context: Context) : SQLiteOpenHelper(
         // cursor.use { } 会在读完后自动 close()，不会忘记释放资源。
         cursor.use { c ->
             while (c.moveToNext()) {
+                // 【改题点 C2】getString(0)/getInt(1)/getInt(2)/getString(3) 的序号
+                // 必须和上面 query 里列数组的顺序一致；不一致会把数据读串位。
                 records.add(
                     WellnessRecord(
                         date = c.getString(0),
@@ -161,12 +172,13 @@ class WellnessDbHelper(context: Context) : SQLiteOpenHelper(
 
     private companion object {
         const val DATABASE_NAME = "wellness.db"     // 数据库文件名
-        const val DATABASE_VERSION = 1              // 改表结构时 +1
+        // 【改题点 C2】改了表结构（加列/改类型）就把它 +1，否则旧库不会重建。
+        const val DATABASE_VERSION = 1
 
         const val TABLE_RECORDS = "wellness_records"
         const val COL_DATE = "date"
         const val COL_CONDITION = "condition"
-        const val COL_STEPS = "steps"
+        const val COL_STEPS = "steps"               // 【改题点 C2】列名
         const val COL_NOTE = "note"
         const val COL_UPDATED_AT = "updated_at"
     }

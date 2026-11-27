@@ -68,6 +68,8 @@ class HistoryActivity : BaseActivity() {
         summary.isVisible = true
 
         // 平均步数：先求和再除以天数。用 Double 计算后 roundToInt()，避免整数除法丢小数。
+        // 【改题点 C7】统计口径换了（比如改成“本月总饮水量”）就改这两行；
+        // 换了数值类型（Int → Double）时，sumOf 与 toDouble() 的写法也要跟着调。
         val averageSteps = records.sumOf { it.steps }.toDouble() / records.size
         summary.text = getString(
             R.string.wellness_history_summary,
@@ -81,6 +83,12 @@ class HistoryActivity : BaseActivity() {
          *   第二行：步数 · 备注
          * 这里用 simple_list_item_1 一个 TextView 装不下两行样式，
          * 所以用自定义的 item_wellness.xml + SimpleAdapter。
+         *
+         * 【改题点 C7/C8】换题目时，改的是 map 里的两个 key 对应的内容：
+         *   "title"    → 想放主信息（日期 + 分类）
+         *   "subtitle" → 想放次要信息（数值 + 单位 + 备注）
+         * 想改成三行？在 item_wellness.xml 加一个 TextView，
+         * 这里加一个 key，并把下面 SimpleAdapter 的数组各加一项。
          */
         val rows = records.map { record ->
             mapOf(
@@ -103,7 +111,13 @@ class HistoryActivity : BaseActivity() {
         )
     }
 
-    /** 把数据库里的 0/1/2 翻译成当前语言下的文字。 */
+    /**
+     * 把数据库里的 0/1/2 翻译成当前语言下的文字。
+     *
+     * 【改题点 C7】如果题目不是“身体状况”，这里改成题目的选项映射；
+     * 选项数量变了（比如心情 1–5），记得同时改 strings.xml 的数组（C3）
+     * 和布局里 Spinner 的 entries（C4）。
+     */
     private fun conditionText(condition: Int): String = getString(
         when (condition) {
             0 -> R.string.wellness_condition_good
@@ -114,6 +128,8 @@ class HistoryActivity : BaseActivity() {
 
     /** 第二行：步数 + （有备注时）备注。 */
     private fun buildSubtitle(record: WellnessRecord): String {
+        // 【改题点 C7】单位/格式在这里：想显示 “1200 ml”“¥12.30”“60 分钟”，
+        // 改 wellness_history_steps 的文案（C3），或在这里用 String.format 补小数位。
         val steps = getString(R.string.wellness_history_steps, record.steps)
         return if (record.note.isBlank()) steps else "$steps  ·  ${record.note}"
     }

@@ -17,6 +17,10 @@
     · 不要求 AI        → 删掉 menu_ai_advice 这一项。
     两项都删掉后，这个文件就没有用了，可以整个删掉，
     同时删掉 MainActivity 里的 onCreateOptionsMenu / onOptionsItemSelected。
+
+  【改题点 C11】想加新页面（统计 / 设置 / 关于）：在这里加一个 <item>，
+    在 MainActivity.onOptionsItemSelected() 加一个 when 分支，
+    再去 AndroidManifest.xml 注册新 Activity。三处缺一不可。
 -->
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"

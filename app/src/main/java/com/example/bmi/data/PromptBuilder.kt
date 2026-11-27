@@ -19,6 +19,12 @@ package com.example.bmi.data
  *   因为提示词的语言必须跟“回答语言”一致：用户切到英文界面时，
  *   AI 也应该用英文回答。用 Android 资源的话，这段代码就不能脱离 Context 测试了。
  *
+ * >>> 【改题点 C9】题目换了记录内容时，改 userPrompt() 里的字段名和单位，
+ *     再改 conditionLabel() 的映射（如果选项不是“良好/一般/较差”）。
+ *     改完一定要去 PromptBuilderTest 里同步断言，否则单元测试会红。
+ *     systemPrompt() 里的“给出 3 条建议”也可以按题目要求改成别的条数/角度。
+ * <<<
+ *
  * ────────────────────────────────────────────────────────────────────────────
  * 【依赖关系 / 考试删除指引】
  *   本文件依赖：WellnessRecord、AppLanguage。
@@ -59,6 +65,8 @@ object PromptBuilder {
      */
     fun userPrompt(record: WellnessRecord, language: AppLanguage): String = when (language) {
         AppLanguage.CHINESE -> buildString {
+            // 【改题点 C9】这里每一个字段都要和 WellnessRecord、数据库列对应上；
+            // 单位（ml / 元 / 分钟）也要写清楚，AI 才知道数字的含义。
             append("日期：").append(record.date).append('\n')
             append("身体状况：").append(conditionLabel(record.condition, language)).append('\n')
             append("步数：").append(record.steps).append('\n')

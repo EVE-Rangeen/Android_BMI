@@ -87,6 +87,8 @@ class AdviceActivity : BaseActivity() {
         }
 
         // 摘要：日期 · 身体状况 · 步数（占位符按顺序对应 %1$s %2$s %3$d）。
+        // 【改题点 C10】这里的参数个数必须等于 ai_record_summary 的占位符个数；
+        // 换了字段就一起改（C3 文案 + 这里的参数）。
         summaryTV.text = getString(
             R.string.ai_record_summary,
             record.date,
@@ -150,6 +152,8 @@ class AdviceActivity : BaseActivity() {
      * 把数据库里的 0/1/2 翻成当前语言的文字。
      * （HistoryActivity 里有一份同样的映射，故意各自保留一个小函数，
      *   这样任一面被删除时另一面不受影响。）
+     *
+     * 【改题点 C10】和 HistoryActivity.conditionText() 一起改，保持两处映射一致。
      */
     private fun conditionText(condition: Int): String = getString(
         when (condition) {

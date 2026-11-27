@@ -152,6 +152,11 @@ git apply patch/wellness-tracker.patch
 
 ## 文档
 
+- [`docs/from-scratch.md`](docs/from-scratch.md)
+  —— **从零建工程手册**：在空工程里按顺序把功能一块块加出来，每步都有验收点；
+  还写了学校版本 / 自己电脑版本的差异与踩坑清单。
+- [`docs/adapt-to-other-topic.md`](docs/adapt-to-other-topic.md)
+  —— **改题点地图**：题目换成喝水/心情/记账时，改哪一处、连带改哪里，含三个完整示例。
 - [`docs/exam-guide.md`](docs/exam-guide.md)
   —— **考试删减指南**：不要中英文切换 / 不要 AI 时，具体删哪些文件、哪些代码。
 - [`docs/wellness-tracker.md`](docs/wellness-tracker.md)

@@ -10,6 +10,11 @@
   【为什么单独一个文件】
     ListView 的每一行都需要一个布局。如果直接用系统自带的 simple_list_item_1，
     只有一行文字、样式也改不了；自定义这个文件后，一行可以显示两行文字。
+
+  【改题点 C8】这里的 id（itemTitle / itemSubtitle）必须和 HistoryActivity 里
+    SimpleAdapter 的 intArrayOf(R.id.itemTitle, R.id.itemSubtitle) 一致。
+    想显示三行信息：加一个 TextView + 在 HistoryActivity 的 rows 里加一个 key，
+    再把 SimpleAdapter 的两个数组各加一项，三处要一起改。
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"

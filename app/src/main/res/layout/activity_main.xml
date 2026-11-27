@@ -20,6 +20,14 @@
     noteET            → 备注输入框
     saveBtn           → 保存按钮
     historyBtn        → 查看历史按钮
+
+  >>> 【改题点 C4】换题目时改这个布局，注意两件事：
+     ① 改了 id 就必须同步改 MainActivity 里的 findViewById(R.id.xxx)，
+        否则运行时空指针崩溃（编译不会报错，最难发现）；
+     ② inputType 决定弹什么键盘：整数用 number，小数用 numberDecimal，
+        文本用 text；它只是“限制键盘”，真正的校验仍然在代码里（C5）。
+     不知道自己该用哪种控件？看 docs/adapt-to-other-topic.md 第 6 节的示例。
+  <<<
 -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
@@ -77,6 +85,12 @@
           步数输入框。
           inputType="number" 会弹出数字键盘，并且只允许输入整数（不允许小数点/字母）。
           注意：它只是“限制键盘”，代码里仍然要用 toIntOrNull() 做一次校验。
+
+          【改题点 C4】inputType 的三种常用值：
+            number        → 非负整数（步数、分钟、次数）
+            numberDecimal → 带小数（金额、升数）
+            text          → 任意文字（备注、书名）
+          改完这里记得同步改 MainActivity 的 toIntOrNull()/toDoubleOrNull()（C5）。
         -->
         <EditText
             android:id="@+id/stepsET"

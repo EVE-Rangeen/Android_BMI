@@ -8,6 +8,9 @@
     没有对应的再回落到 res/values/ 里的默认值。
     所以这里必须保持和 res/values/strings.xml 完全相同的 name（key），
     只是把 value 换成中文。
+
+  【改题点 C3】改了英文文案，这里必须同步改；漏掉一个 key，中文界面就会显示英文，
+    甚至因为占位符数量不一致直接崩溃。
 -->
 <resources>
     <string name="app_name">健康日志</string>

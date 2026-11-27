@@ -109,6 +109,13 @@ class MainActivity : BaseActivity() {
         /*
          * toIntOrNull()：能转成整数就返回数字，转不了（空、字母、小数）返回 null。
          * 用 trim() 去掉首尾空格，避免 " 8000 " 这种输入被判为非法。
+         *
+         * >>> 【改题点 C5】题目换了数值含义时，改这两行：
+         *    · 整数 → 小数：toIntOrNull() 换成 toDoubleOrNull()；
+         *    · 取值范围：把下面 if 里的判据换成题目的上限
+         *      （喝水 0..20000、学习 0..1440、金额 > 0.0 且 < 100000）。
+         *    · 变量名 steps 可以顺手改成 waterMl 之类，IDE 会让你一起改。
+         * <<<
          */
         val steps = stepsET.text.toString().trim().toIntOrNull()
 
@@ -121,6 +128,12 @@ class MainActivity : BaseActivity() {
         /*
          * Spinner 的 selectedItemPosition 就是选中的序号（0/1/2），
          * 刚好对应 strings.xml 里 wellness_condition 数组的三项。
+         *
+         * >>> 【改题点 C6】这里把 4 个字段装进一条记录。
+         *     改了 WellnessRecord 的字段（C1）之后，这一行会立刻编译报错，
+         *     按提示补上新字段即可。如果题目要求“一天多条”，
+         *     日期不再是主键，见 docs/wellness-tracker.md 7.1。
+         * <<<
          */
         val record = WellnessRecord(
             date = Dates.today(),
@@ -142,6 +155,10 @@ class MainActivity : BaseActivity() {
      *
      * 【考试可删】不需要中英文切换、也不需要 AI 时，删掉本方法和
      * onOptionsItemSelected()，再删掉 res/menu/menu_main.xml。
+     *
+     * 【改题点 C11】如果题目要求“菜单里增加一个页面”（比如统计页），
+     * 就在这里加一个 when 分支 + 在 menu_main.xml 加一个 item，
+     * 再在 AndroidManifest.xml 注册新 Activity，三处缺一不可。
      */
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.menu_main, menu)
