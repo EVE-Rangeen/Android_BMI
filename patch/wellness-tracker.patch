@@ -9,23 +9,28 @@ index dfe0770..a6980ab 100644
 +# Keep patch files LF so git apply works on Windows.
 +*.patch -text
 diff --git a/README.md b/README.md
-index dc0aa70..ebb0c20 100644
+index dc0aa70..f099d62 100644
 --- a/README.md
 +++ b/README.md
-@@ -1,7 +1,35 @@
+@@ -1,7 +1,63 @@
 -# BMI
 +# Wellness Tracker（健康日志）
  
 -一个 Android BMI 计算小应用（作业项目）。本分支 `cityu_lab` 已调整为可直接在
 -**学校的 Android Studio 2025.2.1 Patch 1（Otter）** 上打开并运行。
 +一个 Android 考试练习项目：每天记录身体状况、步数和备注，保存到 SQLite，
-+并在历史页按日期查看全部记录。
++并在历史页按日期查看全部记录。在基础功能之上，还加了两块上课学过的内容：
++App 内中英文切换 和 AI 健康建议（DeepSeek）。
 +
 +本项目从原始的 BMI 作业（`cityu_lab` 分支）改造而来，保留了学校电脑要求的
-+工具链配置，但源码已经清理成只包含健康日志功能。改造过程、逐文件讲解和
-+可迁移到同类题目的考场教程见文末文档。
++工具链配置，源码已经清理成只包含健康日志功能；BMI 相关代码仍然是删除状态。
++改造过程、逐文件讲解、可迁移到同类题目的考场教程见文末文档。
++
++两块可选功能都可以整块删除，删除清单见 [`docs/exam-guide.md`](docs/exam-guide.md)。
 +
 +## 功能
++
++**基础功能（题目要求）**
 +
 +- 自动显示当天日期，不需要手输
 +- 选择身体状况：Good / Fair / Poor（中文：良好 / 一般 / 较差）
@@ -33,25 +38,48 @@ index dc0aa70..ebb0c20 100644
 +- 填写备注（可留空）
 +- 保存到 SQLite；同一天重复保存会覆盖旧记录
 +- 历史页按日期倒序显示全部记录，并统计记录天数和平均步数
-+- 支持中英文资源（`values/` 与 `values-zh-rCN/`）
++- 中英文两套资源（`values/` 与 `values-zh-rCN/`）
++
++**可选功能 A：App 内中英文切换**
++
++- 右上角菜单 → “Switch language / 切换语言”，整个 App 立刻换语言
++- 选择用 SharedPreferences 记住，下次打开保持
++- 没手动选过时，跟随手机系统语言
++
++**可选功能 B：AI 健康建议**
++
++- 右上角菜单 → “AI advice / AI 健康建议”
++- 取今天的记录，发给 DeepSeek，显示 3 条可执行的建议
++- 回答语言跟随界面语言：中文界面拿到中文建议，英文界面拿到英文建议
++- 失败时显示原因（没配 key / 网络错误 / 接口错误）并支持重试
 +
 +## 代码结构
 +
 +```
 +app/src/main/java/com/example/bmi/
-+├── MainActivity.kt              # 主界面：输入、校验、保存、跳转
++├── MainActivity.kt              # 主界面：输入、校验、保存、菜单
 +├── HistoryActivity.kt           # 历史页：读库、空状态、ListView
-+└── data/
-+    ├── WellnessRecord.kt        # 数据类：日期/状况/步数/备注
-+    ├── WellnessDbHelper.kt      # SQLite：建表、保存、读取
-+    └── Dates.kt                 # 日期工具：今天的 yyyy-MM-dd
++├── BaseActivity.kt              # 【可选 A】语言切换：attachBaseContext
++├── AdviceActivity.kt            # 【可选 B】AI 页：取记录、请求、渲染状态
++├── data/
++│   ├── WellnessRecord.kt        # 数据类：日期/状况/步数/备注
++│   ├── WellnessDbHelper.kt      # SQLite：建表、保存、读取
++│   ├── Dates.kt                 # 日期工具：今天的 yyyy-MM-dd
++│   ├── AppLanguage.kt           # 【可选 A/B】en / zh 枚举
++│   ├── LanguageStore.kt         # 【可选 A】SharedPreferences 记语言
++│   ├── PromptBuilder.kt         # 【可选 B】拼提示词（纯 Kotlin，可单测）
++│   ├── DeepSeekClient.kt        # 【可选 B】HTTP + JSON 客户端
++│   └── WellnessAdviceRepository.kt  # 【可选 B】切 IO 线程、统一异常
++└── ui/advice/
++    ├── AdviceUiState.kt         # 【可选 B】Idle/Loading/Success/Error
++    └── AdviceViewModel.kt       # 【可选 B】ViewModel + LiveData + 重试
 +```
 +
-+没有网络请求、没有 AI、没有图表，也不需要任何权限。
++只有 AI 功能需要 `INTERNET` 权限和 API key；基础功能不联网、不需要权限。
  
  ## 工具链版本
  
-@@ -18,11 +46,11 @@
+@@ -18,17 +74,41 @@
  ## 第一次打开
  
  1. 从 GitHub 下载 ZIP（或 `git clone`），解压到本地任意目录。
@@ -65,19 +93,52 @@ index dc0aa70..ebb0c20 100644
     *Build-Tools 35.0.0*），直接点 **Install** 让它自动安装。
  5. Gradle Sync 结束后，选中 `app` 运行配置，点 **Run** 即可。
  
-@@ -59,102 +87,32 @@ gradlew.bat assembleDebug
+ `local.properties`（本机 SDK 路径）和 `.idea/`（IDE 配置）都没有提交到仓库，
+ Android Studio 打开项目时会自动生成，不需要手动创建。
+ 
++### 想用 AI 功能：配置 DeepSeek key（可选）
++
++AI 页面需要一个 API key。在项目根目录的 `local.properties` 里加一行：
++
++```properties
++deepseek.apiKey=sk-你的key
++```
++
++然后重新 Sync + Run（key 是编译期注入 `BuildConfig` 的，改完必须重新编译）。
++不配也能正常使用记录和历史功能，只是 AI 页会提示“没有配置 API key”。
++
++## 考试时用哪一版
++
++同一份代码可以按题目要求删掉可选功能，删除清单写得很具体：
++
++| 题目要求 | 操作 |
++| --- | --- |
++| 只要记录 + 历史 | 按 `docs/exam-guide.md` 第 1、2 节删除 |
++| 不要 App 内切换语言 | 按 `docs/exam-guide.md` 第 1 节删除 |
++| 不要 AI | 按 `docs/exam-guide.md` 第 2 节删除 |
++| 都要 | 直接用当前版本 |
++
++建议先 `git checkout -b exam-minimal` 再动手，删坏了 `git checkout -- .` 就能恢复。
++
+ ## 校园网访问不了 Google / Maven 时
+ 
+ 依赖（androidx、Material、AGP、Kotlin 插件）走的是 `google()` 和
+@@ -59,102 +139,36 @@ gradlew.bat assembleDebug
  
  生成的文件在 `app/build/outputs/apk/debug/app-debug.apk`。
  
 -## 分支工作流（main → cityu_lab）
--
++## 考试补丁
+ 
 -`main` 是日常开发分支，保持原来的旧工具链（AGP 7.3.1），可以继续在本地旧版
 -Android Studio 里打开；`cityu_lab` 只负责“学校电脑上能跑”的适配，**不要直接
 -在这个分支上写业务代码**，否则以后每次合并都会更麻烦。
 -
 -每做完一次作业，按这个顺序操作：
--
--```bat
++`patch/wellness-tracker.patch` 记录的是从 `cityu_lab` 的提交 `d43a3c9`
++到本分支的全部改动，可以直接应用到你已提交的作业代码上：
+ 
+ ```bat
 -git checkout main
 -git add -A
 -git commit -m "assignment04"
@@ -129,13 +190,15 @@ index dc0aa70..ebb0c20 100644
 -
 -```properties
 -deepseek.apiKey=sk-xxxxxxxxxxxxxxxxxxxx
--```
--
++git checkout -b exam d43a3c9
++git apply --check patch/wellness-tracker.patch
++git apply patch/wellness-tracker.patch
+ ```
+ 
 -然后 Sync + Run（key 是在编译时写进 `BuildConfig` 的，改完必须重新编译）。
 -没有 key 时 App 仍能正常计算 BMI，只是 AI 建议区域会显示配置提示。
 -详细说明见 `docs/llm-setup.md`。
-+## 考试补丁
- 
+-
 -源码、布局、`strings.xml` 这些业务文件两个分支本来就一样，正常都会自动合并，
 -不需要处理。
 -
@@ -148,17 +211,12 @@ index dc0aa70..ebb0c20 100644
 -  （它最高只到 AGP 8.13 / API 36.1），需要换一个低版本的库
 -
 -合并完成后，先本地验证一次再推送（本地旧版 Studio 打不开这个分支，用命令行）：
-+`patch/wellness-tracker.patch` 记录的是从 `cityu_lab` 的提交 `d43a3c9`
-+到本分支的全部改动，可以直接应用到你已提交的作业代码上：
- 
- ```bat
+-
+-```bat
 -set JAVA_HOME=<本机 JDK 17 或更高的路径>
 -gradlew.bat assembleDebug
-+git checkout -b exam d43a3c9
-+git apply --check patch/wellness-tracker.patch
-+git apply patch/wellness-tracker.patch
- ```
- 
+-```
+-
 -成功之后推送：
 -
 -```bat
@@ -167,8 +225,12 @@ index dc0aa70..ebb0c20 100644
 +## 文档
  
 -学校电脑上只需要在 `cityu_lab` 分支上 `git pull`，然后 Sync + Run 即可。
++- [`docs/exam-guide.md`](docs/exam-guide.md)
++  —— **考试删减指南**：不要中英文切换 / 不要 AI 时，具体删哪些文件、哪些代码。
 +- [`docs/wellness-tracker.md`](docs/wellness-tracker.md)
 +  —— 本次改造的逐文件说明、数据库设计、patch 用法、自测清单。
++- [`docs/llm-setup.md`](docs/llm-setup.md)
++  —— AI 健康建议与语言切换的实现、API key 配置、单元测试说明。
 +- [`docs/exam-playbook.md`](docs/exam-playbook.md)
 +  —— 把 BMI 作业改成任意“每日记录类”题目的七步教程、变体对照表、常见错误。
 +- [`docs/开发指南.md`](docs/开发指南.md)
@@ -187,10 +249,10 @@ index dc0aa70..ebb0c20 100644
 +- 同一天只保留一条记录。如果考试要求一天多条，把 `date` 主键换成自增 `id`，
 +  详见 `docs/exam-playbook.md` 的“按天唯一 vs 一天多条”。
 diff --git a/app/build.gradle b/app/build.gradle
-index 099616e..8f094a8 100644
+index 099616e..2dcd9b3 100644
 --- a/app/build.gradle
 +++ b/app/build.gradle
-@@ -1,67 +1,41 @@
+@@ -1,24 +1,28 @@
  // ============================================================================
  // build.gradle（模块级，位于 app/ 目录下）
  // ============================================================================
@@ -208,23 +270,25 @@ index 099616e..8f094a8 100644
      id 'org.jetbrains.kotlin.android' // Kotlin 语言支持
  }
  
--// ----------------------------------------------------------------------------
+ // ----------------------------------------------------------------------------
 -// 【考试可能问】BuildConfig 注入：把密钥在“编译时”写进代码里的常量。
--// ----------------------------------------------------------------------------
++// 【AI 功能 · 考试可删】BuildConfig 注入 API key
+ // ----------------------------------------------------------------------------
 -// 这里从根目录的 local.properties 里读 deepseek.apiKey（不会被提交到 git），
--// 编译时注入到 BuildConfig 类里，代码里就能用 BuildConfig.DEEPSEEK_API_KEY。
++// 这里从根目录的 local.properties 里读 deepseek.apiKey（该文件不会被提交到 Git），
+ // 编译时注入到 BuildConfig 类里，代码里就能用 BuildConfig.DEEPSEEK_API_KEY。
 -// 好处：真正的密钥不会出现在源码里；换机器只要改 local.properties 重新编译即可。
--// ----------------------------------------------------------------------------
--def localProperties = new Properties()
--def localPropertiesFile = rootProject.file('local.properties')
--if (localPropertiesFile.exists()) {
--    localPropertiesFile.withInputStream { stream -> localProperties.load(stream) }
--}
--def deepSeekApiKey = localProperties.getProperty('deepseek.apiKey') ?: ''
--
- android {
-     namespace = 'com.example.bmi'   // 应用的命名空间（包名）
-     // compileSdk 36 是 Android Studio 2025.2.1 (Otter) 默认安装的 API 级别。
++// 好处：真正的密钥不出现在源码里；换机器只要改 local.properties 再编译即可。
++//
++// 【考试不需要 AI 时要删什么】
++//   1. 删掉本段（def localProperties ... def deepSeekApiKey ...）这三个变量；
++//   2. 删掉 defaultConfig 里的两行 buildConfigField；
++//   3. 删掉 buildFeatures { buildConfig = true } 这一段（本项目没有其它地方用 BuildConfig）。
++//   详细清单见 docs/exam-guide.md。
+ // ----------------------------------------------------------------------------
+ def localProperties = new Properties()
+ def localPropertiesFile = rootProject.file('local.properties')
+@@ -33,32 +37,31 @@ android {
      compileSdk = 36
  
      defaultConfig {
@@ -242,11 +306,12 @@ index 099616e..8f094a8 100644
 +        versionName = "1.0"
  
          testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
--
+ 
 -        // 把上面的密钥注入到 BuildConfig：
 -        // buildConfigField 三个参数 = 类型 / 常量名 / 值。
--        buildConfigField "String", "DEEPSEEK_API_KEY", "\"${deepSeekApiKey}\""
--        buildConfigField "String", "DEEPSEEK_BASE_URL", "\"https://api.deepseek.com\""
++        // 【AI 功能 · 考试可删】把密钥和接口地址注入到 BuildConfig 常量。
+         buildConfigField "String", "DEEPSEEK_API_KEY", "\"${deepSeekApiKey}\""
+         buildConfigField "String", "DEEPSEEK_BASE_URL", "\"https://api.deepseek.com\""
      }
  
      buildTypes {
@@ -258,27 +323,29 @@ index 099616e..8f094a8 100644
          }
      }
  
--    buildFeatures {
+     buildFeatures {
 -        // 打开 BuildConfig 生成（AGP 8.x 默认关闭，这里显式打开）。
--        buildConfig = true
--    }
--
-     compileOptions {
-         // 本分支用 Java 17 字节码（AGP 8.13 + Studio 自带 JDK 21 支持）。
-         sourceCompatibility = JavaVersion.VERSION_17
-@@ -78,30 +52,20 @@ kotlin {
++        // 【AI 功能 · 考试可删】打开 BuildConfig 生成（AGP 8.x 默认关闭，需要显式打开）。
+         buildConfig = true
+     }
+ 
+@@ -78,30 +81,31 @@ kotlin {
  
  // ----------------------------------------------------------------------------
  // dependencies：这个模块用到的第三方库。
 -// ----------------------------------------------------------------------------
 -// implementation 表示“这个库只给本模块用”。
 -// 版本比 main 分支新，是 AGP 8.x / compileSdk 36 环境下对应的一批版本。
-+// 健康日志只用到最基础的 UI + SQLite，所以依赖很少：
++// 健康日志的基础功能只用到最基础的 UI + SQLite：
 +//   core-ktx      → Kotlin 扩展（isVisible 等）
 +//   appcompat     → AppCompatActivity
 +//   material      → Material 主题和按钮样式
 +//   junit/espresso→ 测试
 +// SQLite 是 Android 系统自带的，不需要额外依赖。
++//
++// 【AI 功能 · 考试可删】下面标了「AI 功能」的四行依赖（activity-ktx、
++//   lifecycle-*、coroutines）只用于 AI 页面的 ViewModel + 协程。
++//   不做 AI 时删掉这四行即可，其余代码不受影响（语言切换不需要它们）。
  // ----------------------------------------------------------------------------
  dependencies {
  
@@ -287,14 +354,17 @@ index 099616e..8f094a8 100644
      implementation 'androidx.appcompat:appcompat:1.7.0'                // AppCompat（向后兼容）
 -    implementation 'com.google.android.material:material:1.12.0'        // Material 组件库（MaterialCardView 等）
 -    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'  // 约束布局 ConstraintLayout
--
++    implementation 'com.google.android.material:material:1.12.0'        // Material 组件库
+ 
 -    // MVVM：Activity 的 viewModels 委托、ViewModel、LiveData、协程作用域
--    implementation 'androidx.activity:activity-ktx:1.5.1'
--    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.5.1'
--    implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.5.1'
++    // ── AI 功能：MVVM（Activity 的 viewModels 委托、ViewModel、LiveData）+ 协程 ──
+     implementation 'androidx.activity:activity-ktx:1.5.1'
+     implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.5.1'
+     implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.5.1'
 -    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.5.1'
 -    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'  // 协程
-+    implementation 'com.google.android.material:material:1.12.0'        // Material 组件库
++    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'
++    // ──────────────────────────────────────────────────────────────────────
  
      testImplementation 'junit:junit:4.13.2'                        // 单元测试（本地 JVM 测试）
      androidTestImplementation 'androidx.test.ext:junit:1.2.1'      // 仪器测试（跑在设备上）
@@ -306,30 +376,35 @@ index 099616e..8f094a8 100644
 -    // ──────────────────────────────────────────────────────────────────────
  }
 diff --git a/app/src/main/AndroidManifest.xml b/app/src/main/AndroidManifest.xml
-index b385e20..76c3d13 100644
+index b385e20..7a18fa0 100644
 --- a/app/src/main/AndroidManifest.xml
 +++ b/app/src/main/AndroidManifest.xml
-@@ -8,7 +8,12 @@
+@@ -8,7 +8,16 @@
      告诉系统：
        1. 这个 App 叫什么名字、用什么图标、用什么主题（<application>）；
        2. 有哪些屏幕（Activity），每个 Activity 叫什么类、是否对外开放（<activity>）；
 -      3. 需要哪些权限（<uses-permission>），比如联网。
 +      3. 需要哪些权限（<uses-permission>）。
 +
-+  【本项目不需要任何权限】
-+    健康日志只把数据写进本机 SQLite，不联网、不读通讯录、不拍照，
-+    所以这里没有 <uses-permission>。考试时如果不确定，宁可不加：
-+    多申请权限可能被老师扣分，而少申请会直接崩溃（比如联网没加 INTERNET）。
++  【本项目的权限】
++    健康日志的数据只存在本机 SQLite，本来不需要任何权限。
++    但【AI 健康建议】要走网络请求 DeepSeek 接口，所以必须声明 INTERNET 权限。
++
++  【AI 功能 · 考试可删】不需要 AI 时：
++    1. 删掉下面那行 <uses-permission android:name="android.permission.INTERNET" />；
++    2. 删掉 <application> 里的 .AdviceActivity 注册。
++    详细清单见 docs/exam-guide.md。
  
    【android:exported 是什么】
      表示“这个 Activity 能不能被别的 App 启动”。
-@@ -22,14 +27,11 @@
+@@ -22,14 +31,14 @@
  <manifest xmlns:android="http://schemas.android.com/apk/res/android"
      xmlns:tools="http://schemas.android.com/tools">
  
 -    <!-- 联网权限：AI 建议功能要访问 DeepSeek 接口，必须有这个权限。 -->
--    <uses-permission android:name="android.permission.INTERNET" />
--
++    <!-- 【AI 功能 · 考试可删】访问 DeepSeek 接口需要联网权限，不写会直接崩溃。 -->
+     <uses-permission android:name="android.permission.INTERNET" />
+ 
      <!--
        application 是应用的全局配置：
 -        android:icon       = 桌面图标；
@@ -341,7 +416,7 @@ index b385e20..76c3d13 100644
          android:supportsRtl = 是否支持从右到左的语言（阿拉伯语等）。
      -->
      <application
-@@ -40,27 +42,14 @@
+@@ -40,27 +49,23 @@
          android:label="@string/app_name"
          android:roundIcon="@drawable/icon_128"
          android:supportsRtl="true"
@@ -360,20 +435,27 @@ index b385e20..76c3d13 100644
 -                android:name="android.app.lib_name"
 -                android:value="" />
 -        </activity>
--
++            android:label="@string/wellness_history_title" />
+ 
 -        <!-- 报告页（不对外开放）。 -->
--        <activity
++        <!--
++          【AI 功能 · 考试可删】AI 健康建议页。
++          不对外开放，只能从主界面的菜单进入；label 用 ai_title 作为标题栏文字。
++        -->
+         <activity
 -            android:name=".ReportActivity"
 -            android:exported="false">
 -            <meta-data
 -                android:name="android.app.lib_name"
 -                android:value="" />
 -        </activity>
-+            android:label="@string/wellness_history_title" />
++            android:name=".AdviceActivity"
++            android:exported="false"
++            android:label="@string/ai_title" />
  
          <!-- 主界面（入口页，对外开放）。 -->
          <activity
-@@ -71,10 +60,6 @@
+@@ -71,10 +76,6 @@
                  <action android:name="android.intent.action.MAIN" />
                  <category android:name="android.intent.category.LAUNCHER" />
              </intent-filter>
@@ -384,19 +466,302 @@ index b385e20..76c3d13 100644
          </activity>
      </application>
  
+diff --git a/app/src/main/java/com/example/bmi/AdviceActivity.kt b/app/src/main/java/com/example/bmi/AdviceActivity.kt
+new file mode 100644
+index 0000000..8e644f2
+--- /dev/null
++++ b/app/src/main/java/com/example/bmi/AdviceActivity.kt
+@@ -0,0 +1,161 @@
++package com.example.bmi
++
++import android.os.Bundle
++import android.widget.Button
++import android.widget.ProgressBar
++import android.widget.TextView
++import androidx.activity.viewModels
++import androidx.core.view.isVisible
++import com.example.bmi.data.Dates
++import com.example.bmi.data.WellnessDbHelper
++import com.example.bmi.ui.advice.AdviceRequest
++import com.example.bmi.ui.advice.AdviceUiState
++import com.example.bmi.ui.advice.AdviceViewModel
++
++/*
++ * ============================================================================
++ * AdviceActivity.kt —— AI 健康建议页（【AI 功能 · 考试可删】）
++ * ============================================================================
++ * 【这个文件是干什么的】
++ *   1. 从 SQLite 取出“今天”的记录（没有就提示先保存）；
++ *   2. 显示这条记录的摘要；
++ *   3. 让 ViewModel 去请求 DeepSeek，把返回的建议显示出来；
++ *   4. 请求失败时显示原因，并提供“重试”按钮。
++ *
++ * 【MVVM 在这里怎么分工（考试重点）】
++ *   Activity（V，View）：只管“显示”和“触发”，不认识 HTTP、不处理异常；
++ *   ViewModel（VM）     ：拿着 Repository 发请求，把结果/异常转成 AdviceUiState；
++ *   Repository（M，Model）：真正从网络拿数据。
++ *   这样 Activity 里没有一行网络代码，逻辑也能单独测试。
++ *
++ * 【为什么用 observe 而不是“等结果返回再 setText”】
++ *   viewModel.adviceState.observe(this) { ... } 注册一次，
++ *   之后每次状态变化（Loading → Success/Error）都会自动回调，
++ *   界面永远是当前状态的正确样子；而且 Activity 销毁后会自动解除观察，不会泄漏。
++ *
++ * ────────────────────────────────────────────────────────────────────────────
++ * 【依赖关系 / 考试删除指引】
++ *   本文件依赖：AdviceViewModel、AdviceUiState、WellnessDbHelper.findByDate、
++ *               Dates、activity_advice.xml、strings.xml（ai_* 文案）。
++ *   谁依赖本文件：MainActivity（菜单“AI 健康建议”跳转）。
++ *   ★ 考试不做 AI 时，按 docs/exam-guide.md B 部分整块删除：
++ *     本文件、activity_advice.xml、ui/advice/ 目录、data/ 下 DeepSeekClient、
++ *     PromptBuilder、WellnessAdviceRepository、
++ *     Manifest 里的 AdviceActivity 注册和 INTERNET 权限、
++ *     build.gradle 里的 BuildConfig 注入和协程/ViewModel 依赖、
++ *     MainActivity 菜单里的 menu_ai_advice 分支。
++ * ────────────────────────────────────────────────────────────────────────────
++ */
++class AdviceActivity : BaseActivity() {
++
++    // by viewModels()：自动创建并绑定一个 AdviceViewModel（跟随本 Activity 生命周期）。
++    private val viewModel: AdviceViewModel by viewModels()
++
++    // by lazy：第一次用到时才创建数据库助手。
++    private val db by lazy { WellnessDbHelper(this) }
++
++    private lateinit var summaryTV: TextView   // 记录摘要
++    private lateinit var noteTV: TextView      // 备注行
++    private lateinit var progress: ProgressBar // 加载转圈
++    private lateinit var adviceTV: TextView    // AI 建议正文
++    private lateinit var retryBtn: Button      // 重试按钮
++
++    override fun onCreate(savedInstanceState: Bundle?) {
++        super.onCreate(savedInstanceState)
++        setContentView(R.layout.activity_advice)
++
++        // 【语言切换 · 考试可删】标题跟着 App 内语言走（原因见 MainActivity 的说明）。
++        title = getString(R.string.ai_title)
++
++        summaryTV = findViewById(R.id.adviceSummary)
++        noteTV = findViewById(R.id.adviceNote)
++        progress = findViewById(R.id.adviceProgress)
++        adviceTV = findViewById(R.id.adviceText)
++        retryBtn = findViewById(R.id.adviceRetry)
++
++        // 查今天的记录。日期统一用 Dates.today()，和主界面保存时用的是同一个格式。
++        val record = db.findByDate(Dates.today())
++
++        if (record == null) {
++            // 今天还没记录：只显示一句提示，不发请求（没有数据可分析）。
++            summaryTV.setText(R.string.ai_no_record)
++            noteTV.isVisible = false
++            adviceTV.isVisible = false
++            progress.isVisible = false
++            retryBtn.isVisible = false
++            return
++        }
++
++        // 摘要：日期 · 身体状况 · 步数（占位符按顺序对应 %1$s %2$s %3$d）。
++        summaryTV.text = getString(
++            R.string.ai_record_summary,
++            record.date,
++            conditionText(record.condition),
++            record.steps
++        )
++
++        // 备注为空就整行隐藏，避免界面上出现“备注：”后面什么都没有。
++        if (record.note.isBlank()) {
++            noteTV.isVisible = false
++        } else {
++            noteTV.text = getString(R.string.ai_note, record.note)
++        }
++
++        // 重试按钮 → 交给 ViewModel 用上一次的请求再发一次。
++        retryBtn.setOnClickListener { viewModel.retry() }
++
++        // 观察状态：状态一变就刷新界面。
++        viewModel.adviceState.observe(this) { state -> render(state) }
++
++        /*
++         * 只在“还没请求过”时才发请求。
++         * ViewModel 在旋转屏幕时不会销毁，所以 hasRequested 能防止旋转后重复请求。
++         */
++        if (!viewModel.hasRequested) {
++            viewModel.loadAdvice(AdviceRequest(record, currentLanguage()))
++        }
++    }
++
++    /** 把 ViewModel 的状态渲染到界面上（四种状态一一对应）。 */
++    private fun render(state: AdviceUiState) {
++        when (state) {
++            AdviceUiState.Idle -> {
++                progress.isVisible = false
++                adviceTV.text = ""
++                retryBtn.isVisible = false
++            }
++
++            AdviceUiState.Loading -> {
++                progress.isVisible = true                 // 显示转圈
++                adviceTV.setText(R.string.ai_loading)
++                retryBtn.isVisible = false
++            }
++
++            is AdviceUiState.Success -> {
++                progress.isVisible = false
++                adviceTV.text = state.text                // AI 返回的建议
++                retryBtn.isVisible = false
++            }
++
++            is AdviceUiState.Error -> {
++                progress.isVisible = false
++                // reason.messageRes 是错误类型对应的文案 id，getString 转成当前语言。
++                adviceTV.text = getString(state.reason.messageRes)
++                retryBtn.isVisible = true                 // 让用户重试
++            }
++        }
++    }
++
++    /**
++     * 把数据库里的 0/1/2 翻成当前语言的文字。
++     * （HistoryActivity 里有一份同样的映射，故意各自保留一个小函数，
++     *   这样任一面被删除时另一面不受影响。）
++     */
++    private fun conditionText(condition: Int): String = getString(
++        when (condition) {
++            0 -> R.string.wellness_condition_good
++            1 -> R.string.wellness_condition_fair
++            else -> R.string.wellness_condition_poor
++        }
++    )
++}
+diff --git a/app/src/main/java/com/example/bmi/BaseActivity.kt b/app/src/main/java/com/example/bmi/BaseActivity.kt
+new file mode 100644
+index 0000000..eb27074
+--- /dev/null
++++ b/app/src/main/java/com/example/bmi/BaseActivity.kt
+@@ -0,0 +1,111 @@
++package com.example.bmi
++
++import android.content.Context
++import android.content.res.Configuration
++import androidx.appcompat.app.AppCompatActivity
++import androidx.core.os.ConfigurationCompat
++import com.example.bmi.data.AppLanguage
++import com.example.bmi.data.LanguageStore
++import java.util.Locale
++
++/*
++ * ============================================================================
++ * BaseActivity.kt —— 所有页面的“父类”，统一处理中英文切换（【语言切换 · 考试可删】）
++ * ============================================================================
++ * 【这个文件是干什么的】
++ *   让 MainActivity / HistoryActivity / AdviceActivity 都继承它，
++ *   这样“界面该用中文还是英文”只需要在这一个地方写一次。
++ *
++ * 【核心原理：attachBaseContext】
++ *   Activity 启动时，系统会先调用 attachBaseContext(newBase) 把“上下文”交给它，
++ *   然后才会加载布局和字符串资源。我们在这里把 newBase 换成一个
++ *   “语言已经被改成中文（或英文）的 Context”，后面 getString() 取到的就是对应语言。
++ *
++ *   具体三步（见 applyLanguage）：
++ *     1. new Configuration(旧配置)   —— 复制一份系统配置；
++ *     2. config.setLocale(locale)    —— 把语言字段改成 en 或 zh；
++ *     3. newBase.createConfigurationContext(config) —— 生成一个带新配置的 Context。
++ *
++ * 【为什么要 recreate()】
++ *   已经显示出来的界面不会自动重画。切换语言后调用 recreate()，
++ *   Activity 会被销毁再重建一遍：attachBaseContext 重新执行、
++ *   布局里的 @string/xxx 重新解析，界面就整体变成新语言了。
++ *
++ * 【为什么不直接用 AppCompatDelegate.setApplicationLocales()】
++ *   那个 API 需要 AndroidX 的额外服务配置，而且把“系统怎么挑资源”藏得太深。
++ *   这里用最原始的 Configuration + Locale，考试时能讲清楚原理，也方便按需删除。
++ *
++ * ────────────────────────────────────────────────────────────────────────────
++ * 【依赖关系 / 考试删除指引】
++ *   本文件依赖：AppLanguage、LanguageStore。
++ *   谁依赖本文件：MainActivity、HistoryActivity、AdviceActivity（都继承了它）。
++ *   ★ 考试不要求中英文切换时（见 docs/exam-guide.md A 部分）：
++ *     1. 删掉本文件、AppLanguage.kt、LanguageStore.kt；
++ *     2. 三个 Activity 的 `: BaseActivity()` 改回 `: AppCompatActivity()`；
++ *     3. 删掉 MainActivity 的 onCreateOptionsMenu/onOptionsItemSelected 里
++ *        menu_language 那一段（AI 菜单项要保留就只删语言那一支）。
++ *     界面就会恢复成“跟着手机系统语言走”的默认行为。
++ * ────────────────────────────────────────────────────────────────────────────
++ */
++open class BaseActivity : AppCompatActivity() {
++
++    /**
++     * 在加载界面之前，把 Context 的语言换成用户选过的语言。
++     *
++     * 如果用户从没在菜单里切换过（load() 返回 null），就原样交给父类，
++     * 让 Android 继续按手机系统语言挑资源。
++     */
++    override fun attachBaseContext(newBase: Context) {
++        val saved = LanguageStore(newBase).load()
++        if (saved == null) {
++            super.attachBaseContext(newBase)
++            return
++        }
++        super.attachBaseContext(applyLanguage(newBase, saved))
++    }
++
++    /** 生成一个“语言被改成 language”的 Context（原理见文件头部的三步说明）。 */
++    private fun applyLanguage(base: Context, language: AppLanguage): Context {
++        // Locale.forLanguageTag("zh") 按 BCP-47 语言标签创建区域对象，
++        // 比已废弃的 Locale("zh") 构造函数更规范。
++        val locale = Locale.forLanguageTag(language.tag)
++
++        // 同步修改 JVM 的默认语言，保证 SimpleDateFormat 之类也跟界面一致。
++        Locale.setDefault(locale)
++
++        // 复制当前配置，只改语言这一项，其它（屏幕方向、字体缩放…）保持不变。
++        val config = Configuration(base.resources.configuration)
++        config.setLocale(locale)
++
++        return base.createConfigurationContext(config)
++    }
++
++    /**
++     * 当前界面用的是什么语言。
++     * ConfigurationCompat.getLocales(...) 是 AndroidX 的兼容写法，
++     * 在 API 21 的老手机和 Android 13 上都能拿到语言列表。
++     */
++    protected fun currentLanguage(): AppLanguage =
++        AppLanguage.fromTag(ConfigurationCompat.getLocales(resources.configuration).get(0)?.language)
++
++    /**
++     * 切换语言并让界面立刻生效。
++     *
++     * recreate() 会销毁并重建当前 Activity，重建时 attachBaseContext
++     * 会读到刚保存的新语言，于是整页文字一起变。
++     */
++    protected fun switchLanguage(next: AppLanguage) {
++        LanguageStore(this).save(next)
++        recreate()
++    }
++
++    /** 在“中文 ↔ 英文”之间来回切（菜单点击时调用）。 */
++    protected fun toggleLanguage() {
++        val next = if (currentLanguage() == AppLanguage.CHINESE) {
++            AppLanguage.ENGLISH
++        } else {
++            AppLanguage.CHINESE
++        }
++        switchLanguage(next)
++    }
++}
 diff --git a/app/src/main/java/com/example/bmi/HistoryActivity.kt b/app/src/main/java/com/example/bmi/HistoryActivity.kt
 new file mode 100644
-index 0000000..1a66350
+index 0000000..0a565ff
 --- /dev/null
 +++ b/app/src/main/java/com/example/bmi/HistoryActivity.kt
-@@ -0,0 +1,112 @@
+@@ -0,0 +1,120 @@
 +package com.example.bmi
 +
 +import android.os.Bundle
 +import android.widget.ListView
 +import android.widget.SimpleAdapter
 +import android.widget.TextView
-+import androidx.appcompat.app.AppCompatActivity
 +import androidx.core.view.isVisible
 +import com.example.bmi.data.WellnessDbHelper
 +import com.example.bmi.data.WellnessRecord
@@ -424,13 +789,22 @@ index 0000000..1a66350
 + * 【依赖关系】
 + *   本文件依赖：WellnessDbHelper、WellnessRecord、activity_history.xml、strings.xml。
 + *   谁依赖本文件：MainActivity（点“查看历史”跳转）。
++ *
++ * 【为什么继承 BaseActivity 而不是 AppCompatActivity】
++ *   为了让本页也跟着用户选的语言显示（中文/英文）。
++ *   BaseActivity 是 AppCompatActivity 的子类，用法完全一样。
++ *   ★ 考试不要求中英文切换时，把这里改回 `class HistoryActivity : AppCompatActivity()`
++ *     并重新 import androidx.appcompat.app.AppCompatActivity（见 docs/exam-guide.md）。
 + * ────────────────────────────────────────────────────────────────────────────
 + */
-+class HistoryActivity : AppCompatActivity() {
++class HistoryActivity : BaseActivity() {
 +
 +    override fun onCreate(savedInstanceState: Bundle?) {
 +        super.onCreate(savedInstanceState)
 +        setContentView(R.layout.activity_history)
++
++        // 【语言切换 · 考试可删】标题跟着 App 内语言走（原因见 MainActivity 的说明）。
++        title = getString(R.string.wellness_history_title)
 +
 +        val list: ListView = findViewById(R.id.historyList)
 +        val summary: TextView = findViewById(R.id.historySummary)
@@ -503,10 +877,10 @@ index 0000000..1a66350
 +    }
 +}
 diff --git a/app/src/main/java/com/example/bmi/MainActivity.kt b/app/src/main/java/com/example/bmi/MainActivity.kt
-index 0f59bf6..3bffe5c 100644
+index 0f59bf6..f8ef6f8 100644
 --- a/app/src/main/java/com/example/bmi/MainActivity.kt
 +++ b/app/src/main/java/com/example/bmi/MainActivity.kt
-@@ -1,372 +1,118 @@
+@@ -1,372 +1,176 @@
  package com.example.bmi
  
 -import android.content.ActivityNotFoundException
@@ -514,8 +888,8 @@ index 0f59bf6..3bffe5c 100644
 -import android.net.Uri
  import android.os.Bundle
 -import android.view.ContextMenu
--import android.view.Menu
--import android.view.MenuItem
+ import android.view.Menu
+ import android.view.MenuItem
 -import android.view.View
  import android.widget.Button
  import android.widget.EditText
@@ -523,7 +897,7 @@ index 0f59bf6..3bffe5c 100644
  import android.widget.Spinner
 +import android.widget.TextView
  import android.widget.Toast
- import androidx.appcompat.app.AppCompatActivity
+-import androidx.appcompat.app.AppCompatActivity
 -import com.example.bmi.data.BmiPreferences
 -import com.google.android.material.dialog.MaterialAlertDialogBuilder
 -import com.google.android.material.snackbar.Snackbar
@@ -548,13 +922,18 @@ index 0f59bf6..3bffe5c 100644
 + * 【从作业的 BMI 版改过来时，这个文件改了哪些地方】
 + *   1. 输入项：身高/体重/年龄/性别 → 身体状况/步数/备注；
 + *   2. 按钮行为：计算 BMI 并跳转报告页 → 直接写数据库（不再需要第二个页面算结果）；
-+ *   3. 删掉了 SharedPreferences 自动填充、选项菜单、上下文菜单、对话框
++ *   3. 删掉了 SharedPreferences 自动填充、上下文菜单、对话框
 + *      —— 这些都不是本题必需，属于“可以不要的冗余功能”。
   *
 - * 【Activity 是什么】
 - *   Activity 是 Android 的“一个屏幕”。onCreate() 是这个屏幕刚创建时调用的方法，
 - *   相当于“构造函数 + 初始化入口”。所有控件的查找、点击事件都在这里设置。
-- *
++ * 【后来又加回来的两个“上课内容”（都是可选的，考试按需删）】
++ *   A. 中英文切换：继承 BaseActivity + 右上角菜单的“切换语言”，
++ *      点击后 toggleLanguage() 保存选择并 recreate() 重建界面。
++ *   B. AI 健康建议：菜单里的“AI 健康建议”跳转到 AdviceActivity。
++ *   这两块的删除清单见 docs/exam-guide.md。
+  *
 - * 【本文件用到哪些考试常考知识点】
 - *   1. findViewById：根据布局里的 id 拿到控件对象；
 - *   2. 从 EditText 读取用户输入（text 属性）；
@@ -569,7 +948,8 @@ index 0f59bf6..3bffe5c 100644
 + *   · Spinner 读取 selectedItemPosition；
 + *   · SQLite 保存（通过 WellnessDbHelper）；
 + *   · Intent 跳转到另一个 Activity；
-+ *   · Toast 提示。
++ *   · Toast 提示；
++ *   · 选项菜单（onCreateOptionsMenu / onOptionsItemSelected）。
   *
   * ────────────────────────────────────────────────────────────────────────────
 - * 【依赖关系】（考试删文件前先看这里）
@@ -584,11 +964,13 @@ index 0f59bf6..3bffe5c 100644
 - *             自动填充 / 跳转 / 菜单，把计算逻辑直接写在按钮点击里（见开发指南.md）。
 + * 【依赖关系】
 + *   本文件依赖：WellnessDbHelper、WellnessRecord、Dates（日期工具）、
-+ *               HistoryActivity、activity_main.xml、strings.xml。
++ *               HistoryActivity、AdviceActivity（可选）、
++ *               BaseActivity（可选）、activity_main.xml、strings.xml、menu_main.xml。
 + *   谁依赖本文件：无（它是桌面图标启动的入口页）。
   * ────────────────────────────────────────────────────────────────────────────
   */
- class MainActivity : AppCompatActivity() {
+-class MainActivity : AppCompatActivity() {
++class MainActivity : BaseActivity() {
  
 -    /*
 -     * 下面是“控件引用”。lateinit 表示“稍后再初始化”（在 onCreate 里用 findViewById 赋值）。
@@ -621,7 +1003,7 @@ index 0f59bf6..3bffe5c 100644
 -        // 创建 SharedPreferences 封装（用来记住用户上次输入的内容）。
 -        preferences = BmiPreferences(this)
 -
--        /*
+         /*
 -         * findViewById<T>(R.id.xxx)：根据布局里某个控件的 android:id，拿到它的对象。
 -         * R.id.heightET 就是 activity_main.xml 里 <EditText android:id="@+id/heightET"> 的那个控件。
 -         */
@@ -645,7 +1027,13 @@ index 0f59bf6..3bffe5c 100644
 -         *   3. 把字符串转成数字并校验；
 -         *   4. 校验通过 → 保存 + 打包 → 跳转。
 -         * ────────────────────────────────────────────────────────────────────
--         */
++         * 【语言切换 · 考试可删】手动设置标题栏文字。
++         *
++         * 标题栏默认显示 Manifest 里 android:label 指向的文字，而那是“系统”
++         * 按手机的设置解析的；我们在 App 内切换语言后，系统并不知道，
++         * 标题就会停在原来的语言。所以这里用 getString() 从“当前页面的资源”取，
++         * 跟着 App 内语言走。不做语言切换时可以删掉这一行。
+          */
 -        reportBtn.setOnClickListener(object : View.OnClickListener {
 -            override fun onClick(v: View?) {
 -                /*
@@ -669,7 +1057,8 @@ index 0f59bf6..3bffe5c 100644
 -                 * 而位置 0/1 永远不变，后面的逻辑不会受语言影响。
 -                 */
 -                val gender = genderSpinner.selectedItemPosition
--
++        title = getString(R.string.app_name)
+ 
 -                /*
 -                 * 【字符串转数字 + 校验】
 -                 * toDoubleOrNull()：能转成小数就返回数值，转不了（比如输入了字母）就返回 null。
@@ -806,25 +1195,55 @@ index 0f59bf6..3bffe5c 100644
 -            genderSpinner.setSelection(
 -                preferences.gender().coerceIn(0, genderSpinner.adapter.count - 1)
 -            )
--        }
--    }
 +        val steps = stepsET.text.toString().trim().toIntOrNull()
++
++        // 步数必须是非负整数。非法时只提示，不写数据库。
++        if (steps == null || steps < 0) {
++            Toast.makeText(this, R.string.wellness_steps_warning, Toast.LENGTH_SHORT).show()
++            return
+         }
++
++        /*
++         * Spinner 的 selectedItemPosition 就是选中的序号（0/1/2），
++         * 刚好对应 strings.xml 里 wellness_condition 数组的三项。
++         */
++        val record = WellnessRecord(
++            date = Dates.today(),
++            condition = conditionSpinner.selectedItemPosition,
++            steps = steps,
++            note = noteET.text.toString().trim()
++        )
++
++        // 同一天重复保存会覆盖旧记录（数据库里 date 是主键 + CONFLICT_REPLACE）。
++        db.save(record)
++
++        Toast.makeText(this, R.string.wellness_saved, Toast.LENGTH_SHORT).show()
+     }
  
--    // ===================== 选项菜单（右上角三个点）=====================
--
--    /**
+     // ===================== 选项菜单（右上角三个点）=====================
+ 
+     /**
 -     * 创建右上角的选项菜单。inflate 就是把 res/menu/menu_options.xml 里定义的
 -     * 菜单项“加载”进 menu 对象。
--     */
--    override fun onCreateOptionsMenu(menu: Menu): Boolean {
++     * 把 res/menu/menu_main.xml 加载成右上角菜单。
++     *
++     * 【考试可删】不需要中英文切换、也不需要 AI 时，删掉本方法和
++     * onOptionsItemSelected()，再删掉 res/menu/menu_main.xml。
+      */
+     override fun onCreateOptionsMenu(menu: Menu): Boolean {
 -        menuInflater.inflate(R.menu.menu_options, menu)
 -        return super.onCreateOptionsMenu(menu)
--    }
--
--    /**
++        menuInflater.inflate(R.menu.menu_main, menu)
++        return true
+     }
+ 
+     /**
 -     * 用户点击某个菜单项时回调。根据 itemId 判断点了哪一个。
--     */
--    override fun onOptionsItemSelected(item: MenuItem): Boolean {
++     * 菜单项点击处理：靠 itemId 区分点的是哪一项。
++     *
++     * 注意返回 true 表示“这个事件我处理了”，返回 false 会继续交给父类处理。
+      */
+     override fun onOptionsItemSelected(item: MenuItem): Boolean {
 -        when (item.itemId) {
 -            R.id.menu_about -> {
 -                about_BMI_Dialog()
@@ -843,16 +1262,13 @@ index 0f59bf6..3bffe5c 100644
 -                finish()   // 结束当前 Activity，回到桌面/上一层
 -                return true
 -            }
-+        // 步数必须是非负整数。非法时只提示，不写数据库。
-+        if (steps == null || steps < 0) {
-+            Toast.makeText(this, R.string.wellness_steps_warning, Toast.LENGTH_SHORT).show()
-+            return
-         }
+-        }
 -        return super.onOptionsItemSelected(item)
 -    }
 -
 -    // ===================== 上下文菜单（长按 BMI 图标）=====================
--
++        return when (item.itemId) {
+ 
 -    /**
 -     * 创建“长按”菜单。必须配合 onCreate 里的 registerForContextMenu(图片) 使用。
 -     */
@@ -871,7 +1287,12 @@ index 0f59bf6..3bffe5c 100644
 -            R.id.menu_item_about -> {
 -                about_BMI_Dialog()
 -                return true
--            }
++            // ── 【语言切换 · 考试可删】中文 ↔ 英文，切换后整页重建 ──
++            R.id.menu_language -> {
++                // toggleLanguage() 在 BaseActivity 里：保存选择 + recreate()
++                toggleLanguage()
++                true
+             }
 -            R.id.menu_item_wiki -> {
 -                openWebpage(getString(R.string.wiki_url))
 -                return true
@@ -902,7 +1323,7 @@ index 0f59bf6..3bffe5c 100644
 -            ).show()
 -        }
 -    }
--
+ 
 -    /**
 -     * 弹出“关于 BMI”对话框。
 -     * 这里用 MaterialAlertDialogBuilder（Material 组件库的对话框）。
@@ -918,10 +1339,15 @@ index 0f59bf6..3bffe5c 100644
 -                    getString(R.string.button_ok),
 -                    Toast.LENGTH_SHORT
 -                ).show()
--            }
++            // ── 【AI 功能 · 考试可删】打开 AI 健康建议页 ──
++            R.id.menu_ai_advice -> {
++                // 不传数据：建议页自己按 Dates.today() 去数据库查今天的记录。
++                startActivity(Intent(this, AdviceActivity::class.java))
++                true
+             }
 -            .show()
  
-         /*
+-        /*
 -         * ── 【考点 / 备用方案】用系统自带 AlertDialog 代替 Material 对话框 ──
 -         * 如果考试环境没有 Material 依赖，或老师要求用最基础的 AlertDialog：
 -         * 把上面 about_BMI_Dialog 换成下面这段即可（并 import android.app.AlertDialog）：
@@ -935,20 +1361,9 @@ index 0f59bf6..3bffe5c 100644
 -         *           .show()
 -         *   }
 -         * ────────────────────────────────────────────────────────────────────
-+         * Spinner 的 selectedItemPosition 就是选中的序号（0/1/2），
-+         * 刚好对应 strings.xml 里 wellness_condition 数组的三项。
-          */
-+        val record = WellnessRecord(
-+            date = Dates.today(),
-+            condition = conditionSpinner.selectedItemPosition,
-+            steps = steps,
-+            note = noteET.text.toString().trim()
-+        )
-+
-+        // 同一天重复保存会覆盖旧记录（数据库里 date 是主键 + CONFLICT_REPLACE）。
-+        db.save(record)
-+
-+        Toast.makeText(this, R.string.wellness_saved, Toast.LENGTH_SHORT).show()
+-         */
++            else -> super.onOptionsItemSelected(item)
++        }
      }
  }
 diff --git a/app/src/main/java/com/example/bmi/ReportActivity.kt b/app/src/main/java/com/example/bmi/ReportActivity.kt
@@ -1334,68 +1749,98 @@ index 3c189d3..0000000
 -    }
 -}
 diff --git a/app/src/main/java/com/example/bmi/data/AppLanguage.kt b/app/src/main/java/com/example/bmi/data/AppLanguage.kt
-deleted file mode 100644
-index e769776..0000000
+index e769776..6894cdf 100644
 --- a/app/src/main/java/com/example/bmi/data/AppLanguage.kt
-+++ /dev/null
-@@ -1,57 +0,0 @@
--package com.example.bmi.data
--
--/*
-- * ============================================================================
++++ b/app/src/main/java/com/example/bmi/data/AppLanguage.kt
+@@ -2,56 +2,53 @@ package com.example.bmi.data
+ 
+ /*
+  * ============================================================================
 - * AppLanguage.kt —— 应用当前显示的语言
-- * ============================================================================
-- * 【这个文件是干什么的】
++ * AppLanguage.kt —— App 支持的语言（【语言切换 · 考试可删】）
+  * ============================================================================
+  * 【这个文件是干什么的】
 - *   App 同时支持中文和英文。界面上到底显示中文还是英文，由系统的语言设置决定；
 - *   而“用中文还是英文去问 AI”也由这个枚举决定。
-- *
++ *   定义 App 只支持两种语言：英文和中文。
++ *   界面文字由 res/values/ 和 res/values-zh-rCN/ 两套资源提供，
++ *   而“现在用的是哪一套”由这个枚举 + LanguageStore 决定。
+  *
 - * 【枚举（enum）是什么】
 - *   enum 就是“只能取几个固定值”的类型。这里 AppLanguage 只能取 ENGLISH 或 CHINESE，
 - *   不可能出现第三种情况，这样编译器就能帮我们防止拼错字符串。
-- *
++ * 【enum（枚举）是什么】
++ *   enum 就是“只能取几个固定值”的类型。AppLanguage 只能取 ENGLISH 或 CHINESE，
++ *   不可能出现第三种值，写错编译器会直接报错。
+  *
 - * 【谁在用这个文件】
 - *   1. ReportActivity.currentLanguage() 会根据手机语言，创建出 AppLanguage.ENGLISH
 - *      或 AppLanguage.CHINESE；
 - *   2. PromptBuilder 用它决定“给 AI 的提示词用中文还是英文写”；
 - *   3. 界面上的字符串（“高度”“Height”）不是这个文件负责的，那是 Android 的资源系统
 - *      根据 values/ 和 values-zh-rCN/ 两个目录自动切换的。
-- *
-- * ────────────────────────────────────────────────────────────────────────────
++ * 【tag 是什么】
++ *   tag 是语言的“国际标准代号”，Android 和 Java 都用它：
++ *     en = English，zh = 中文。
++ *   后面用 Locale("en") / Locale("zh") 生成区域对象，交给系统去挑资源目录。
+  *
+  * ────────────────────────────────────────────────────────────────────────────
 - * 【依赖关系】（考试删文件前先看这里）
 - *   本文件依赖：无（不 import 任何本项目内的类）。
 - *   谁依赖本文件：ReportActivity、PromptBuilder、HealthAdviceRepository、AdviceUiState。
 - *   删除指引：AppLanguage 只服务于“AI 回答用中文还是英文”。
 - *             砍掉 AI 功能时，连同本文件一起删。
-- * ────────────────────────────────────────────────────────────────────────────
-- */
++ * 【依赖关系 / 考试删除指引】
++ *   本文件依赖：无。
++ *   谁依赖本文件：LanguageStore、BaseActivity、PromptBuilder、AdviceActivity。
++ *
++ *   ★ 考试题目【不要求中英文切换】时，按 docs/exam-guide.md 的 A 部分删除：
++ *     - 本文件、LanguageStore.kt、BaseActivity.kt、res/menu/menu_main.xml 里的语言菜单项；
++ *     - MainActivity / HistoryActivity 改回继承 AppCompatActivity。
++ *     （AI 功能也想保留的话，把 AppLanguage 单独留着给 PromptBuilder 用即可。）
+  * ────────────────────────────────────────────────────────────────────────────
+  */
 -enum class AppLanguage {
--
++enum class AppLanguage(val tag: String) {
+ 
 -    /** 英文 */
 -    ENGLISH,
--
++    /** 英文（对应 res/values/strings.xml）。 */
++    ENGLISH("en"),
+ 
 -    /** 中文 */
 -    CHINESE;
--
++    /** 中文（对应 res/values-zh-rCN/strings.xml）。 */
++    CHINESE("zh");
+ 
 -    /*
 -     * companion object 可以理解为“挂在 enum 上的静态工具函数”。
 -     * 也就是说：我们不需要 new 一个对象，直接写 AppLanguage.fromLanguageTag(...) 就能调用。
 -     */
--    companion object {
--
--        /**
+     companion object {
+ 
+         /**
 -         * 把一个“语言标签”转换成 AppLanguage。
--         *
++         * 把系统的语言代号转成 AppLanguage。
++         *
++         * @param languageTag 例如 "zh"、"zh-CN"、"en"；也可能拿不到（null）。
++         * @return 以 "zh" 开头的都算中文，其余（含 null）一律算英文。
+          *
 -         * @param languageTag 例如手机系统给我们的 "zh"（中文）、"en"（英文）。
 -         *                    Android 里语言标签可能带地区，比如 "zh-CN"、"en-US"，
 -         *                    所以我们只用 startsWith 判断前缀。
 -         * @return 以 "zh" 开头的都当成中文，其余一律当英文（简单可靠）。
--         */
++         * startsWith("zh", ignoreCase = true) 会忽略大小写，
++         * 所以 "ZH"、"zh-CN"、"zh-TW" 都能识别成中文。
+          */
 -        fun fromLanguageTag(languageTag: String): AppLanguage =
 -            // startsWith(..., ignoreCase = true) 表示“忽略大小写，看字符串是不是以 zh 开头”。
 -            // 这样 "ZH"、"zh-CN"、"zh-TW" 都会被识别成中文。
 -            if (languageTag.startsWith("zh", ignoreCase = true)) CHINESE else ENGLISH
--    }
--}
++        fun fromTag(languageTag: String?): AppLanguage =
++            if (languageTag?.startsWith("zh", ignoreCase = true) == true) CHINESE else ENGLISH
+     }
+ }
 diff --git a/app/src/main/java/com/example/bmi/data/BmiDates.kt b/app/src/main/java/com/example/bmi/data/BmiDates.kt
 deleted file mode 100644
 index 85fa59b..0000000
@@ -1959,160 +2404,180 @@ index 0000000..f4b6671
 +        SimpleDateFormat(PATTERN, Locale.US).format(Date())
 +}
 diff --git a/app/src/main/java/com/example/bmi/data/DeepSeekClient.kt b/app/src/main/java/com/example/bmi/data/DeepSeekClient.kt
-deleted file mode 100644
-index 827af0b..0000000
+index 827af0b..2b5d7b0 100644
 --- a/app/src/main/java/com/example/bmi/data/DeepSeekClient.kt
-+++ /dev/null
-@@ -1,149 +0,0 @@
--package com.example.bmi.data
--
--import com.example.bmi.BuildConfig
--import org.json.JSONArray
--import org.json.JSONObject
--import java.io.IOException
--import java.net.HttpURLConnection
--import java.net.URL
--
--/*
-- * ============================================================================
++++ b/app/src/main/java/com/example/bmi/data/DeepSeekClient.kt
+@@ -9,28 +9,32 @@ import java.net.URL
+ 
+ /*
+  * ============================================================================
 - * DeepSeekClient.kt —— 真正去调用 DeepSeek 接口的 HTTP 客户端
-- * ============================================================================
-- * 【这个文件是干什么的】
-- *   用最基础的 HttpURLConnection 向 DeepSeek 的 /chat/completions 接口发一个
++ * DeepSeekClient.kt —— 调用 DeepSeek 接口的 HTTP 客户端（【AI 功能 · 考试可删】）
+  * ============================================================================
+  * 【这个文件是干什么的】
+  *   用最基础的 HttpURLConnection 向 DeepSeek 的 /chat/completions 接口发一个
 - *   POST 请求，把提示词发过去，再把返回的 JSON 里的回答文字抠出来。
-- *
++ *   POST 请求：把提示词发过去，再把返回 JSON 里的回答文字抠出来。
+  *
 - * 【为什么不引入 OkHttp/Retrofit】
 - *   整个 App 只需要发一种请求，用系统自带的 HttpURLConnection + org.json 就够，
 - *   不引入第三方库可以减少依赖、避免考试环境联网拉依赖出问题。
-- *
-- * 【重要：网络请求必须在子线程】
-- *   requestAdvice() 是“阻塞”调用（发请求期间当前线程会卡住等结果）。
++ * 【为什么不引入 OkHttp / Retrofit】
++ *   整个 App 只需要发一种请求，用系统自带的 HttpURLConnection + org.json 就够：
++ *   不加第三方依赖，考试环境联网拉依赖失败也不会影响编译。
+  *
+  * 【重要：网络请求必须在子线程】
+  *   requestAdvice() 是“阻塞”调用（发请求期间当前线程会卡住等结果）。
 - *   如果放在主线程（UI 线程）会触发 NetworkOnMainThreadException 并卡界面。
 - *   所以它一定是在 HealthAdviceRepository 里通过 withContext(Dispatchers.IO)
 - *   切到子线程去执行的（见 HealthAdviceRepository.kt）。
-- *
-- * ────────────────────────────────────────────────────────────────────────────
++ *   放在主线程（UI 线程）会抛 NetworkOnMainThreadException 并卡住界面，
++ *   所以它是在 WellnessAdviceRepository 里用 withContext(Dispatchers.IO) 调到子线程的。
++ *
++ * 【这个接口长什么样】
++ *   请求：POST https://api.deepseek.com/chat/completions
++ *         Header: Authorization: Bearer <你的 key>
++ *         Body:   { "model": "...", "messages": [ {"role":"system",...}, {"role":"user",...} ] }
++ *   返回：{ "choices": [ { "message": { "content": "回答正文" } } ] }
+  *
+  * ────────────────────────────────────────────────────────────────────────────
 - * 【依赖关系】（考试删文件前先看这里）
 - *   本文件依赖：无（只 import BuildConfig 里的密钥，不依赖其它源码文件）。
 - *   谁依赖本文件：HealthAdviceRepository。
 - *   删除指引：DeepSeekClient 只服务于“调用 DeepSeek 接口”，属于【AI 建议】功能；
 - *             砍掉 AI 时连同本文件一起删。
-- * ────────────────────────────────────────────────────────────────────────────
-- */
--
--/** API key 没配置时抛出的异常（BuildConfig 里是空字符串）。 */
--class MissingApiKeyException : IllegalStateException("DeepSeek API key is not configured")
--
--/** 远端接口返回了非 2xx 状态码时抛出的异常（带着 HTTP 状态码和返回内容）。 */
--class LlmException(val statusCode: Int, val responseBody: String) :
--    IOException("DeepSeek API error, HTTP $statusCode")
--
--/**
-- * DeepSeek 的 HTTP 客户端。
-- *
++ * 【依赖关系 / 考试删除指引】
++ *   本文件依赖：BuildConfig.DEEPSEEK_API_KEY / DEEPSEEK_BASE_URL（在 app/build.gradle 注入）。
++ *   谁依赖本文件：WellnessAdviceRepository。
++ *   ★ 考试不做 AI 时删掉本文件（见 docs/exam-guide.md B 部分）。
+  * ────────────────────────────────────────────────────────────────────────────
+  */
+ 
+@@ -44,8 +48,8 @@ class LlmException(val statusCode: Int, val responseBody: String) :
+ /**
+  * DeepSeek 的 HTTP 客户端。
+  *
 - * @param apiKey  密钥，默认取自 BuildConfig.DEEPSEEK_API_KEY（编译期注入）。
 - * @param baseUrl 接口地址，默认取自 BuildConfig.DEEPSEEK_BASE_URL。
-- */
--class DeepSeekClient(
--    private val apiKey: String,
--    private val baseUrl: String = BuildConfig.DEEPSEEK_BASE_URL
--) {
--
--    /**
++ * @param apiKey  密钥，默认取 BuildConfig.DEEPSEEK_API_KEY（编译期从 local.properties 注入）。
++ * @param baseUrl 接口地址，默认取 BuildConfig.DEEPSEEK_BASE_URL。
+  */
+ class DeepSeekClient(
+     private val apiKey: String,
+@@ -53,38 +57,36 @@ class DeepSeekClient(
+ ) {
+ 
+     /**
 -     * 发送一次对话请求，返回 AI 的回答文字（阻塞调用，必须在子线程）。
--     */
--    fun requestAdvice(systemPrompt: String, userPrompt: String): String {
++     * 发送一次对话请求，返回 AI 的回答文字。
++     * 这是阻塞调用，必须在子线程执行（见文件头部说明）。
+      */
+     fun requestAdvice(systemPrompt: String, userPrompt: String): String {
 -        val connection = openConnection()   // 先建立连接
--        try {
++        val connection = openConnection()   // 建立连接并设置请求头
+         try {
 -            // 把请求体（JSON 字符串）写入连接的输出流 —— 这就是“发出去的数据”。
--            connection.outputStream.use { out ->
--                out.write(buildPayload(systemPrompt, userPrompt).toByteArray(Charsets.UTF_8))
--            }
++            // 把请求体（JSON 字符串）写入连接的输出流 —— 这一步才真正把数据发出去。
+             connection.outputStream.use { out ->
+                 out.write(buildPayload(systemPrompt, userPrompt).toByteArray(Charsets.UTF_8))
+             }
 -            val statusCode = connection.responseCode   // 读取 HTTP 状态码（200 表示成功）
 -            val responseBody = readBody(connection, statusCode)  // 读取返回内容
--            if (statusCode !in 200..299) {
++            val statusCode = connection.responseCode      // 读 HTTP 状态码（200 表示成功）
++            val responseBody = readBody(connection, statusCode)
+             if (statusCode !in 200..299) {
 -                // 状态码不是 2xx（比如 401 没权限、500 服务器错），视为失败。
--                throw LlmException(statusCode, responseBody)
--            }
++                // 非 2xx（401 没权限、429 太频繁、500 服务端错…）都视为失败。
+                 throw LlmException(statusCode, responseBody)
+             }
 -            return parseReply(responseBody)   // 从返回 JSON 里抠出回答文字
--        } finally {
++            return parseReply(responseBody)               // 从返回 JSON 里抠出回答文字
+         } finally {
 -            connection.disconnect()   // 无论成功失败都关闭连接，释放资源
--        }
--    }
--
++            connection.disconnect()   // 无论成功失败都断开连接，释放资源
+         }
+     }
+ 
 -    /**
 -     * 配置并打开一个 HttpURLConnection。
 -     * 注意：这是“阻塞”连接，调用方必须自己在子线程执行。
 -     */
--    private fun openConnection(): HttpURLConnection {
++    /** 配置并打开一个 HttpURLConnection（阻塞连接，调用方负责切线程）。 */
+     private fun openConnection(): HttpURLConnection {
 -        // baseUrl 末尾如果有 "/"，去掉它再拼 "/chat/completions"，避免出现双斜杠。
--        val url = URL("${baseUrl.trimEnd('/')}/chat/completions")
--        return (url.openConnection() as HttpURLConnection).apply {
++        // baseUrl 末尾如果有 "/"，先去掉再拼 "/chat/completions"，避免出现双斜杠。
+         val url = URL("${baseUrl.trimEnd('/')}/chat/completions")
+         return (url.openConnection() as HttpURLConnection).apply {
 -            requestMethod = "POST"                       // 用 POST 方式提交数据
--            connectTimeout = CONNECT_TIMEOUT_MS          // 建立连接的最长等待时间
++            requestMethod = "POST"                       // 用 POST 提交数据
+             connectTimeout = CONNECT_TIMEOUT_MS          // 建立连接的最长等待时间
 -            readTimeout = READ_TIMEOUT_MS                // 读取返回的最长等待时间
--            doOutput = true                              // 允许向连接写入请求体
--            setRequestProperty("Content-Type", "application/json; charset=utf-8")
--            setRequestProperty("Accept", "application/json")
--            setRequestProperty("Authorization", "Bearer $apiKey")  // 用 key 鉴权
--        }
--    }
--
--    /**
--     * 拼出 DeepSeek 需要的请求体（JSON 字符串）。
++            readTimeout = READ_TIMEOUT_MS                // 等待返回内容的最长时间
+             doOutput = true                              // 允许向连接写入请求体
+             setRequestProperty("Content-Type", "application/json; charset=utf-8")
+             setRequestProperty("Accept", "application/json")
+@@ -94,45 +96,43 @@ class DeepSeekClient(
+ 
+     /**
+      * 拼出 DeepSeek 需要的请求体（JSON 字符串）。
 -     * 结构大概是：
 -     *   { "model": "deepseek-chat", "messages": [ {role:"system"...}, {role:"user"...} ], ... }
--     */
--    private fun buildPayload(systemPrompt: String, userPrompt: String): String {
++     *
++     * messages 数组里两条消息：
++     *   role = system → 规定 AI 的身份和回答规则；
++     *   role = user   → 具体的用户数据。
+      */
+     private fun buildPayload(systemPrompt: String, userPrompt: String): String {
 -        // JSONArray 就是一个 JSON 数组；这里放两条消息。
--        val messages = JSONArray().apply {
--            put(JSONObject().put("role", "system").put("content", systemPrompt))
--            put(JSONObject().put("role", "user").put("content", userPrompt))
--        }
--        return JSONObject().apply {
+         val messages = JSONArray().apply {
+             put(JSONObject().put("role", "system").put("content", systemPrompt))
+             put(JSONObject().put("role", "user").put("content", userPrompt))
+         }
+         return JSONObject().apply {
 -            put("model", MODEL)          // 模型名
--            put("temperature", TEMPERATURE)  // 随机性：0.7 比较自然
--            put("max_tokens", MAX_TOKENS)    // 最多生成多少 token
++            put("model", MODEL)              // 模型名
+             put("temperature", TEMPERATURE)  // 随机性：0.7 比较自然
+             put("max_tokens", MAX_TOKENS)    // 最多生成多少 token
 -            put("stream", false)             // 不用流式，一次性返回
--            put("messages", messages)
--        }.toString()
--    }
--
++            put("stream", false)             // 不流式，一次性返回
+             put("messages", messages)
+         }.toString()
+     }
+ 
 -    /**
 -     * 读取返回内容：成功读 inputStream，失败读 errorStream。
 -     */
--    private fun readBody(connection: HttpURLConnection, statusCode: Int): String {
--        val stream = if (statusCode in 200..299) connection.inputStream else connection.errorStream
++    /** 读返回内容：成功读 inputStream，失败读 errorStream（错误信息在后者里）。 */
+     private fun readBody(connection: HttpURLConnection, statusCode: Int): String {
+         val stream = if (statusCode in 200..299) connection.inputStream else connection.errorStream
 -        // bufferedReader 逐块读取字符流；use { } 会在读完自动关闭。
--        return stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
--    }
--
--    /**
++        // use { } 会读完自动关闭流。
+         return stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
+     }
+ 
+     /**
 -     * 从 DeepSeek 返回的 JSON 里取出真正的回答文字。
 -     * 返回结构形如：
 -     *   { "choices": [ { "message": { "content": "这里是回答..." } } ] }
--     */
--    private fun parseReply(responseBody: String): String {
++     * 从返回 JSON 里取出回答正文：
++     *   { "choices": [ { "message": { "content": "..." } } ] }
+      */
+     private fun parseReply(responseBody: String): String {
 -        val content = JSONObject(responseBody)      // 把字符串解析成 JSON 对象
 -            .getJSONArray("choices")                // 取 choices 数组
 -            .getJSONObject(0)                       // 取第 0 个结果
 -            .getJSONObject("message")               // 取 message 对象
 -            .optString("content")                   // 取 content 字段（回答正文）
 -            .trim()                                 // 去掉首尾空白
--        if (content.isEmpty()) {
--            throw LlmException(-1, responseBody)
--        }
--        return content
--    }
--
--    private companion object {
--        const val MODEL = "deepseek-chat"
--        const val TEMPERATURE = 0.7
--        const val MAX_TOKENS = 320
--        const val CONNECT_TIMEOUT_MS = 15_000   // 连接超时 15 秒
--        const val READ_TIMEOUT_MS = 90_000      // 读取超时 90 秒
--    }
--}
++        val content = JSONObject(responseBody)
++            .getJSONArray("choices")
++            .getJSONObject(0)
++            .getJSONObject("message")
++            .optString("content")
++            .trim()
+         if (content.isEmpty()) {
+             throw LlmException(-1, responseBody)
+         }
 diff --git a/app/src/main/java/com/example/bmi/data/Gender.kt b/app/src/main/java/com/example/bmi/data/Gender.kt
 deleted file mode 100644
 index bd6dd97..0000000
@@ -2234,72 +2699,160 @@ index 8f8d91e..0000000
 -        }
 -    }
 -}
+diff --git a/app/src/main/java/com/example/bmi/data/LanguageStore.kt b/app/src/main/java/com/example/bmi/data/LanguageStore.kt
+new file mode 100644
+index 0000000..bc34b97
+--- /dev/null
++++ b/app/src/main/java/com/example/bmi/data/LanguageStore.kt
+@@ -0,0 +1,55 @@
++package com.example.bmi.data
++
++import android.content.Context
++
++/*
++ * ============================================================================
++ * LanguageStore.kt —— 用 SharedPreferences 记住用户选的语言
++ * ============================================================================
++ * 【这个文件是干什么的】
++ *   用户在菜单里点“切换语言”之后，App 要记住这个选择，下次打开还是同一个语言。
++ *   这种“少量键值对”的数据，Android 推荐用 SharedPreferences 保存。
++ *
++ * 【SharedPreferences 怎么用（考试高频考点）】
++ *   1. 拿对象：context.getSharedPreferences("文件名", Context.MODE_PRIVATE)
++ *      —— MODE_PRIVATE 表示只有本 App 能读写；
++ *   2. 读：prefs.getString("key", 默认值)，找不到 key 时返回默认值（这里是 null）；
++ *   3. 写：prefs.edit().putString("key", 值).apply()
++ *      —— apply() 异步写磁盘（不卡界面），commit() 同步写（返回是否成功）。
++ *
++ * 【为什么不把语言存进 SQLite】
++ *   语言只是一个开关值，不需要查询、排序、关联，用 SharedPreferences 最轻量。
++ *
++ * ────────────────────────────────────────────────────────────────────────────
++ * 【依赖关系 / 考试删除指引】
++ *   本文件依赖：AppLanguage。
++ *   谁依赖本文件：BaseActivity（读取）、MainActivity（写入）。
++ *   ★ 考试不要求中英文切换时，删掉本文件（见 docs/exam-guide.md A 部分）。
++ * ────────────────────────────────────────────────────────────────────────────
++ */
++class LanguageStore(context: Context) {
++
++    // applicationContext：避免持有 Activity 引用造成内存泄漏。
++    private val prefs =
++        context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
++
++    /**
++     * 读取用户保存过的语言。
++     *
++     * @return 用户选过的语言；从没选过时返回 null（表示“跟随手机系统语言”）。
++     *
++     * 返回 null 而不是直接返回英文，是为了保留 Android 默认的多语言行为：
++     * 第一次装机、用户没手动切换过时，中文手机自动显示中文。
++     */
++    fun load(): AppLanguage? = prefs.getString(KEY_LANGUAGE, null)?.let(AppLanguage::fromTag)
++
++    /** 保存用户选择的语言（apply() 异步写入，不阻塞界面）。 */
++    fun save(language: AppLanguage) {
++        prefs.edit().putString(KEY_LANGUAGE, language.tag).apply()
++    }
++
++    private companion object {
++        const val PREFS_NAME = "wellness_settings"
++        const val KEY_LANGUAGE = "language_tag"
++    }
++}
 diff --git a/app/src/main/java/com/example/bmi/data/PromptBuilder.kt b/app/src/main/java/com/example/bmi/data/PromptBuilder.kt
-deleted file mode 100644
-index d7d306c..0000000
+index d7d306c..6cc9462 100644
 --- a/app/src/main/java/com/example/bmi/data/PromptBuilder.kt
-+++ /dev/null
-@@ -1,89 +0,0 @@
--package com.example.bmi.data
--
++++ b/app/src/main/java/com/example/bmi/data/PromptBuilder.kt
+@@ -1,89 +1,96 @@
+ package com.example.bmi.data
+ 
 -import java.util.Locale
 -
--/*
-- * ============================================================================
+ /*
+  * ============================================================================
 - * PromptBuilder.kt —— 拼装发给 AI 的“提示词”
-- * ============================================================================
-- * 【这个文件是干什么的】
-- *   大语言模型（LLM）靠“提示词（prompt）”工作：你问什么，它答什么。
++ * PromptBuilder.kt —— 拼装发给 AI 的“提示词”（【AI 功能 · 考试可删】）
+  * ============================================================================
+  * 【这个文件是干什么的】
+  *   大语言模型（LLM）靠“提示词（prompt）”工作：你问什么，它答什么。
 - *   这里负责把用户的 BMI / 性别 / 年龄，以及“用中文还是英文回答”的要求，
 - *   拼成两段文本：
 - *     1. systemPrompt：系统提示词，规定 AI 的身份和输出规则（先说规则）；
 - *     2. userPrompt：  用户提示词，把用户的具体数据放进去。
-- *
++ *   这里把“今天的健康记录 + 用中文还是英文回答”拼成两段文本：
++ *     1. systemPrompt：系统提示词，规定 AI 的身份和回答规则；
++ *     2. userPrompt：  用户提示词，放入具体的日期、身体状况、步数、备注。
+  *
 - * 【为什么单独抽成一个文件】
 - *   因为它不依赖任何 Android 代码，是“纯 Kotlin”，
 - *   所以可以写单元测试（见 PromptBuilderTest.kt）直接验证字符串内容是否正确。
-- *
++ * 【为什么单独抽成一个文件（重要设计理由）】
++ *   它不 import 任何 Android 类，是“纯 Kotlin”，
++ *   所以可以在电脑上直接用 JUnit 跑单元测试（见 app/src/test/PromptBuilderTest.kt），
++ *   不需要模拟器。考试里“把逻辑和界面分开”通常能加分。
+  *
 - * 【谁在用这个文件】
 - *   HealthAdviceRepository 在发请求前调用这两个方法拿到提示词。
-- *
-- * ────────────────────────────────────────────────────────────────────────────
++ * 【为什么身体状况文字要在这里自己映射，而不用 R.string.xxx】
++ *   因为提示词的语言必须跟“回答语言”一致：用户切到英文界面时，
++ *   AI 也应该用英文回答。用 Android 资源的话，这段代码就不能脱离 Context 测试了。
+  *
+  * ────────────────────────────────────────────────────────────────────────────
 - * 【依赖关系】（考试删文件前先看这里）
 - *   本文件依赖：BmiProfile、Gender、AppLanguage（都在同目录 data/ 下）。
 - *   谁依赖本文件：HealthAdviceRepository。
 - *   删除指引：PromptBuilder 只服务于“给 AI 拼提示词”，属于【AI 建议】功能；
 - *             砍掉 AI 时连同本文件一起删。
-- * ────────────────────────────────────────────────────────────────────────────
-- */
--object PromptBuilder {
--
--    /**
--     * 系统提示词：告诉 AI “你是谁、要遵守什么规则”。
++ * 【依赖关系 / 考试删除指引】
++ *   本文件依赖：WellnessRecord、AppLanguage。
++ *   谁依赖本文件：WellnessAdviceRepository。
++ *   ★ 考试不做 AI 时删掉本文件（见 docs/exam-guide.md B 部分）；
++ *     如果保留 AI 但不要中英文切换，把 AppLanguage 换成写死的"中文"分支即可。
+  * ────────────────────────────────────────────────────────────────────────────
+  */
+ object PromptBuilder {
+ 
+     /**
+      * 系统提示词：告诉 AI “你是谁、要遵守什么规则”。
 -     * 语言跟界面走：中文界面 → 中文规则，英文界面 → 英文规则。
--     */
--    fun systemPrompt(language: AppLanguage): String = when (language) {
--        AppLanguage.CHINESE ->
++     * 中文界面 → 中文规则；英文界面 → 英文规则。
+      */
+     fun systemPrompt(language: AppLanguage): String = when (language) {
+         AppLanguage.CHINESE ->
 -            "你是一位专业的营养与健康顾问。用户会提供自己的 BMI 数值、性别和年龄。" +
--                "请根据这些信息给出一份简短、实用、可执行的健康建议。" +
++            "你是一位专业的健康管理顾问。用户会提供某一天的身体状况、步数和备注。" +
+                 "请根据这些信息给出一份简短、实用、可执行的健康建议。" +
 -                "要求：1) 只用简体中文回答；2) 给出 3 条建议，分别涉及饮食、运动和生活习惯，" +
--                "每条不超过 40 个字；3) 用「1. 2. 3.」编号，不要使用 Markdown 符号；" +
--                "4) 语气友好、专业，不要做医学诊断，也不要重复用户已经提供的数据。"
--
--        AppLanguage.ENGLISH ->
++                "要求：1) 只用简体中文回答；2) 给出 3 条建议，分别涉及运动、饮食和作息，" +
+                 "每条不超过 40 个字；3) 用「1. 2. 3.」编号，不要使用 Markdown 符号；" +
+                 "4) 语气友好、专业，不要做医学诊断，也不要重复用户已经提供的数据。"
+ 
+         AppLanguage.ENGLISH ->
 -            "You are a professional nutrition and health advisor. " +
 -                "The user will give you their BMI, gender and age. " +
--                "Give short, practical and actionable health suggestions based on that information. " +
++            "You are a professional wellness advisor. " +
++                "The user will give you the condition, step count and notes of one day. " +
+                 "Give short, practical and actionable health suggestions based on that information. " +
 -                "Requirements: 1) Answer in English only; 2) Give exactly 3 suggestions covering diet, " +
 -                "exercise and daily habits, at most 40 words each; 3) Number them as \"1. 2. 3.\" " +
 -                "without any Markdown formatting; 4) Be friendly and professional, do not make a " +
 -                "medical diagnosis and do not repeat the data the user already provided."
--    }
--
--    /**
++                "Requirements: 1) Answer in English only; 2) Give exactly 3 suggestions covering " +
++                "exercise, diet and daily routine, at most 40 words each; 3) Number them as " +
++                "\"1. 2. 3.\" without any Markdown formatting; 4) Be friendly and professional, " +
++                "do not make a medical diagnosis and do not repeat the data the user already provided."
+     }
+ 
+     /**
 -     * 用户提示词：把一次 BMI 的具体数据填进模板。
--     *
++     * 用户提示词：把一条具体记录填进模板。
+      *
 -     * @param profile  本次的 BMI / 年龄 / 性别。
 -     * @param language 决定模板语言（顺带也决定了性别显示成“男”还是“male”）。
--     */
++     * @param record   要分析的那一天的记录（日期 / 身体状况 / 步数 / 备注）。
++     * @param language 决定模板语言（同时决定状况、备注标签用哪种语言）。
+      */
 -    fun userPrompt(profile: BmiProfile, language: AppLanguage): String = when (language) {
 -        AppLanguage.CHINESE -> String.format(
 -            Locale.US,
@@ -2308,7 +2861,16 @@ index d7d306c..0000000
 -            genderLabel(profile.gender, language),        // %s → 性别文本
 -            profile.age                                   // %d → 年龄
 -        )
--
++    fun userPrompt(record: WellnessRecord, language: AppLanguage): String = when (language) {
++        AppLanguage.CHINESE -> buildString {
++            append("日期：").append(record.date).append('\n')
++            append("身体状况：").append(conditionLabel(record.condition, language)).append('\n')
++            append("步数：").append(record.steps).append('\n')
++            // 备注可以为空，空的时候写“无”，避免发给 AI 一个空行造成误解。
++            append("备注：").append(record.note.ifBlank { "无" }).append('\n')
++            append("请给出健康建议。")
++        }
+ 
 -        AppLanguage.ENGLISH -> String.format(
 -            Locale.US,
 -            "BMI: %.1f%nGender: %s%nAge: %d%nPlease give me health suggestions.",
@@ -2316,25 +2878,113 @@ index d7d306c..0000000
 -            genderLabel(profile.gender, language),
 -            profile.age
 -        )
--    }
--
--    /**
++        AppLanguage.ENGLISH -> buildString {
++            append("Date: ").append(record.date).append('\n')
++            append("Condition: ").append(conditionLabel(record.condition, language)).append('\n')
++            append("Steps: ").append(record.steps).append('\n')
++            append("Notes: ").append(record.note.ifBlank { "none" }).append('\n')
++            append("Please give me health suggestions.")
++        }
+     }
+ 
+     /**
 -     * 把 Gender 枚举翻译成对应语言下的文本。
 -     * 注意：这里不是用 Android 的字符串资源，而是直接写字面量，
 -     * 因为提示词是发给 AI 的，必须跟着“回答语言”走，而不是跟着手机界面语言走。
--     */
++     * 把数据库里的 0/1/2 翻成提示词里用的文字。
++     * 0 = 良好（Good），1 = 一般（Fair），2 = 较差（Poor），顺序和 Spinner 一致。
+      */
 -    private fun genderLabel(gender: Gender, language: AppLanguage): String =
--        when (language) {
++    private fun conditionLabel(condition: Int, language: AppLanguage): String =
+         when (language) {
 -            AppLanguage.CHINESE -> if (gender == Gender.MALE) "男" else "女"
 -            AppLanguage.ENGLISH -> if (gender == Gender.MALE) "male" else "female"
--        }
--}
++            AppLanguage.CHINESE -> when (condition) {
++                0 -> "良好"
++                1 -> "一般"
++                else -> "较差"
++            }
++            AppLanguage.ENGLISH -> when (condition) {
++                0 -> "Good"
++                1 -> "Fair"
++                else -> "Poor"
++            }
+         }
+ }
+diff --git a/app/src/main/java/com/example/bmi/data/WellnessAdviceRepository.kt b/app/src/main/java/com/example/bmi/data/WellnessAdviceRepository.kt
+new file mode 100644
+index 0000000..cfc38b9
+--- /dev/null
++++ b/app/src/main/java/com/example/bmi/data/WellnessAdviceRepository.kt
+@@ -0,0 +1,62 @@
++package com.example.bmi.data
++
++import com.example.bmi.BuildConfig
++import kotlinx.coroutines.Dispatchers
++import kotlinx.coroutines.withContext
++
++/*
++ * ============================================================================
++ * WellnessAdviceRepository.kt —— AI 健康建议的“统一入口”（【AI 功能 · 考试可删】）
++ * ============================================================================
++ * 【这个文件是干什么的】
++ *   把“调用 AI 拿建议”包装成一个简单的挂起函数 fetchAdvice(...)。
++ *   ViewModel 只调用它，不需要知道 HTTP、JSON、密钥这些细节。
++ *
++ * 【为什么网络请求要在这里用 withContext(Dispatchers.IO)】
++ *   Android 规定耗时操作不能在主线程做，否则界面卡死甚至抛
++ *   NetworkOnMainThreadException。Dispatchers.IO 是协程提供的 IO 线程池，
++ *   withContext 表示“切到 IO 线程执行括号里的代码，执行完再切回来”。
++ *
++ * 【suspend 是什么】
++ *   suspend 函数（挂起函数）只能在协程里调用。它不会阻塞线程，
++ *   而是“暂停”当前协程，等 IO 完成后再继续，这样主线程始终能响应点击。
++ *
++ * 【Repository（仓库）这个角色】
++ *   它是“数据从哪来”的统一出口：界面层只管要数据，不管数据来自网络、
++ *   数据库还是本地假数据。考试题目如果要求“分层”，就可以这样答。
++ *
++ * ────────────────────────────────────────────────────────────────────────────
++ * 【依赖关系 / 考试删除指引】
++ *   本文件依赖：DeepSeekClient、PromptBuilder、WellnessRecord、AppLanguage。
++ *   谁依赖本文件：AdviceViewModel。
++ *   ★ 考试不做 AI 时删掉本文件（见 docs/exam-guide.md B 部分）。
++ * ────────────────────────────────────────────────────────────────────────────
++ */
++class WellnessAdviceRepository(
++    // API key 默认从 BuildConfig 读（编译期由 app/build.gradle 注入）。
++    private val apiKey: String = BuildConfig.DEEPSEEK_API_KEY,
++    // 真正发请求的客户端。
++    private val client: DeepSeekClient = DeepSeekClient(apiKey)
++) {
++
++    /**
++     * 获取一次健康建议。
++     *
++     * @param record   要分析的一天的记录。
++     * @param language 回答语言（跟着界面语言走）。
++     * @return AI 返回的建议文字。
++     * @throws MissingApiKeyException 没有配置 key 时抛出。
++     */
++    suspend fun fetchAdvice(record: WellnessRecord, language: AppLanguage): String {
++        // key 是空字符串就直接抛异常，没必要发一个注定失败的请求。
++        if (apiKey.isBlank()) {
++            throw MissingApiKeyException()
++        }
++        return withContext(Dispatchers.IO) {   // 切到 IO 线程跑网络请求
++            client.requestAdvice(
++                systemPrompt = PromptBuilder.systemPrompt(language),       // 系统提示词
++                userPrompt = PromptBuilder.userPrompt(record, language)    // 用户提示词
++            )
++        }
++    }
++}
 diff --git a/app/src/main/java/com/example/bmi/data/WellnessDbHelper.kt b/app/src/main/java/com/example/bmi/data/WellnessDbHelper.kt
 new file mode 100644
-index 0000000..6c4f978
+index 0000000..b755241
 --- /dev/null
 +++ b/app/src/main/java/com/example/bmi/data/WellnessDbHelper.kt
-@@ -0,0 +1,138 @@
+@@ -0,0 +1,173 @@
 +package com.example.bmi.data
 +
 +import android.content.ContentValues
@@ -2461,6 +3111,41 @@ index 0000000..6c4f978
 +        return records
 +    }
 +
++    /**
++     * 按日期查一条记录，查不到返回 null。
++     *
++     * 【AI 功能 · 考试可删】目前只有 AdviceActivity 用它取“今天的记录”。
++     * 不做 AI 时这个方法可以删掉，不影响保存和历史页。
++     *
++     * query 的第三个参数是 where 条件，第四个参数是条件里的值：
++     *   selection     = "date = ?"   —— ? 是占位符；
++     *   selectionArgs = arrayOf(date) —— 真正的值按顺序填进 ? 里。
++     * 用 ? 占位而不是把日期拼进 SQL 字符串，可以防止 SQL 注入、也不用手动加引号。
++     */
++    fun findByDate(date: String): WellnessRecord? {
++        val cursor = readableDatabase.query(
++            TABLE_RECORDS,
++            arrayOf(COL_DATE, COL_CONDITION, COL_STEPS, COL_NOTE),
++            "$COL_DATE = ?",
++            arrayOf(date),
++            null,
++            null,
++            null
++        )
++        return cursor.use { c ->
++            if (c.moveToFirst()) {
++                WellnessRecord(
++                    date = c.getString(0),
++                    condition = c.getInt(1),
++                    steps = c.getInt(2),
++                    note = c.getString(3)
++                )
++            } else {
++                null
++            }
++        }
++    }
++
 +    private companion object {
 +        const val DATABASE_NAME = "wellness.db"     // 数据库文件名
 +        const val DATABASE_VERSION = 1              // 改表结构时 +1
@@ -2508,6 +3193,181 @@ index 0000000..3ce26aa
 +    val steps: Int,
 +    val note: String
 +)
+diff --git a/app/src/main/java/com/example/bmi/ui/advice/AdviceUiState.kt b/app/src/main/java/com/example/bmi/ui/advice/AdviceUiState.kt
+new file mode 100644
+index 0000000..1a6ff0f
+--- /dev/null
++++ b/app/src/main/java/com/example/bmi/ui/advice/AdviceUiState.kt
+@@ -0,0 +1,70 @@
++package com.example.bmi.ui.advice
++
++import androidx.annotation.StringRes
++import com.example.bmi.R
++import com.example.bmi.data.AppLanguage
++import com.example.bmi.data.WellnessRecord
++
++/*
++ * ============================================================================
++ * AdviceUiState.kt —— AI 建议的“请求”和“状态”（【AI 功能 · 考试可删】）
++ * ============================================================================
++ * 【这个文件是干什么的】
++ *   AI 功能有一个清晰的状态机：没开始 → 加载中 → 成功 / 失败。
++ *   这里用 sealed class（密封类）把这些状态建模出来，
++ *   界面只可能收到这几种确定的状态，不会漏处理。
++ *
++ * 【sealed class（密封类）是什么】
++ *   普通 class 谁都能继承；sealed class 只允许在“同一个文件里”被继承，
++ *   所以编译器知道它一共只有几种可能。配合 when 使用时能强制穷举，
++ *   少写一种情况就会编译报错。
++ *
++ * 【谁在用这个文件】
++ *   - AdviceViewModel 产生这些状态；
++ *   - AdviceActivity 观察这些状态并渲染界面。
++ *
++ * ────────────────────────────────────────────────────────────────────────────
++ * 【依赖关系 / 考试删除指引】
++ *   本文件依赖：WellnessRecord、AppLanguage、R.string.*（错误文案）。
++ *   谁依赖本文件：AdviceActivity、AdviceViewModel。
++ *   ★ 考试不做 AI 时删掉本文件（见 docs/exam-guide.md B 部分）。
++ * ────────────────────────────────────────────────────────────────────────────
++ */
++
++/**
++ * 一次 AI 请求需要的一切信息。
++ * 用 data class 打包，ViewModel 就能记住“上次请求”，失败后原样重试。
++ */
++data class AdviceRequest(
++    val record: WellnessRecord,   // 要分析的那一天记录
++    val language: AppLanguage     // 回答语言
++)
++
++/**
++ * 失败原因。每个原因对应一个本地化文案 id。
++ *
++ * @param messageRes 指向 strings.xml 里的文案（例如 R.string.ai_error_network）。
++ *                   界面拿到后用 getString(messageRes) 显示当前语言的文字。
++ */
++enum class ErrorReason(@param:StringRes val messageRes: Int) {
++    MISSING_API_KEY(R.string.ai_error_missing_key),  // 没配置 API key
++    NETWORK(R.string.ai_error_network),              // 网络问题（断网、超时）
++    API(R.string.ai_error_api),                      // 接口返回错误（401/429/500…）
++    UNKNOWN(R.string.ai_error_unknown)               // 其它未知错误
++}
++
++/** AI 建议页面的四种状态。 */
++sealed class AdviceUiState {
++
++    /** 还没有发起请求。 */
++    object Idle : AdviceUiState()
++
++    /** 请求已发出，等待返回（界面显示转圈）。 */
++    object Loading : AdviceUiState()
++
++    /** 成功，text 是 AI 返回的建议正文。 */
++    data class Success(val text: String) : AdviceUiState()
++
++    /** 失败，reason 说明失败原因。 */
++    data class Error(val reason: ErrorReason) : AdviceUiState()
++}
+diff --git a/app/src/main/java/com/example/bmi/ui/advice/AdviceViewModel.kt b/app/src/main/java/com/example/bmi/ui/advice/AdviceViewModel.kt
+new file mode 100644
+index 0000000..4c4b86c
+--- /dev/null
++++ b/app/src/main/java/com/example/bmi/ui/advice/AdviceViewModel.kt
+@@ -0,0 +1,93 @@
++package com.example.bmi.ui.advice
++
++import androidx.lifecycle.LiveData
++import androidx.lifecycle.MutableLiveData
++import androidx.lifecycle.ViewModel
++import androidx.lifecycle.viewModelScope
++import com.example.bmi.data.LlmException
++import com.example.bmi.data.MissingApiKeyException
++import com.example.bmi.data.WellnessAdviceRepository
++import kotlinx.coroutines.CancellationException
++import kotlinx.coroutines.launch
++import java.io.IOException
++
++/*
++ * ============================================================================
++ * AdviceViewModel.kt —— AI 建议页的 ViewModel（MVVM 里的 VM）（【AI 功能 · 考试可删】）
++ * ============================================================================
++ * 【这个文件是干什么的】
++ *   负责 AI 建议的“业务逻辑”：发起请求、把结果/异常转成状态、支持重试。
++ *   Activity 不碰网络，只 observe（观察）这里的状态并照着渲染。
++ *
++ * 【ViewModel 是什么（考试高频概念）】
++ *   专门“装跟界面相关的数据 + 逻辑”的组件。关键特性：
++ *   屏幕旋转导致 Activity 销毁重建时，ViewModel 不会被销毁，
++ *   所以里面的数据能跨旋转存活 —— 旋转后不会重复发请求、不会重复扣费。
++ *
++ * 【LiveData 是什么】
++ *   一种可观察的数据容器。Activity observe 它之后，值一变界面就自动刷新。
++ *   - MutableLiveData：内部可修改的版本；
++ *   - LiveData：对外只读的版本（防止外部乱改）。
++ *
++ * 【viewModelScope 是什么】
++ *   ViewModel 自带的协程作用域，ViewModel 被清除时会自动取消里面的协程，
++ *   避免“页面已经关了还在跑请求”造成的内存泄漏。
++ *
++ * ────────────────────────────────────────────────────────────────────────────
++ * 【依赖关系 / 考试删除指引】
++ *   本文件依赖：WellnessAdviceRepository、AdviceUiState。
++ *   谁依赖本文件：AdviceActivity。
++ *   ★ 考试不做 AI 时删掉本文件，并把 AdviceActivity 里所有 viewModel 相关代码删掉
++ *     （见 docs/exam-guide.md B 部分；也可以直接用 lifecycleScope 代替 ViewModel）。
++ * ────────────────────────────────────────────────────────────────────────────
++ */
++class AdviceViewModel(
++    // 数据来源。默认创建真的 Repository；测试时可以传入“假”的实现。
++    private val repository: WellnessAdviceRepository = WellnessAdviceRepository()
++) : ViewModel() {
++
++    // 内部可写状态；对外只暴露只读的 adviceState。
++    private val _adviceState = MutableLiveData<AdviceUiState>(AdviceUiState.Idle)
++    val adviceState: LiveData<AdviceUiState> = _adviceState
++
++    /** 记住上一次请求，供 retry() 使用。 */
++    private var lastRequest: AdviceRequest? = null
++
++    /** 发起一次 AI 建议请求。 */
++    fun loadAdvice(request: AdviceRequest) {
++        lastRequest = request                        // 记住请求，方便重试
++        _adviceState.value = AdviceUiState.Loading   // 先进入“加载中”
++
++        viewModelScope.launch {
++            _adviceState.value = try {
++                // 调仓库拿建议（内部已切到 IO 线程，不会卡界面）。
++                val text = repository.fetchAdvice(request.record, request.language)
++                AdviceUiState.Success(text)
++            } catch (e: CancellationException) {
++                throw e   // 协程被取消必须重新抛出，否则协程无法正常结束
++            } catch (e: MissingApiKeyException) {
++                AdviceUiState.Error(ErrorReason.MISSING_API_KEY)
++            } catch (e: LlmException) {
++                AdviceUiState.Error(ErrorReason.API)
++            } catch (e: IOException) {
++                // 断网、超时、DNS 失败等都会被包成 IOException。
++                AdviceUiState.Error(ErrorReason.NETWORK)
++            } catch (e: Exception) {
++                AdviceUiState.Error(ErrorReason.UNKNOWN)
++            }
++        }
++    }
++
++    /** 重新发起上一次请求（“重试”按钮调用）。 */
++    fun retry() {
++        lastRequest?.let { loadAdvice(it) }
++    }
++
++    /**
++     * 是否已经请求过。
++     * AdviceActivity 用它判断“要不要在 onCreate 里再请求一次”，
++     * 从而避免旋转屏幕后重复请求。
++     */
++    val hasRequested: Boolean
++        get() = adviceState.value != AdviceUiState.Idle
++}
 diff --git a/app/src/main/java/com/example/bmi/ui/report/AdviceUiState.kt b/app/src/main/java/com/example/bmi/ui/report/AdviceUiState.kt
 deleted file mode 100644
 index e3dbd83..0000000
@@ -4879,6 +5739,94 @@ index 28f757c..0000000
 -        android:textColor="?android:attr/textColorSecondary"
 -        android:textSize="12sp" />
 -</LinearLayout>
+diff --git a/app/src/main/res/layout/activity_advice.xml b/app/src/main/res/layout/activity_advice.xml
+new file mode 100644
+index 0000000..5f52e34
+--- /dev/null
++++ b/app/src/main/res/layout/activity_advice.xml
+@@ -0,0 +1,82 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++  ============================================================================
++  activity_advice.xml —— AI 健康建议页（【AI 功能 · 考试可删】）
++  ============================================================================
++  【这个文件是干什么的】
++    显示“今天这条记录”的摘要，然后把 DeepSeek 返回的建议文字显示在下面。
++    请求期间显示转圈（ProgressBar），失败时显示“重试”按钮。
++
++  【控件 id 与代码的对应关系】
++    adviceSummary  → 今天记录的一行摘要（日期 · 状况 · 步数）
++    adviceNote     → 备注那一行（没有备注就不显示）
++    adviceProgress → 加载中的转圈
++    adviceText     → AI 返回的建议文字
++    adviceRetry    → 失败后的重试按钮
++
++  【为什么用 ScrollView】
++    AI 回答的长度不固定，小屏幕上可能超出一屏，包一层 ScrollView 就能滚动查看。
++-->
++<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
++    xmlns:tools="http://schemas.android.com/tools"
++    android:layout_width="match_parent"
++    android:layout_height="match_parent"
++    android:fillViewport="true"
++    tools:context=".AdviceActivity">
++
++    <LinearLayout
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:orientation="vertical"
++        android:padding="24dp">
++
++        <!-- 今天这条记录的摘要，文字由 AdviceActivity 用 getString(...) 填进来。 -->
++        <TextView
++            android:id="@+id/adviceSummary"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:textSize="16sp"
++            android:textStyle="bold"
++            tools:text="2026-11-27 · Good · 8000 steps" />
++
++        <!-- 备注行：没有备注时由代码隐藏（isVisible = false）。 -->
++        <TextView
++            android:id="@+id/adviceNote"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="8dp"
++            android:textSize="14sp"
++            tools:text="Note: slept well" />
++
++        <!-- 加载中：转圈。默认隐藏，进入 Loading 状态才显示。 -->
++        <ProgressBar
++            android:id="@+id/adviceProgress"
++            style="?android:attr/progressBarStyle"
++            android:layout_width="wrap_content"
++            android:layout_height="wrap_content"
++            android:layout_gravity="center_horizontal"
++            android:layout_marginTop="24dp"
++            android:visibility="gone" />
++
++        <!-- AI 建议正文。 -->
++        <TextView
++            android:id="@+id/adviceText"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="24dp"
++            android:lineSpacingExtra="4dp"
++            android:textSize="16sp"
++            tools:text="1. ..." />
++
++        <!-- 失败后的重试按钮：默认隐藏，只有 Error 状态才显示。 -->
++        <Button
++            android:id="@+id/adviceRetry"
++            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="24dp"
++            android:text="@string/ai_retry"
++            android:visibility="gone" />
++
++    </LinearLayout>
++</ScrollView>
 diff --git a/app/src/main/res/layout/activity_history.xml b/app/src/main/res/layout/activity_history.xml
 new file mode 100644
 index 0000000..709bd56
@@ -5562,6 +6510,50 @@ index 35e025c..0000000
 -        android:id="@+id/menu_item_wiki"
 -        android:title="@string/menu_wiki" />
 -</menu>
+diff --git a/app/src/main/res/menu/menu_main.xml b/app/src/main/res/menu/menu_main.xml
+new file mode 100644
+index 0000000..bbae4b5
+--- /dev/null
++++ b/app/src/main/res/menu/menu_main.xml
+@@ -0,0 +1,38 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++  ============================================================================
++  menu_main.xml —— 主界面右上角的选项菜单（OptionsMenu）
++  ============================================================================
++  【这个文件是干什么的】
++    定义右上角三个点里有哪些菜单项。MainActivity 用
++      menuInflater.inflate(R.menu.menu_main, menu)
++    把它加载进菜单，用户点击时由 onOptionsItemSelected(item) 处理。
++
++  【showAsAction 属性】
++    app:showAsAction="never" → 收进右上角“三个点”的溢出菜单（最省标题栏空间）。
++    app:showAsAction="always"→ 直接显示在标题栏上（图标/文字常驻）。
++
++  【考试删除指引】见 docs/exam-guide.md
++    · 不要求中英文切换 → 删掉 menu_language 这一项；
++    · 不要求 AI        → 删掉 menu_ai_advice 这一项。
++    两项都删掉后，这个文件就没有用了，可以整个删掉，
++    同时删掉 MainActivity 里的 onCreateOptionsMenu / onOptionsItemSelected。
++-->
++<menu xmlns:android="http://schemas.android.com/apk/res/android"
++    xmlns:app="http://schemas.android.com/apk/res-auto"
++    xmlns:tools="http://schemas.android.com/tools"
++    tools:context=".MainActivity">
++
++    <!-- 【语言切换 · 考试可删】点击后在这里切换 中文 / English 并重建界面。 -->
++    <item
++        android:id="@+id/menu_language"
++        android:title="@string/menu_language"
++        app:showAsAction="never" />
++
++    <!-- 【AI 功能 · 考试可删】点击后打开 AdviceActivity，向 DeepSeek 要今天的健康建议。 -->
++    <item
++        android:id="@+id/menu_ai_advice"
++        android:title="@string/menu_ai_advice"
++        app:showAsAction="never" />
++
++</menu>
 diff --git a/app/src/main/res/menu/menu_options.xml b/app/src/main/res/menu/menu_options.xml
 deleted file mode 100644
 index 0cd88ef..0000000
@@ -5629,10 +6621,10 @@ index f78e8eb..30bc7ba 100644
          <item name="colorPrimary">@color/purple_200</item>
          <item name="colorPrimaryVariant">@color/purple_700</item>
 diff --git a/app/src/main/res/values-zh-rCN/strings.xml b/app/src/main/res/values-zh-rCN/strings.xml
-index dd0aa58..2f90a33 100644
+index dd0aa58..4503b60 100644
 --- a/app/src/main/res/values-zh-rCN/strings.xml
 +++ b/app/src/main/res/values-zh-rCN/strings.xml
-@@ -10,44 +10,33 @@
+@@ -10,44 +10,49 @@
      只是把 value 换成中文。
  -->
  <resources>
@@ -5696,6 +6688,22 @@ index dd0aa58..2f90a33 100644
 +        <item>@string/wellness_condition_poor</item>
      </string-array>
 +
++    <!-- ==================== 选项菜单 ==================== -->
++    <string name="menu_language">切换语言</string>
++    <string name="menu_ai_advice">AI 健康建议</string>
++
++    <!-- ==================== AI 健康建议页（考试可删） ==================== -->
++    <string name="ai_title">AI 健康建议</string>
++    <string name="ai_loading">正在请求 AI，请稍候…</string>
++    <string name="ai_retry">重试</string>
++    <string name="ai_no_record">今天还没有记录。\n请先在主界面保存今天的记录。</string>
++    <string name="ai_record_summary">%1$s · %2$s · %3$d 步</string>
++    <string name="ai_note">备注：%1$s</string>
++    <string name="ai_error_missing_key">没有配置 API key。请在 local.properties 里写 deepseek.apiKey 后重新编译。</string>
++    <string name="ai_error_network">网络连接失败，请检查网络后重试。</string>
++    <string name="ai_error_api">AI 服务返回错误，请稍后重试。</string>
++    <string name="ai_error_unknown">请求失败，请重试。</string>
++
 +    <!-- ==================== 历史页 ==================== -->
 +    <string name="wellness_history_title">历史记录</string>
 +    <string name="wellness_history_empty">暂无记录。\n保存今天的健康日志后，这里就会显示历史。</string>
@@ -5704,10 +6712,10 @@ index dd0aa58..2f90a33 100644
 +    <string name="wellness_history_steps">%1$d 步</string>
  </resources>
 diff --git a/app/src/main/res/values/strings.xml b/app/src/main/res/values/strings.xml
-index b9df712..1c7da2f 100644
+index b9df712..da183f9 100644
 --- a/app/src/main/res/values/strings.xml
 +++ b/app/src/main/res/values/strings.xml
-@@ -6,67 +6,46 @@
+@@ -6,67 +6,64 @@
    【字符串资源 + 多语言机制（考试高频考点）】
      Android 不推荐把文字直接写死在代码里，而是放在 res/values/strings.xml，
      每个字符串给一个 name（key），代码里用 R.string.xxx 引用。
@@ -5803,6 +6811,24 @@ index b9df712..1c7da2f 100644
 +        <item>@string/wellness_condition_poor</item>
      </string-array>
 +
++    <!-- ==================== 选项菜单 ==================== -->
++    <!-- 【语言切换 · 考试可删】菜单项文字：点一下就在中英文之间切换。 -->
++    <string name="menu_language">Switch language</string>
++    <!-- 【AI 功能 · 考试可删】菜单项文字：打开 AI 健康建议页。 -->
++    <string name="menu_ai_advice">AI advice</string>
++
++    <!-- ==================== AI 健康建议页（考试可删） ==================== -->
++    <string name="ai_title">AI health advice</string>
++    <string name="ai_loading">Asking AI, please wait…</string>
++    <string name="ai_retry">Try again</string>
++    <string name="ai_no_record">No record for today yet.\nSave today\'s record first.</string>
++    <string name="ai_record_summary">%1$s · %2$s · %3$d steps</string>
++    <string name="ai_note">Note: %1$s</string>
++    <string name="ai_error_missing_key">API key is not configured. Put deepseek.apiKey in local.properties and rebuild the app.</string>
++    <string name="ai_error_network">Network error. Check your connection and try again.</string>
++    <string name="ai_error_api">The AI service returned an error. Please try again later.</string>
++    <string name="ai_error_unknown">Request failed. Please try again.</string>
++
 +    <!-- ==================== 历史页 ==================== -->
 +    <string name="wellness_history_title">History</string>
 +    <string name="wellness_history_empty">No records yet.\nSave today to start your log.</string>
@@ -5824,75 +6850,576 @@ index fe59904..b16b124 100644
          <item name="colorPrimary">@color/purple_500</item>
          <!-- 主色的“深色变体”（状态栏等） -->
 diff --git a/app/src/test/java/com/example/bmi/PromptBuilderTest.kt b/app/src/test/java/com/example/bmi/PromptBuilderTest.kt
-deleted file mode 100644
-index 026d074..0000000
+index 026d074..38551f0 100644
 --- a/app/src/test/java/com/example/bmi/PromptBuilderTest.kt
-+++ /dev/null
-@@ -1,58 +0,0 @@
--package com.example.bmi
--
--import com.example.bmi.data.AppLanguage
++++ b/app/src/test/java/com/example/bmi/PromptBuilderTest.kt
+@@ -1,58 +1,98 @@
+ package com.example.bmi
+ 
+ import com.example.bmi.data.AppLanguage
 -import com.example.bmi.data.BmiProfile
 -import com.example.bmi.data.Gender
--import com.example.bmi.data.PromptBuilder
--import org.junit.Assert.assertFalse
--import org.junit.Assert.assertTrue
--import org.junit.Test
--
+ import com.example.bmi.data.PromptBuilder
++import com.example.bmi.data.WellnessRecord
+ import org.junit.Assert.assertFalse
+ import org.junit.Assert.assertTrue
+ import org.junit.Test
+ 
 -/**
 - * The prompt is the contract with the LLM: if the user runs the app in Chinese,
 - * the request must tell the model to answer in Chinese, and the BMI / gender /
 - * age data must be present.
-- */
--class PromptBuilderTest {
--
++/*
++ * ============================================================================
++ * PromptBuilderTest.kt —— AI 提示词的单元测试（【AI 功能 · 考试可删】）
++ * ============================================================================
++ * 【这个文件是干什么的】
++ *   验证 PromptBuilder 拼出来的提示词“内容对不对”：
++ *     · 中文请求必须要求 AI 用中文回答，不能出现英文规则；
++ *     · 英文请求必须要求 AI 用英文回答，不能出现中文规则；
++ *     · 记录里的日期、状况、步数、备注必须都出现在用户提示词里。
++ *
++ * 【为什么能不用模拟器就测】
++ *   PromptBuilder 是纯 Kotlin（不 import 任何 Android 类，也不用 Context），
++ *   所以 JUnit 在电脑的 JVM 上就能直接跑：
++ *     gradlew.bat testDebugUnitTest
++ *   如果逻辑写在 Activity 里（要 Context、要资源），就只能上模拟器做仪器测试。
++ *
++ * 【断言用哪个方法】
++ *   assertTrue(条件)  —— 条件为真才算通过；
++ *   assertFalse(条件) —— 条件为假才算通过。
++ *   assertEquals(期望, 实际) 用于精确比对。
++ *
++ * ★ 考试不做 AI 时，删掉本文件。
++ * ============================================================================
+  */
+ class PromptBuilderTest {
+ 
 -    private val profile = BmiProfile(bmi = 23.4, age = 22, gender = Gender.MALE)
--
--    @Test
++    // 测试用的一条固定记录：良好、8000 步、有备注。
++    private val record = WellnessRecord(
++        date = "2026-11-27",
++        condition = 0,
++        steps = 8000,
++        note = "slept well"
++    )
+ 
+     @Test
 -    fun chinesePromptForcesChineseAnswer() {
--        val systemPrompt = PromptBuilder.systemPrompt(AppLanguage.CHINESE)
--        assertTrue(systemPrompt.contains("简体中文"))
++    fun chineseSystemPromptForcesChineseAnswer() {
+         val systemPrompt = PromptBuilder.systemPrompt(AppLanguage.CHINESE)
+         assertTrue(systemPrompt.contains("简体中文"))
 -        assertFalse(systemPrompt.contains("Answer in English"))
--    }
--
--    @Test
++        assertFalse(systemPrompt.contains("Answer in English only"))
+     }
+ 
+     @Test
 -    fun chineseUserPromptContainsProfileData() {
 -        val userPrompt = PromptBuilder.userPrompt(profile, AppLanguage.CHINESE)
 -        assertTrue(userPrompt.contains("BMI：23.4"))
 -        assertTrue(userPrompt.contains("性别：男"))
 -        assertTrue(userPrompt.contains("年龄：22"))
--    }
--
--    @Test
++    fun chineseSystemPromptAsksForThreeNumberedSuggestions() {
++        val systemPrompt = PromptBuilder.systemPrompt(AppLanguage.CHINESE)
++        assertTrue(systemPrompt.contains("3 条建议"))
++        assertTrue(systemPrompt.contains("「1. 2. 3.」"))
++    }
++
++    @Test
++    fun chineseUserPromptContainsRecordData() {
++        val userPrompt = PromptBuilder.userPrompt(record, AppLanguage.CHINESE)
++        assertTrue(userPrompt.contains("日期：2026-11-27"))
++        assertTrue(userPrompt.contains("身体状况：良好"))
++        assertTrue(userPrompt.contains("步数：8000"))
++        assertTrue(userPrompt.contains("备注：slept well"))
+     }
+ 
+     @Test
 -    fun englishPromptForcesEnglishAnswer() {
--        val systemPrompt = PromptBuilder.systemPrompt(AppLanguage.ENGLISH)
--        assertTrue(systemPrompt.contains("Answer in English only"))
--        assertFalse(systemPrompt.contains("简体中文"))
--    }
--
--    @Test
++    fun englishSystemPromptForcesEnglishAnswer() {
+         val systemPrompt = PromptBuilder.systemPrompt(AppLanguage.ENGLISH)
+         assertTrue(systemPrompt.contains("Answer in English only"))
+         assertFalse(systemPrompt.contains("简体中文"))
+     }
+ 
+     @Test
 -    fun englishUserPromptContainsProfileData() {
 -        val female = profile.copy(gender = Gender.FEMALE)
 -        val userPrompt = PromptBuilder.userPrompt(female, AppLanguage.ENGLISH)
 -        assertTrue(userPrompt.contains("BMI: 23.4"))
 -        assertTrue(userPrompt.contains("Gender: female"))
 -        assertTrue(userPrompt.contains("Age: 22"))
--    }
--
--    @Test
++    fun englishUserPromptContainsRecordData() {
++        val userPrompt = PromptBuilder.userPrompt(record, AppLanguage.ENGLISH)
++        assertTrue(userPrompt.contains("Date: 2026-11-27"))
++        assertTrue(userPrompt.contains("Condition: Good"))
++        assertTrue(userPrompt.contains("Steps: 8000"))
++        assertTrue(userPrompt.contains("Notes: slept well"))
++    }
++
++    @Test
++    fun blankNoteIsWrittenAsNone() {
++        // 备注为空时不能让 AI 看到“备注：”后面空着，中英文各写一个占位词。
++        val noNote = record.copy(note = "")
++        assertTrue(PromptBuilder.userPrompt(noNote, AppLanguage.CHINESE).contains("备注：无"))
++        assertTrue(PromptBuilder.userPrompt(noNote, AppLanguage.ENGLISH).contains("Notes: none"))
+     }
+ 
+     @Test
 -    fun systemPromptAsksForThreeNumberedSuggestions() {
 -        listOf(AppLanguage.CHINESE, AppLanguage.ENGLISH).forEach { language ->
 -            val prompt = PromptBuilder.systemPrompt(language)
 -            assertTrue(prompt.contains("3 "))
 -        }
--    }
--}
++    fun conditionIsTranslatedToTheAnswerLanguage() {
++        // 同一个 1（一般），中文提示词写“一般”，英文提示词写“Fair”。
++        val fair = record.copy(condition = 1)
++        assertTrue(PromptBuilder.userPrompt(fair, AppLanguage.CHINESE).contains("身体状况：一般"))
++        assertTrue(PromptBuilder.userPrompt(fair, AppLanguage.ENGLISH).contains("Condition: Fair"))
+     }
+ }
+diff --git a/docs/exam-guide.md b/docs/exam-guide.md
+new file mode 100644
+index 0000000..d2f219d
+--- /dev/null
++++ b/docs/exam-guide.md
+@@ -0,0 +1,430 @@
++# 考试删减指南：中英文切换 与 AI 健康建议
++
++这份文档回答一个问题：**考试题目不需要某个功能时，应该删掉哪些文件、哪些代码。**
++
++当前分支的功能分三层：
++
++| 层 | 功能 | 能不能删 |
++| --- | --- | --- |
++| 基础层 | 记录今天（状况 / 步数 / 备注）→ 存 SQLite；历史页查看 | 必须保留 |
++| 可选层 A | App 内中英文切换（菜单里点一下，全 App 换语言） | 可整块删除 |
++| 可选层 B | AI 健康建议（把今天的记录发给 DeepSeek，显示返回的建议） | 可整块删除 |
++
++两层可选功能在代码里都用标记注释标出来了。在 Android Studio 里按
++`Ctrl + Shift + F` 全局搜索下面三个关键词，就能找到所有需要处理的位置：
++
++```
++【语言切换 · 考试可删】
++【AI 功能 · 考试可删】
++考试可删
++```
++
++> 先做一件保命的事：**新建分支再删**。`git checkout -b exam-minimal`，
++> 删坏了随时 `git checkout -- .` 回到现在这一版。
++
++---
++
++## 0. 先确认你属于哪种情况
++
++| 老师的题目要求 | 按哪一节删 | 删完大概剩几个源文件 |
++| --- | --- | --- |
++| 只要记录 + 历史（最基础） | 第 1 节 + 第 2 节 | 6 个 Kotlin 文件 + 3 个布局 |
++| 记录 + 历史，**不需要** App 内切换语言 | 第 1 节 | 9 个 Kotlin 文件 + 4 个布局 |
++| 记录 + 历史 + AI，**不需要**切换语言 | 第 1 节里“保留 AI”的写法 | 10 个 Kotlin 文件 + 4 个布局 |
++| 都要（当前版本） | 不删 | 12 个 Kotlin 文件 + 4 个布局 |
++
++“不需要切换语言”的意思是：老师只要求界面有中文和英文两套资源、
++跟着手机系统语言自动变，而不要求 App 里自己点按钮切换。
++这两种在 Android 里是两件不同的事，第 3 节专门解释。
++
++---
++
++## 1. 版本 A：不要“App 内中英文切换”
++
++### 1.1 语言切换到底靠哪几个文件
++
++| 文件 | 作用 | 删掉后会怎样 |
++| --- | --- | --- |
++| `app/src/main/java/com/example/bmi/BaseActivity.kt` | 在 `attachBaseContext` 里把 Context 的语言改成用户选的语言 | 三个 Activity 都要改回继承 `AppCompatActivity` |
++| `app/src/main/java/com/example/bmi/data/LanguageStore.kt` | 用 SharedPreferences 记住用户选了哪种语言 | 没人再读写这个偏好 |
++| `app/src/main/java/com/example/bmi/data/AppLanguage.kt` | `ENGLISH` / `CHINESE` 枚举 | **AI 也在用它**，见 1.3 |
++| `app/src/main/res/menu/menu_main.xml` 里的 `menu_language` 项 | 菜单入口 | 菜单里少一项 |
++| `strings.xml` 里的 `menu_language` | 菜单文字 | 没人引用，可留可删 |
++| `MainActivity` 里的 `menu_language` 分支 | 点击后 `toggleLanguage()` | 菜单项点了没反应 |
++| 三个 Activity 里的 `title = getString(...)` | 让标题栏也跟着 App 内语言变 | 标题会跟随手机系统语言（默认就是这样，不算错） |
++
++`values-zh-rCN/strings.xml` **不要删**：它提供中文文案，属于 Android 标准多语言机制，
++不是“切换功能”的代码。删了中文手机也会显示英文。
++
++### 1.2 删除步骤（顺序照做，每步之后都能编译）
++
++**第 1 步：三个 Activity 改回普通 AppCompatActivity**
++
++`MainActivity.kt`
++
++```kotlin
++// 原来：
++// class MainActivity : BaseActivity() {
++// 改成：
++class MainActivity : AppCompatActivity() {
++```
++
++同时在文件顶部加一行 import：
++
++```kotlin
++import androidx.appcompat.app.AppCompatActivity
++```
++
++`HistoryActivity.kt` 同样处理。
++
++`AdviceActivity.kt`（如果保留 AI）也改成 `AppCompatActivity`，并按 1.3 补一个
++`currentLanguage()`。
++
++**第 2 步：删菜单里的语言项**
++
++`MainActivity.onOptionsItemSelected()` 里删掉这一支：
++
++```kotlin
++// ── 【语言切换 · 考试可删】中文 ↔ 英文，切换后整页重建 ──
++R.id.menu_language -> {
++    // toggleLanguage() 在 BaseActivity 里：保存选择 + recreate()
++    toggleLanguage()
++    true
++}
++```
++
++`res/menu/menu_main.xml` 里删掉：
++
++```xml
++<item
++    android:id="@+id/menu_language"
++    android:title="@string/menu_language"
++    app:showAsAction="never" />
++```
++
++（如果 AI 也不需要了，整个 `menu_main.xml` 都可以删，见第 2 节。）
++
++**第 3 步：删文件**
++
++```
++app/src/main/java/com/example/bmi/BaseActivity.kt
++app/src/main/java/com/example/bmi/data/LanguageStore.kt
++```
++
++`AppLanguage.kt` 先别删——AI 的 `PromptBuilder` 需要它。如果 AI 也删，再一起删。
++
++**第 4 步：删掉三个 Activity 里的标题设置（可选，但建议删干净）**
++
++```kotlin
++// 【语言切换 · 考试可删】标题跟着 App 内语言走（原因见 MainActivity 的说明）。
++title = getString(R.string.app_name)
++```
++
++HistoryActivity 里是 `title = getString(R.string.wellness_history_title)`，
++AdviceActivity 里是 `title = getString(R.string.ai_title)`。
++
++删掉后标题栏会显示 Manifest 里 `android:label` 指向的字符串，由系统按手机语言解析，
++这是 Android 的默认行为，考试完全够用。
++
++**第 5 步：编译**
++
++```bat
++gradlew.bat assembleDebug
++```
++
++### 1.3 如果保留 AI：`currentLanguage()` 怎么办
++
++`AdviceActivity` 原来调用 `BaseActivity.currentLanguage()` 决定“让 AI 用中文还是英文回答”。
++`BaseActivity` 删掉后，把这个小函数直接放进 `AdviceActivity`：
++
++```kotlin
++import androidx.core.os.ConfigurationCompat
++import com.example.bmi.data.AppLanguage
++
++/**
++ * 读手机系统当前语言（App 内不再切换语言，所以直接问系统）。
++ */
++private fun currentLanguage(): AppLanguage = AppLanguage.fromTag(
++    ConfigurationCompat.getLocales(resources.configuration).get(0)?.language
++)
++```
++
++这样 AI 的回答语言仍然会跟着手机语言走：中文手机拿到中文建议，英文手机拿到英文建议。
++
++如果你连“跟着系统语言”都不需要，直接写死：
++
++```kotlin
++private fun currentLanguage(): AppLanguage = AppLanguage.CHINESE
++```
++
++### 1.4 删完的检查清单
++
++- [ ] 全局搜索 `BaseActivity`：没有任何引用（除了可能残留的注释）。
++- [ ] 全局搜索 `LanguageStore`、`toggleLanguage`、`switchLanguage`：没有引用。
++- [ ] 全局搜索 `menu_language`：`menu_main.xml` 和 `onOptionsItemSelected` 里都没有了。
++- [ ] `gradlew.bat assembleDebug` 编译通过。
++- [ ] 打开 App：菜单里只剩“AI 健康建议”（或没有菜单）。
++- [ ] 把手机语言切成中文再切回英文：界面跟着变（这是资源机制，与切换功能无关）。
++
++---
++
++## 2. 版本 B：不要 AI 健康建议
++
++### 2.1 AI 功能涉及哪些文件
++
++| 文件 | 作用 |
++| --- | --- |
++| `app/src/main/java/com/example/bmi/AdviceActivity.kt` | AI 页面（读取今天记录 → 请求 → 显示） |
++| `app/src/main/res/layout/activity_advice.xml` | AI 页面布局 |
++| `app/src/main/java/com/example/bmi/data/DeepSeekClient.kt` | HTTP 客户端（`HttpURLConnection` + `org.json`） |
++| `app/src/main/java/com/example/bmi/data/PromptBuilder.kt` | 拼提示词（纯 Kotlin，可单测） |
++| `app/src/main/java/com/example/bmi/data/WellnessAdviceRepository.kt` | 切到 IO 线程发请求、统一异常 |
++| `app/src/main/java/com/example/bmi/ui/advice/AdviceUiState.kt` | 状态机 + 错误原因枚举 |
++| `app/src/main/java/com/example/bmi/ui/advice/AdviceViewModel.kt` | ViewModel：发请求、重试、暴露 LiveData |
++| `app/src/test/java/com/example/bmi/PromptBuilderTest.kt` | 提示词单元测试 |
++
++另外有 6 处“外围配置”要改：
++
++1. `AndroidManifest.xml`：`INTERNET` 权限 + `.AdviceActivity` 注册；
++2. `app/build.gradle`：密钥读取、`buildConfigField`、`buildFeatures`、4 个依赖；
++3. `MainActivity`：菜单项 `menu_ai_advice` 的分支；
++4. `res/menu/menu_main.xml`：`menu_ai_advice` 项；
++5. `WellnessDbHelper.findByDate()`：只有 AI 页在用；
++6. `strings.xml`：`ai_*` 和 `menu_ai_advice` 文案（可留可删，留着不影响编译）。
++
++### 2.2 删除步骤
++
++**第 1 步：删文件（8 个）**
++
++```
++app/src/main/java/com/example/bmi/AdviceActivity.kt
++app/src/main/java/com/example/bmi/data/DeepSeekClient.kt
++app/src/main/java/com/example/bmi/data/PromptBuilder.kt
++app/src/main/java/com/example/bmi/data/WellnessAdviceRepository.kt
++app/src/main/java/com/example/bmi/ui/advice/AdviceUiState.kt
++app/src/main/java/com/example/bmi/ui/advice/AdviceViewModel.kt
++app/src/main/res/layout/activity_advice.xml
++app/src/test/java/com/example/bmi/PromptBuilderTest.kt
++```
++
++删完后 `ui/advice/` 目录是空的，可以整个删掉。
++
++**第 2 步：清 Manifest**
++
++删掉权限：
++
++```xml
++<!-- 【AI 功能 · 考试可删】访问 DeepSeek 接口需要联网权限，不写会直接崩溃。 -->
++<uses-permission android:name="android.permission.INTERNET" />
++```
++
++删掉页面注册：
++
++```xml
++<!-- 【AI 功能 · 考试可删】AI 健康建议页。 -->
++<activity
++    android:name=".AdviceActivity"
++    android:exported="false"
++    android:label="@string/ai_title" />
++```
++
++**第 3 步：清 build.gradle**
++
++删掉这一段（文件里在 `plugins` 和 `android` 之间）：
++
++```gradle
++def localProperties = new Properties()
++def localPropertiesFile = rootProject.file('local.properties')
++if (localPropertiesFile.exists()) {
++    localPropertiesFile.withInputStream { stream -> localProperties.load(stream) }
++}
++def deepSeekApiKey = localProperties.getProperty('deepseek.apiKey') ?: ''
++```
++
++删掉 `defaultConfig` 里的两行：
++
++```gradle
++buildConfigField "String", "DEEPSEEK_API_KEY", "\"${deepSeekApiKey}\""
++buildConfigField "String", "DEEPSEEK_BASE_URL", "\"https://api.deepseek.com\""
++```
++
++删掉整个 `buildFeatures` 块：
++
++```gradle
++buildFeatures {
++    buildConfig = true
++}
++```
++
++删掉 4 个依赖（`dependencies` 里带注释的那一组）：
++
++```gradle
++implementation 'androidx.activity:activity-ktx:1.5.1'
++implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.5.1'
++implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.5.1'
++implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'
++```
++
++> 注意顺序：先删代码文件，再删依赖。反过来会在编译时找不到 `ViewModel`、
++> `viewModelScope` 等类。
++
++**第 4 步：清菜单**
++
++`MainActivity.onOptionsItemSelected()` 里删掉：
++
++```kotlin
++// ── 【AI 功能 · 考试可删】打开 AI 健康建议页 ──
++R.id.menu_ai_advice -> {
++    // 不传数据：建议页自己按 Dates.today() 去数据库查今天的记录。
++    startActivity(Intent(this, AdviceActivity::class.java))
++    true
++}
++```
++
++`res/menu/menu_main.xml` 里删掉 `menu_ai_advice` 那一项。
++如果语言项也已经删了，这个文件就空了：删掉 `menu_main.xml`，同时删掉
++`MainActivity` 里的 `onCreateOptionsMenu()` 和 `onOptionsItemSelected()`
++两个方法，以及 `import android.view.Menu` / `import android.view.MenuItem`。
++
++**第 5 步：清数据库方法**
++
++`WellnessDbHelper` 里的 `findByDate()` 只有 `AdviceActivity` 在用，可以删掉。
++（留着不影响编译，只是没人调用。）
++
++**第 6 步：清字符串（可选）**
++
++两个 `strings.xml` 里可以删掉 `menu_ai_advice` 和所有 `ai_*` 开头的条目。
++留着不会报错，Lint 也不会因此报错，删不删看你想多干净。
++
++**第 7 步：编译 + 跑测试**
++
++```bat
++gradlew.bat assembleDebug
++gradlew.bat testDebugUnitTest
++```
++
++### 2.3 删完的检查清单
++
++- [ ] 全局搜索 `AdviceActivity`：只在注释里出现。
++- [ ] 全局搜索 `DeepSeek`、`PromptBuilder`、`WellnessAdviceRepository`、`AdviceUiState`：没有引用。
++- [ ] 全局搜索 `INTERNET`：Manifest 里没有。
++- [ ] 全局搜索 `BuildConfig`：没有任何 Kotlin 文件在用。
++- [ ] 打开 App：保存、历史都正常；没有“AI 健康建议”菜单项。
++- [ ] `gradlew.bat lintDebug` 通过（如果 Manifest 还注册了不存在的 Activity，
++      运行时会崩溃，Lint 也可能给出警告）。
++
++---
++
++## 3. 版本 C：两个功能都不要（最基础版）
++
++按第 1 节做完，再按第 2 节做完，最后处理 `AppLanguage.kt`。
++
++因为 `AppLanguage` 只服务于“界面语言选择”和“AI 回答语言”，两个功能都没了，
++它就没有使用者了，可以直接删：
++
++```
++app/src/main/java/com/example/bmi/data/AppLanguage.kt
++```
++
++最终结构（这就是“只做题目要求”的最小版本）：
++
++```
++app/src/main/
++├── AndroidManifest.xml
++├── java/com/example/bmi/
++│   ├── MainActivity.kt          # 输入 + 校验 + 保存 + 跳历史
++│   ├── HistoryActivity.kt       # 查库 + 列表 + 统计
++│   └── data/
++│       ├── Dates.kt             # 今天的 yyyy-MM-dd
++│       ├── WellnessRecord.kt    # 数据类
++│       └── WellnessDbHelper.kt  # SQLite 建表/保存/查询
++└── res/
++    ├── layout/activity_main.xml
++    ├── layout/activity_history.xml
++    ├── layout/item_wellness.xml
++    ├── values/strings.xml
++    ├── values/strings.xml 同级的 values-zh-rCN/strings.xml
++    └── 图标、主题等
++```
++
++`res/menu/menu_main.xml` 删掉（没有菜单了），`app/build.gradle` 回到只有
++core-ktx / appcompat / material / 测试依赖的状态。
++
++**重点：`values-zh-rCN/` 不要删。** 它是“界面有中文文案”的实现方式，
++手机语言是中文时系统自动用这套资源，一行代码都不用写。老师如果说“要中英文”，
++通常指的就是这个，而不是 App 内切换按钮。
++
++---
++
++## 4. 反向操作：点名要求加回来
++
++如果考试题目正好要求“支持中英文切换”或“接入 AI”，不要从零写，按现在的
++代码顺序抄，每一步都能单独验证：
++
++**加语言切换（约 60 行）**
++
++1. `data/AppLanguage.kt`：两个枚举值 + `fromTag()`；
++2. `data/LanguageStore.kt`：SharedPreferences 读写；
++3. `BaseActivity.kt`：`attachBaseContext` 里换 Locale，`recreate()` 生效；
++4. 三个 Activity 改成继承 `BaseActivity`；
++5. 菜单项 + `toggleLanguage()`。
++
++**加 AI（约 300 行）**
++
++1. `PromptBuilder`（纯 Kotlin，先写它，能单测）；
++2. `DeepSeekClient`（HTTP + JSON）；
++3. `WellnessAdviceRepository`（`withContext(Dispatchers.IO)`）；
++4. `AdviceUiState` + `AdviceViewModel`（状态机 + `viewModelScope`）；
++5. `AdviceActivity` + 布局；
++6. Manifest 加 `INTERNET` 和页面注册；
++7. `build.gradle` 注入 key、开 `buildConfig`、加协程依赖。
++
++---
++
++## 5. 删除时最容易犯的错
++
++| 症状 | 原因 | 处理 |
++| --- | --- | --- |
++| `Unresolved reference: BaseActivity` | 删了类，Activity 还继承它 | 改回 `AppCompatActivity` |
++| `Unresolved reference: AppLanguage` | 删了枚举，`PromptBuilder` / `AdviceActivity` 还在用 | 要么保留枚举，要么连 AI 一起删 |
++| `Unresolved reference: viewModelScope` / `ViewModel` | 删依赖但没删 AI 代码 | 先删代码再删依赖（或反过来补回依赖） |
++| 点“AI 健康建议”直接闪退 | Manifest 删了注册 / 删了 `INTERNET` 权限 | `SecurityException` 或 `ActivityNotFoundException`，检查这两处 |
++| 中文手机显示英文 | 删了 `values-zh-rCN/strings.xml` | 恢复这个目录，key 要和 `values/strings.xml` 一致 |
++| 标题栏语言跟界面不一致 | 删了 `title = getString(...)` 但保留 App 内切换 | 要么恢复这行，要么整套切换都删掉 |
++| 切语言后界面没变 | 忘了 `recreate()` | 见 `BaseActivity.switchLanguage()` |
++| 编译报 `R.menu.menu_main` 找不到 | 删了 `menu_main.xml` 但 `onCreateOptionsMenu` 还在 | 两个一起删，或两个一起留 |
++| 删完 App 白屏/闪退 | 删了 `activity_main.xml` 里的控件但代码还在 `findViewById` | 布局和 `findViewById` 必须成对 |
++
++---
++
++## 6. 删完的统一自检
++
++```bat
++gradlew.bat clean assembleDebug
++gradlew.bat lintDebug
++gradlew.bat testDebugUnitTest
++```
++
++三条都通过，再上模拟器走一遍：
++
++1. 主界面 → 填步数 → 保存 → Toast 提示；
++2. 打开历史 → 看到刚才那条记录；
++3. 同一天再保存一次 → 历史里仍然一条；
++4. 手机语言切中文 → 界面变中文；
++5. 返回主界面 → 输入内容还在。
++
++如果删坏了想回退：
++
++```bat
++git checkout -- .          # 丢弃所有未提交改动
++git clean -fd app/src      # 清理新建的未跟踪文件
++```
++
++---
++
++## 7. 相关文档
++
++- `README.md` — 项目简介、运行方式、工具链。
++- `docs/wellness-tracker.md` — 每个文件的作用、SQLite 设计、patch 用法。
++- `docs/llm-setup.md` — AI 部分的架构与 API key 配置（删 AI 时一起删）。
++- `docs/exam-playbook.md` — 把这道题迁移到其它“每日记录类”题目的通用七步。
 diff --git a/docs/exam-playbook.md b/docs/exam-playbook.md
 new file mode 100644
-index 0000000..3dc8def
+index 0000000..4126ecb
 --- /dev/null
 +++ b/docs/exam-playbook.md
-@@ -0,0 +1,576 @@
+@@ -0,0 +1,580 @@
 +# 考场通用教程：把 BMI 作业改成任意“每日记录类”App
 +
 +老师已经说了：考试题会和 BMI 作业“十分相似”。这句话的含金量很高——相似的不是
@@ -5913,10 +7440,14 @@ index 0000000..3dc8def
 +配套的完整示例就是本仓库的 `wellness_tracker` 分支（见
 +`docs/wellness-tracker.md`），可以对照着看。
 +
-+> 注意：`wellness_tracker` 分支已经删除了旧 BMI/AI 代码。本文提到的
++> 注意：`wellness_tracker` 分支已经删除了旧 BMI 代码。本文提到的
 +> `BmiDbHelper.kt`、`BmiRecord.kt`、`BmiPreferences.kt` 等文件名，指的是
 +> `cityu_lab` 分支（你已提交的作业）里的代码，用来对照抄写；
 +> 当前分支只剩 `Wellness*` 和 `Dates`。
++
++> 额外参考：当前分支保留了**新写的**“App 内中英文切换”和“AI 健康建议”两块
++> 可选功能。如果考题正好要求其中之一，直接照抄；如果考题用不上，
++> 按 `docs/exam-guide.md` 的清单整块删除即可（本文不涉及这两块）。
 +
 +---
 +
@@ -6470,23 +8001,39 @@ index 0000000..3dc8def
 +
 +把这张卡和 `patch/wellness-tracker.patch` 一起带到考场，就够用了。
 diff --git a/docs/llm-setup.md b/docs/llm-setup.md
-deleted file mode 100644
-index aeab845..0000000
+index aeab845..9924d12 100644
 --- a/docs/llm-setup.md
-+++ /dev/null
-@@ -1,74 +0,0 @@
++++ b/docs/llm-setup.md
+@@ -1,32 +1,90 @@
 -# Assignment 04 — 接入 LLM（DeepSeek）的健康建议
--
++# AI 健康建议（DeepSeek）与中英文切换
+ 
 -报告页除了本地计算的 BMI 结果之外，还会把 **BMI、性别、年龄** 发给 DeepSeek，
 -把模型返回的健康建议显示在报告页下方。建议的语言跟随应用当前语言：
 -中文界面拿到中文建议，英文界面拿到英文建议。
--
++这一版把两部分“上课内容”加在了健康日志之上：
+ 
 -## 架构：MVVM
--
--```
--app/src/main/java/com/example/bmi/
++1. **AI 健康建议**：把今天的记录（状况 / 步数 / 备注）发给 DeepSeek，
++   把返回的建议显示在单独的一页；
++2. **App 内中英文切换**：右上角菜单点一下，整个 App 在中文和英文之间切换，
++   AI 的回答语言也跟着变。
++
++> 这两块都是**可选功能**。考试不需要时怎么删，见
++> [`docs/exam-guide.md`](exam-guide.md)。本文件只讲它们是怎么实现的。
++
++---
++
++## 1. 结构
+ 
+ ```
+ app/src/main/java/com/example/bmi/
 -├── ReportActivity.kt              ← View：只负责渲染 + 观察状态
--├── data/
++├── BaseActivity.kt                 ← 语言切换：attachBaseContext 换 Locale
++├── MainActivity.kt                 ← 主界面 + 右上角菜单（切换语言 / AI 建议）
++├── HistoryActivity.kt              ← 历史列表
++├── AdviceActivity.kt               ← AI 页：读今天记录 → 请求 → 显示（V）
+ ├── data/
 -│   ├── AppLanguage.kt             ← 语言枚举（中/英）
 -│   ├── BmiProfile.kt              ← Model：BMI / 性别 / 年龄
 -│   ├── PromptBuilder.kt           ← 构造 system / user prompt（纯 Kotlin，可单测）
@@ -6495,66 +8042,183 @@ index aeab845..0000000
 -└── ui/report/
 -    ├── AdviceUiState.kt           ← Idle / Loading / Success / Error，以及 AdviceRequest
 -    └── ReportViewModel.kt         ← ViewModel：viewModelScope 发请求、重试、状态
--```
--
++│   ├── AppLanguage.kt              ← 语言枚举（en / zh）
++│   ├── LanguageStore.kt            ← SharedPreferences 记住用户选的语言
++│   ├── PromptBuilder.kt            ← 拼 system / user 提示词（纯 Kotlin，可单测）
++│   ├── DeepSeekClient.kt           ← HTTP 客户端（HttpURLConnection + org.json）
++│   └── WellnessAdviceRepository.kt ← Repository：切 IO 线程 + 统一异常
++└── ui/advice/
++    ├── AdviceUiState.kt            ← Idle / Loading / Success / Error + 错误原因
++    └── AdviceViewModel.kt          ← ViewModel：发请求、重试、暴露 LiveData（VM）
++```
++
++MVVM 的分工：
++
++- **V（AdviceActivity）** 只负责渲染和触发，不碰网络；
++- **VM（AdviceViewModel）** 拿着 Repository 发请求，把结果/异常转成状态；
++- **M（WellnessAdviceRepository + DeepSeekClient）** 真正从网络取数据。
++
++Activity 通过 `observe(adviceState)` 拿状态，转屏时 ViewModel 不销毁，
++所以不会重复发请求（也就不会重复扣费）。
++
++---
++
++## 2. 语言是怎么切换的
++
++两套资源本来就是现成的：
++
++```
++res/values/strings.xml          → 英文（默认）
++res/values-zh-rCN/strings.xml   → 中文
+ ```
+ 
 -要点：
--
++默认行为是“跟着手机系统语言走”。要让 App 自己决定，用
++`BaseActivity.attachBaseContext()`：
++
++```kotlin
++override fun attachBaseContext(newBase: Context) {
++    val saved = LanguageStore(newBase).load()
++    if (saved == null) {                 // 用户没手动选过 → 跟随系统
++        super.attachBaseContext(newBase)
++        return
++    }
++    val locale = Locale.forLanguageTag(saved.tag)   // "en" / "zh"
++    Locale.setDefault(locale)
++    val config = Configuration(newBase.resources.configuration)
++    config.setLocale(locale)
++    super.attachBaseContext(newBase.createConfigurationContext(config))
++}
++```
++
++菜单点击后调用 `switchLanguage()`：先写 SharedPreferences，再 `recreate()`。
++重建时 `attachBaseContext` 读到新语言，`@string/xxx` 与 `getString()` 就都换了语言。
++
++两个容易踩的点：
++
++- **Activity 标题**由系统按 Manifest 的 `android:label` 解析，不会跟着
++  `attachBaseContext` 变，所以三个 Activity 都在 `onCreate` 里写了
++  `title = getString(...)`；
++- 已经显示的界面不会自动重画，必须 `recreate()`。
+ 
 -- Activity 不碰网络，只 `observe` `adviceState`；点击 Retry 调 `viewModel.retry()`。
 -- ViewModel 在旋转屏幕时不会重建，所以转屏不会重复请求（也就不会重复扣费）。
 -- 所有失败都变成 `AdviceUiState.Error(ErrorReason)`，由 Activity 映射成本地化文案。
--
++AI 的回答语言与界面语言一致：`AdviceActivity` 用
++`currentLanguage()`（读当前 Configuration）把 `AppLanguage` 传给 `PromptBuilder`。
+ 
 -## API Key 的配置方式
--
--代码里没有硬编码 key。key 在编译时从 `local.properties` 读到 `BuildConfig`：
--
--```properties
--# local.properties（已被 .gitignore 忽略，不会提交）
--deepseek.apiKey=sk-xxxxxxxxxxxxxxxxxxxx
--```
--
++---
++
++## 3. API Key 的配置方式
+ 
+ 代码里没有硬编码 key。key 在编译时从 `local.properties` 读到 `BuildConfig`：
+ 
+@@ -35,40 +93,76 @@ app/src/main/java/com/example/bmi/
+ deepseek.apiKey=sk-xxxxxxxxxxxxxxxxxxxx
+ ```
+ 
 -改完 key 需要重新编译（Sync 之后再 Run），因为它是 `buildConfigField`。
 -如果没有配置 key，App 依然能打开和计算 BMI，只是 AI 建议区域会提示
 -“未配置 API Key”。
--
++对应 `app/build.gradle`：
++
++```gradle
++def localProperties = new Properties()
++def localPropertiesFile = rootProject.file('local.properties')
++if (localPropertiesFile.exists()) {
++    localPropertiesFile.withInputStream { stream -> localProperties.load(stream) }
++}
++def deepSeekApiKey = localProperties.getProperty('deepseek.apiKey') ?: ''
++
++android {
++    defaultConfig {
++        buildConfigField "String", "DEEPSEEK_API_KEY", "\"${deepSeekApiKey}\""
++        buildConfigField "String", "DEEPSEEK_BASE_URL", "\"https://api.deepseek.com\""
++    }
++    buildFeatures { buildConfig = true }
++}
++```
++
++改完 key 要重新编译（Sync 之后再 Run），因为它是编译期常量。
++没有配置 key 时 App 仍能正常记录和历史，只是 AI 页会提示“没有配置 API key”。
++
++---
+ 
 -## 请求细节
--
--- 端点：`https://api.deepseek.com/chat/completions`
--- 模型：`deepseek-chat`
++## 4. 请求细节
+ 
+ - 端点：`https://api.deepseek.com/chat/completions`
+ - 模型：`deepseek-chat`
 -- 请求体：`messages` 里一条 system（角色 + 语言 + 输出格式要求），一条 user
 -  （BMI / 性别 / 年龄）
 -- `temperature = 0.7`，`max_tokens = 320`
 -- 超时：连接 15s，读取 90s
 -- 失败重试：UI 上的 Retry 按钮重新发起同一次请求
--
++- 请求体：`messages` 里一条 system（身份 + 语言 + 输出格式要求），一条 user
++  （日期 / 身体状况 / 步数 / 备注）
++- `temperature = 0.7`，`max_tokens = 320`，`stream = false`
++- 超时：连接 15 秒，读取 90 秒
++- 失败后页面显示原因和“重试”按钮，重试会原样再发一次
+ 
 -## 截图
--
++网络请求全部在 `Dispatchers.IO` 上执行（`WellnessAdviceRepository`），
++主线程只负责渲染，所以不会卡界面、也不会触发
++`NetworkOnMainThreadException`。
+ 
 -`screenshots/` 下有两张报告页截图（同一组输入：身高 175cm、体重 70kg、
 -年龄 20、男性，BMI 22.86）：
--
++---
+ 
 -- `report_zh.png`：中文界面 → 中文建议
 -- `report_en.png`：英文界面 → 英文建议
--
++## 5. 单元测试
+ 
 -在模拟器上切换语言可以用：
--
--```bat
++`app/src/test/java/com/example/bmi/PromptBuilderTest.kt` 验证：
++
++- 中文 system prompt 里要求“只用简体中文回答”，且不出现英文规则；
++- 英文 system prompt 里包含 “Answer in English only”；
++- user prompt 里带上了日期、身体状况、步数、备注；
++- 备注为空时写成“无”/“none”；
++- 同一个状况值（1）在中文提示词里是“一般”，在英文提示词里是 “Fair”。
++
++`PromptBuilder` 不 import 任何 Android 类，所以能在电脑 JVM 上直接跑：
+ 
+ ```bat
 -adb shell cmd locale set-app-locales com.example.bmi --locales zh-CN
 -adb shell cmd locale set-app-locales com.example.bmi --locales en-US
--```
--
++gradlew.bat testDebugUnitTest
+ ```
+ 
 -## 单元测试
--
++---
+ 
 -`app/src/test/java/com/example/bmi/PromptBuilderTest.kt` 验证：
--
++## 6. 在模拟器上手动切换语言
++
++App 内切换：主界面右上角三个点 → “Switch language / 切换语言”。
++
++也可以用 adb 强制切换（验证资源是否齐全）：
+ 
 -- 中文请求里包含“只用简体中文回答”，并且带上了 BMI / 性别 / 年龄；
 -- 英文请求里包含 “Answer in English only”，并且带上了 BMI / gender / age。
--
++```bat
++adb shell am force-stop com.example.bmi
++adb shell cmd locale set-app-locales com.example.bmi --locales zh-CN
++adb shell cmd locale set-app-locales com.example.bmi --locales en-US
++```
+ 
 -运行：`gradlew.bat testDebugUnitTest`
++注意：后者改的是系统记录的“按 App 语言”，和 App 自己写在
++SharedPreferences 里的选择是两套机制；本项目用的是后者（自己的偏好），
++所以 adb 那条命令主要用于验证资源，不会覆盖 App 内的选择。
 diff --git a/docs/wellness-tracker.md b/docs/wellness-tracker.md
 new file mode 100644
-index 0000000..ce99b57
+index 0000000..229f702
 --- /dev/null
 +++ b/docs/wellness-tracker.md
-@@ -0,0 +1,372 @@
+@@ -0,0 +1,431 @@
 +# Wellness Tracker 改造说明（考试练习版）
 +
 +本分支 `wellness_tracker` 从 `cityu_lab` 的最新提交 `d43a3c9` 创建，把原来的
@@ -6575,9 +8239,15 @@ index 0000000..ce99b57
 +| 保存 | “Save today record” 按钮写入 SQLite |
 +| 每天记录一下 | 日期自动取系统当天，同一天再保存会覆盖旧记录 |
 +| 查看历史记录 | “View history” 打开 `HistoryActivity`，按日期倒序列出全部记录 |
++| （可选 A）中英文切换 | 菜单 “Switch language” → 保存选择 + `recreate()`，见 `docs/llm-setup.md` |
++| （可选 B）AI 健康建议 | 菜单 “AI advice” → 取今天记录发 DeepSeek，显示 3 条建议 |
 +
-+没有做的内容（刻意不做，属于冗余）：BMI 计算、AI 建议、折线图、登录、云同步、
-+编辑/删除单条记录。旧 BMI/AI 代码已经全部删除（见 4.3 节），项目只保留健康日志功能。
++没有做的内容（刻意不做，属于冗余）：BMI 计算、趋势折线图、登录、云同步、
++编辑/删除单条记录。旧 BMI 代码已经全部删除（见 4.3 节）。
++
++两块可选功能（语言切换、AI）都做成了“可以整块删除”的形式，代码里用
++`【语言切换 · 考试可删】` / `【AI 功能 · 考试可删】` 标记，删除清单见
++`docs/exam-guide.md`。基础功能不依赖它们，删掉照样能编译运行。
 +
 +---
 +
@@ -6656,17 +8326,29 @@ index 0000000..ce99b57
 +| `app/src/main/java/com/example/bmi/HistoryActivity.kt` | 历史记录页：读库、统计、显示列表 |
 +| `app/src/main/res/layout/activity_history.xml` | 历史页布局（统计 + 空状态 + ListView） |
 +| `app/src/main/res/layout/item_wellness.xml` | 历史列表每一行的布局（两行文字） |
++| `BaseActivity.kt`（可选 A） | 语言切换：`attachBaseContext` 里替换 Locale |
++| `data/AppLanguage.kt`（可选 A/B） | `ENGLISH` / `CHINESE` 枚举 + `fromTag()` |
++| `data/LanguageStore.kt`（可选 A） | SharedPreferences 记住用户选的语言 |
++| `res/menu/menu_main.xml`（可选 A/B） | 右上角菜单：切换语言、AI 建议 |
++| `AdviceActivity.kt`（可选 B） | AI 页：取今天记录 → 请求 → 渲染状态 |
++| `res/layout/activity_advice.xml`（可选 B） | AI 页布局（摘要 + 转圈 + 建议 + 重试） |
++| `data/PromptBuilder.kt`（可选 B） | 拼提示词，纯 Kotlin，可单元测试 |
++| `data/DeepSeekClient.kt`（可选 B） | HTTP 客户端（`HttpURLConnection` + `org.json`） |
++| `data/WellnessAdviceRepository.kt`（可选 B） | 切 IO 线程发请求、统一异常 |
++| `ui/advice/AdviceUiState.kt`（可选 B） | 四种状态 + 错误原因枚举 |
++| `ui/advice/AdviceViewModel.kt`（可选 B） | ViewModel + LiveData + 重试 |
++| `app/src/test/.../PromptBuilderTest.kt`（可选 B） | 提示词单元测试（7 个用例） |
 +
 +### 4.2 修改文件
 +
 +| 文件 | 改了什么 |
 +| --- | --- |
-+| `app/src/main/java/com/example/bmi/MainActivity.kt` | 整体换成“选状况 + 填步数/备注 + 保存 + 查看历史”，删掉 BMI 计算、跳转报告页、菜单、对话框、自动填充 |
++| `app/src/main/java/com/example/bmi/MainActivity.kt` | 整体换成“选状况 + 填步数/备注 + 保存 + 查看历史”；再叠加两项：继承 `BaseActivity`（语言）+ 选项菜单（语言 / AI） |
 +| `app/src/main/res/layout/activity_main.xml` | 整体换成纵向 `LinearLayout` + `ScrollView`，只保留本题需要的控件 |
-+| `app/src/main/AndroidManifest.xml` | 只注册 `MainActivity` 和 `HistoryActivity`；删除 `INTERNET` 权限和旧页面注册；主题改为 `Theme.Wellness` |
-+| `app/src/main/res/values/strings.xml` | 只保留 wellness 文案和状况数组，`app_name` 改为 Wellness Tracker |
++| `app/src/main/AndroidManifest.xml` | 注册 `MainActivity`、`HistoryActivity`、`AdviceActivity`；只保留 AI 需要的 `INTERNET` 权限；主题改为 `Theme.Wellness` |
++| `app/src/main/res/values/strings.xml` | wellness 文案 + 状况数组 + 菜单/AI 文案，`app_name` 改为 Wellness Tracker |
 +| `app/src/main/res/values-zh-rCN/strings.xml` | 同上，中文文案 |
-+| `app/build.gradle` | 删除 DeepSeek 密钥注入、`buildConfig` 开关，以及只有旧 MVVM/AI 才用的依赖（ConstraintLayout、lifecycle、协程等） |
++| `app/build.gradle` | 只保留健康日志依赖；再为 AI 加回密钥注入、`buildConfig` 开关、ViewModel/协程依赖 |
 +| `app/src/main/res/values/themes.xml` | `Theme.BMI` 重命名为 `Theme.Wellness` |
 +| `app/src/main/res/values-night/themes.xml` | 同上，深色主题同步改名 |
 +| `README.md` | 改成健康日志的项目说明，保留工具链/网络/构建部分 |
@@ -6677,28 +8359,39 @@ index 0000000..ce99b57
 +| --- | --- | --- |
 +| 旧页面 | `ReportActivity.kt`、`TrendActivity.kt` | 本题没有报告页和趋势页 |
 +| 旧数据模型 | `BmiDbHelper.kt`、`BmiHistoryRepository.kt`、`BmiPreferences.kt`、`BmiProfile.kt`、`BmiRecord.kt`、`BmiDates.kt`、`Gender.kt` | 已由 `Wellness*` 和 `Dates` 取代 |
-+| AI 功能 | `DeepSeekClient.kt`、`HealthAdviceRepository.kt`、`PromptBuilder.kt`、`AppLanguage.kt` | 本题不联网，AI 和“回答语言枚举”都不需要 |
 +| MVVM/图表 | `ui/report/`、`ui/trend/` 整个目录 | 只服务于已删除的报告页和趋势页 |
 +| 旧布局 | `activity_report.xml`、`activity_trend.xml` 及 `layout-land/` 下对应文件 | 页面已删除 |
 +| 横屏旧主布局 | `layout-land/activity_main.xml` | Android 横屏时会优先加载它；不删会因找不到 `stepsET` 等控件而崩溃 |
 +| 菜单/图片 | `menu/menu_options.xml`、`menu/menu_context.xml`、`drawable/bot_*.png` | 旧主界面和报告页专用 |
-+| 旧测试 | `PromptBuilderTest.kt` | 被测的 `PromptBuilder` 已删除 |
-+| 旧文档 | `docs/llm-setup.md` | AI 功能已删除 |
 +
-+> 原始 BMI 代码没有丢，仍然完整保存在 `cityu_lab` 分支和它之前的提交里，
-+> 需要对照学习时 `git checkout cityu_lab` 就能看到。
++> 首轮清理时还删掉了 `DeepSeekClient.kt`、`HealthAdviceRepository.kt`、
++> `PromptBuilder.kt`、`AppLanguage.kt`、`ui/report/` 和 `docs/llm-setup.md`。
++> 后来为了留作考试参考，又按 4.1 节的清单重新加回了**新写的**语言切换和 AI 代码
++> （文件名和职责与旧版不同：`WellnessAdviceRepository`、`ui/advice/`）。
++> 旧的 BMI 相关代码没有恢复，仍然只存在于 `cityu_lab` 分支。
 +
 +### 4.4 清理后的最终结构
 +
 +```
 +app/src/main/java/com/example/bmi/
-+├── MainActivity.kt          # 输入、校验、保存、跳转
++├── MainActivity.kt          # 输入、校验、保存、跳转、菜单
 +├── HistoryActivity.kt       # 历史列表
-+└── data/
-+    ├── Dates.kt             # 今天的日期
-+    ├── WellnessRecord.kt    # 数据类
-+    └── WellnessDbHelper.kt  # SQLite
++├── BaseActivity.kt          # 【可选 A】语言切换
++├── AdviceActivity.kt        # 【可选 B】AI 建议页
++├── data/
++│   ├── Dates.kt             # 今天的日期
++│   ├── WellnessRecord.kt    # 数据类
++│   ├── WellnessDbHelper.kt  # SQLite
++│   ├── AppLanguage.kt       # 【可选 A/B】语言枚举
++│   ├── LanguageStore.kt     # 【可选 A】语言偏好
++│   ├── PromptBuilder.kt     # 【可选 B】提示词
++│   ├── DeepSeekClient.kt    # 【可选 B】HTTP
++│   └── WellnessAdviceRepository.kt  # 【可选 B】仓库
++└── ui/advice/               # 【可选 B】状态 + ViewModel
 +```
++
++删掉两个可选功能后，就回到只有 6 个 Kotlin 文件的最小版本，
++清单见 `docs/exam-guide.md` 第 3 节。
 +
 +包名仍然是 `com.example.bmi`。改包名要动 `namespace`、`applicationId`、所有
 +`package` 声明和目录结构，既费时又容易出错，题目也不检查包名，所以保留不动。
@@ -6875,8 +8568,13 @@ index 0000000..ce99b57
 +
 +## 8. 旧代码清理记录（已完成）
 +
-+当前分支已经清理完毕，最终只剩健康日志相关代码。清理顺序如下——如果你在考试
-+现场也想做同样的清理，建议按这个顺序，每完成一组就编译一次：
++当前分支已经清理完毕：BMI 相关代码全部删除。之后为了留作考试参考，又在健康日志
++之上加回了**新写**的语言切换和 AI 代码（见 4.1 节），它们用
++`【语言切换 · 考试可删】` / `【AI 功能 · 考试可删】` 标记，删除清单在
++`docs/exam-guide.md`。本节记录的是“删旧 BMI 代码”的过程。
++
++清理顺序如下——如果你在考试现场也想做同样的清理，建议按这个顺序，
++每完成一组就编译一次：
 +
 +1. **先换日期工具**：新增 `data/Dates.kt`，把 `MainActivity` 里的 `BmiDates`
 +   全部替换成 `Dates`，编译通过后再删 `BmiDates.kt`；
@@ -6903,11 +8601,18 @@ index 0000000..ce99b57
 +和 `ReportActivity` 使用，必须等 AI 那一组文件一起删；`BmiDates` 被
 +`MainActivity` 使用，必须先替换成 `Dates`。
 +
++> 注意：第 4、7、10 步是“删掉旧版 AI”的动作。现在分支里又有了**新版**的
++> `DeepSeekClient`、`PromptBuilder`、`AppLanguage` 和 `PromptBuilderTest`，
++> 它们是新写的、服务于可选功能 B。要删它们请照 `docs/exam-guide.md` 第 2 节，
++> 不要照本节。
++
 +原始 BMI 代码在 `cityu_lab` 分支仍然完整保留，需要对照时随时可以切回去看。
 +
 +---
 +
 +## 9. 自测清单
++
++**基础功能**
 +
 +- [ ] 什么都不填，直接点保存：出现“请输入有效的步数”，不崩溃、不写库。
 +- [ ] 输入 `abc`：数字键盘通常打不出来；如果能输入，仍然被校验拦住。
@@ -6916,15 +8621,33 @@ index 0000000..ce99b57
 +- [ ] 同一天保存两次：历史里只有一条，显示第二次的内容。
 +- [ ] 历史为空时：显示“暂无记录”，不显示空白列表。
 +- [ ] 旋转屏幕：不崩溃（因为已删除旧的横屏主布局）。
-+- [ ] 切换系统语言为中文：界面和历史记录都变成中文。
 +- [ ] 从历史页按返回键：回到主界面，输入内容还在。
 +- [ ] 杀掉 App 再打开：历史记录仍然存在（数据真的写进了 SQLite）。
++
++**可选 A：中英文切换**
++
++- [ ] 菜单点“切换语言”：界面立刻变英文，标题栏也变。
++- [ ] 再点一次：变回中文。
++- [ ] 切换后进历史页 / AI 页：语言保持一致。
++- [ ] 杀掉 App 再打开：还是上次选的语言（SharedPreferences 生效）。
++- [ ] 清除 App 数据后重开：跟随手机系统语言。
++
++**可选 B：AI 健康建议**
++
++- [ ] 今天没有记录时进 AI 页：提示“今天还没有记录”，不发请求。
++- [ ] 有记录时进 AI 页：先转圈，然后显示 3 条建议。
++- [ ] 中文界面拿到中文建议；英文界面拿到英文建议。
++- [ ] 断开网络再进：提示网络错误，出现“重试”按钮。
++- [ ] 把 `local.properties` 的 key 清空后重编译：提示“没有配置 API key”。
++- [ ] 转屏：不重复请求（ViewModel 存活，`hasRequested` 生效）。
 +
 +---
 +
 +## 10. 相关文档
 +
 +- `README.md`：项目简介、工具链、运行和 patch 用法。
++- `docs/exam-guide.md`：考试删减指南（不要语言切换 / 不要 AI 时删什么）。
++- `docs/llm-setup.md`：AI 与语言切换的实现细节、key 配置、单元测试。
 +- `docs/exam-playbook.md`：把这道题的做法迁移到其他“每日记录类”题目的通用教程。
 +- `patch/wellness-tracker.patch`：可直接应用到 `d43a3c9` 的补丁（包含旧代码删除）。
 diff --git "a/docs/\345\274\200\345\217\221\346\214\207\345\215\227.md" "b/docs/\345\274\200\345\217\221\346\214\207\345\215\227.md"
