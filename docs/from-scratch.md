@@ -95,6 +95,8 @@ Groovy，记得把 `libs.versions.toml` 一起删掉，否则 Sync 时会因为�
 
 1. **File → New → New Project**；
 2. 模板选 **Empty Views Activity**（不是 “Empty Activity”，那个是 Compose）；
+   旧版 AS（2023.2.1 Iguana 之前）没有这个选项，那时的 `Empty Activity` 就是 XML 版，选它即可；
+   判断标准：建完后有 `res/layout/activity_main.xml`、`MainActivity` 继承 `AppCompatActivity` 就对了
 3. 参数：
 
 | 项 | 建议值 | 说明 |
