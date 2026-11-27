@@ -9,24 +9,24 @@ index dfe0770..a6980ab 100644
 +# Keep patch files LF so git apply works on Windows.
 +*.patch -text
 diff --git a/README.md b/README.md
-index dc0aa70..719182a 100644
+index dc0aa70..89708b8 100644
 --- a/README.md
 +++ b/README.md
-@@ -1,7 +1,63 @@
+@@ -1,13 +1,77 @@
 -# BMI
 +# Wellness Tracker（健康日志）
  
 -一个 Android BMI 计算小应用（作业项目）。本分支 `cityu_lab` 已调整为可直接在
 -**学校的 Android Studio 2025.2.1 Patch 1（Otter）** 上打开并运行。
 +一个 Android 考试练习项目：每天记录身体状况、步数和备注，保存到 SQLite，
-+并在历史页按日期查看全部记录。在基础功能之上，还加了两块上课学过的内容：
-+App 内中英文切换 和 AI 健康建议（DeepSeek）。
++并在历史页按日期查看全部记录。在基础功能之上，还加了三块上课学过的内容：
++App 内中英文切换、AI 健康建议（DeepSeek）和最近 7 天步数折线图（MPAndroidChart）。
 +
 +本项目从原始的 BMI 作业（`cityu_lab` 分支）改造而来，保留了学校电脑要求的
 +工具链配置，源码已经清理成只包含健康日志功能；BMI 相关代码仍然是删除状态。
 +改造过程、逐文件讲解、可迁移到同类题目的考场教程见文末文档。
 +
-+两块可选功能都可以整块删除，删除清单见 [`docs/exam-guide.md`](docs/exam-guide.md)。
++三块可选功能都可以整块删除，删除清单见 [`docs/exam-guide.md`](docs/exam-guide.md)。
 +
 +## 功能
 +
@@ -53,6 +53,13 @@ index dc0aa70..719182a 100644
 +- 回答语言跟随界面语言：中文界面拿到中文建议，英文界面拿到英文建议
 +- 失败时显示原因（没配 key / 网络错误 / 接口错误）并支持重试
 +
++**可选功能 C：最近 7 天趋势折线图**
++
++- 右上角菜单 → “Trend chart / 趋势图”
++- 读取最近 7 条记录，按日期从早到晚画一条步数折线（MPAndroidChart 的 `LineChart`）
++- 顶部显示“最近 N 天 · 平均 X 步”；没有记录时显示空状态，不画空坐标轴
++- 只依赖 MPAndroidChart（JitPack 仓库），不联网、不需要额外权限
++
 +## 代码结构
 +
 +```
@@ -61,6 +68,7 @@ index dc0aa70..719182a 100644
 +├── HistoryActivity.kt           # 历史页：读库、空状态、ListView
 +├── BaseActivity.kt              # 【可选 A】语言切换：attachBaseContext
 +├── AdviceActivity.kt            # 【可选 B】AI 页：取记录、请求、渲染状态
++├── TrendActivity.kt             # 【可选 C】趋势页：读最近 7 条 → LineChart
 +├── data/
 +│   ├── WellnessRecord.kt        # 数据类：日期/状况/步数/备注
 +│   ├── WellnessDbHelper.kt      # SQLite：建表、保存、读取
@@ -79,7 +87,14 @@ index dc0aa70..719182a 100644
  
  ## 工具链版本
  
-@@ -18,17 +74,41 @@
+ | 组件 | 版本 | 说明 |
+ | --- | --- | --- |
+-| Android Studio | 2025.2.1（Otter）Patch 1 | 支持 AGP 4.0 ~ 8.13 |
++| Android Studio | 2025.2.1（Otter）Patch 1 | 最高支持到 AGP 8.13 |
+ | Android Gradle Plugin | 8.13.0 | 该 Studio 版本支持的最高 AGP |
+ | Gradle | 8.13 | AGP 8.13 要求的 Gradle |
+ | Kotlin | 2.2.20 | |
+@@ -18,17 +82,42 @@
  ## 第一次打开
  
  1. 从 GitHub 下载 ZIP（或 `git clone`），解压到本地任意目录。
@@ -89,8 +104,9 @@ index dc0aa70..719182a 100644
     （不要选里面的 `app` 目录）。
  3. 首次打开会自动下载 Gradle 8.13 和所有依赖，需要联网，请耐心等待。
 -4. 如果右下角 / 通知栏提示缺少 SDK 组件（例如 *Android SDK Platform 36*、
+-   *Build-Tools 35.0.0*），直接点 **Install** 让它自动安装。
 +4. 如果提示缺少 SDK 组件（例如 *Android SDK Platform 36*、
-    *Build-Tools 35.0.0*），直接点 **Install** 让它自动安装。
++   *Build-Tools 36.x*），直接点 **Install** 让它自动安装。
  5. Gradle Sync 结束后，选中 `app` 运行配置，点 **Run** 即可。
  
  `local.properties`（本机 SDK 路径）和 `.idea/`（IDE 配置）都没有提交到仓库，
@@ -113,9 +129,10 @@ index dc0aa70..719182a 100644
 +
 +| 题目要求 | 操作 |
 +| --- | --- |
-+| 只要记录 + 历史 | 按 `docs/exam-guide.md` 第 1、2 节删除 |
++| 只要记录 + 历史 | 按 `docs/exam-guide.md` 第 1、2、3 节删除 |
 +| 不要 App 内切换语言 | 按 `docs/exam-guide.md` 第 1 节删除 |
 +| 不要 AI | 按 `docs/exam-guide.md` 第 2 节删除 |
++| 不要图表 | 按 `docs/exam-guide.md` 第 3 节删除 |
 +| 都要 | 直接用当前版本 |
 +
 +建议先 `git checkout -b exam-minimal` 再动手，删坏了 `git checkout -- .` 就能恢复。
@@ -123,7 +140,7 @@ index dc0aa70..719182a 100644
  ## 校园网访问不了 Google / Maven 时
  
  依赖（androidx、Material、AGP、Kotlin 插件）走的是 `google()` 和
-@@ -59,102 +139,41 @@ gradlew.bat assembleDebug
+@@ -59,102 +148,41 @@ gradlew.bat assembleDebug
  
  生成的文件在 `app/build/outputs/apk/debug/app-debug.apk`。
  
@@ -232,7 +249,7 @@ index dc0aa70..719182a 100644
 +- [`docs/adapt-to-other-topic.md`](docs/adapt-to-other-topic.md)
 +  —— **改题点地图**：题目换成喝水/心情/记账时，改哪一处、连带改哪里，含三个完整示例。
 +- [`docs/exam-guide.md`](docs/exam-guide.md)
-+  —— **考试删减指南**：不要中英文切换 / 不要 AI 时，具体删哪些文件、哪些代码。
++  —— **考试删减指南**：不要中英文切换 / 不要 AI / 不要图表时，具体删哪些文件、哪些代码。
 +- [`docs/wellness-tracker.md`](docs/wellness-tracker.md)
 +  —— 本次改造的逐文件说明、数据库设计、patch 用法、自测清单。
 +- [`docs/llm-setup.md`](docs/llm-setup.md)
@@ -255,7 +272,7 @@ index dc0aa70..719182a 100644
 +- 同一天只保留一条记录。如果考试要求一天多条，把 `date` 主键换成自增 `id`，
 +  详见 `docs/exam-playbook.md` 的“按天唯一 vs 一天多条”。
 diff --git a/app/build.gradle b/app/build.gradle
-index 099616e..2dcd9b3 100644
+index 099616e..c32d0ce 100644
 --- a/app/build.gradle
 +++ b/app/build.gradle
 @@ -1,24 +1,28 @@
@@ -335,7 +352,7 @@ index 099616e..2dcd9b3 100644
          buildConfig = true
      }
  
-@@ -78,30 +81,31 @@ kotlin {
+@@ -78,30 +81,38 @@ kotlin {
  
  // ----------------------------------------------------------------------------
  // dependencies：这个模块用到的第三方库。
@@ -371,6 +388,13 @@ index 099616e..2dcd9b3 100644
 -    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'  // 协程
 +    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'
 +    // ──────────────────────────────────────────────────────────────────────
++
++    // ── 趋势折线图【图表 · 考试可删】───────────────────────────────────────
++    // MPAndroidChart 提供 LineChart / LineDataSet，一行依赖就能画折线图。
++    // 注意它只在 JitPack 上（settings.gradle 里已经加好仓库）。
++    // 不用图表时删掉这一行，再删 TrendActivity / activity_trend.xml / 菜单项即可。
++    implementation 'com.github.PhilJay:MPAndroidChart:v3.1.0'
++    // ──────────────────────────────────────────────────────────────────────
  
      testImplementation 'junit:junit:4.13.2'                        // 单元测试（本地 JVM 测试）
      androidTestImplementation 'androidx.test.ext:junit:1.2.1'      // 仪器测试（跑在设备上）
@@ -382,7 +406,7 @@ index 099616e..2dcd9b3 100644
 -    // ──────────────────────────────────────────────────────────────────────
  }
 diff --git a/app/src/main/AndroidManifest.xml b/app/src/main/AndroidManifest.xml
-index b385e20..7a18fa0 100644
+index b385e20..a0c3d69 100644
 --- a/app/src/main/AndroidManifest.xml
 +++ b/app/src/main/AndroidManifest.xml
 @@ -8,7 +8,16 @@
@@ -422,7 +446,7 @@ index b385e20..7a18fa0 100644
          android:supportsRtl = 是否支持从右到左的语言（阿拉伯语等）。
      -->
      <application
-@@ -40,27 +49,23 @@
+@@ -40,27 +49,32 @@
          android:label="@string/app_name"
          android:roundIcon="@drawable/icon_128"
          android:supportsRtl="true"
@@ -458,10 +482,19 @@ index b385e20..7a18fa0 100644
 +            android:name=".AdviceActivity"
 +            android:exported="false"
 +            android:label="@string/ai_title" />
++
++        <!--
++          【图表 · 考试可删】最近 7 天步数折线图。
++          同样不对外开放，只能从主界面菜单进入；label 用 trend_title。
++        -->
++        <activity
++            android:name=".TrendActivity"
++            android:exported="false"
++            android:label="@string/trend_title" />
  
          <!-- 主界面（入口页，对外开放）。 -->
          <activity
-@@ -71,10 +76,6 @@
+@@ -71,10 +85,6 @@
                  <action android:name="android.intent.action.MAIN" />
                  <category android:name="android.intent.category.LAUNCHER" />
              </intent-filter>
@@ -903,10 +936,10 @@ index 0000000..f8cbf11
 +    }
 +}
 diff --git a/app/src/main/java/com/example/bmi/MainActivity.kt b/app/src/main/java/com/example/bmi/MainActivity.kt
-index 0f59bf6..10d5d9f 100644
+index 0f59bf6..825d504 100644
 --- a/app/src/main/java/com/example/bmi/MainActivity.kt
 +++ b/app/src/main/java/com/example/bmi/MainActivity.kt
-@@ -1,372 +1,193 @@
+@@ -1,372 +1,200 @@
  package com.example.bmi
  
 -import android.content.ActivityNotFoundException
@@ -1029,7 +1062,7 @@ index 0f59bf6..10d5d9f 100644
 -        // 创建 SharedPreferences 封装（用来记住用户上次输入的内容）。
 -        preferences = BmiPreferences(this)
 -
-         /*
+-        /*
 -         * findViewById<T>(R.id.xxx)：根据布局里某个控件的 android:id，拿到它的对象。
 -         * R.id.heightET 就是 activity_main.xml 里 <EditText android:id="@+id/heightET"> 的那个控件。
 -         */
@@ -1043,7 +1076,7 @@ index 0f59bf6..10d5d9f 100644
 -        // 给 BMI 图标注册“长按弹出菜单”（ContextMenu）。
 -        registerForContextMenu(bmiImage)
 -
--        /*
+         /*
 -         * ────────────────────────────────────────────────────────────────────
 -         * 【重点】如何从表单读取用户输入
 -         * ────────────────────────────────────────────────────────────────────
@@ -1074,7 +1107,8 @@ index 0f59bf6..10d5d9f 100644
 -                val height = heightET.text.toString()
 -                val weight = weightET.text.toString()
 -                val age = ageET.text.toString()
--
++        title = getString(R.string.app_name)
+ 
 -                /*
 -                 * 【读取 Spinner 的选中项】
 -                 * genderSpinner.selectedItemPosition 返回选中的“位置序号”（从 0 开始）。
@@ -1083,7 +1117,9 @@ index 0f59bf6..10d5d9f 100644
 -                 * 而位置 0/1 永远不变，后面的逻辑不会受语言影响。
 -                 */
 -                val gender = genderSpinner.selectedItemPosition
--
++        // 创建数据库助手（此时不会真的建库，第一次读写时才创建 wellness.db）。
++        db = WellnessDbHelper(this)
+ 
 -                /*
 -                 * 【字符串转数字 + 校验】
 -                 * toDoubleOrNull()：能转成小数就返回数值，转不了（比如输入了字母）就返回 null。
@@ -1093,7 +1129,12 @@ index 0f59bf6..10d5d9f 100644
 -                val heightValue = height.toDoubleOrNull()
 -                val weightValue = weight.toDoubleOrNull()
 -                val ageValue = age.toIntOrNull()
-+        title = getString(R.string.app_name)
++        dateTV = findViewById(R.id.dateTV)
++        conditionSpinner = findViewById(R.id.conditionSpinner)
++        stepsET = findViewById(R.id.stepsET)
++        noteET = findViewById(R.id.noteET)
++        val saveBtn: Button = findViewById(R.id.saveBtn)
++        val historyBtn: Button = findViewById(R.id.historyBtn)
  
 -                /*
 -                 * 校验：任何一个没输入（null）、小于等于 0（年龄允许 0 也算非法）都算无效。
@@ -1110,9 +1151,7 @@ index 0f59bf6..10d5d9f 100644
 -                } else {
 -                    // ── 校验通过：先记住这次输入（下次自动填充）──
 -                    preferences.save(height, weight, age, gender)
-+        // 创建数据库助手（此时不会真的建库，第一次读写时才创建 wellness.db）。
-+        db = WellnessDbHelper(this)
- 
+-
 -                    /*
 -                     * ─────────────────────────────────────────────────────────
 -                     * 【重点】用 Intent 把数据从 MainActivity 传到 ReportActivity
@@ -1133,13 +1172,7 @@ index 0f59bf6..10d5d9f 100644
 -                    intent.putExtras(bundle)             // 把整个袋子塞进 Intent
 -                    startActivity(intent)                // 跳转
 -                }
-+        dateTV = findViewById(R.id.dateTV)
-+        conditionSpinner = findViewById(R.id.conditionSpinner)
-+        stepsET = findViewById(R.id.stepsET)
-+        noteET = findViewById(R.id.noteET)
-+        val saveBtn: Button = findViewById(R.id.saveBtn)
-+        val historyBtn: Button = findViewById(R.id.historyBtn)
- 
+-
 -                /*
 -                 * ── 【考点 / 备用方案】传值的另外两种常见写法 ─────────────────
 -                 * （把上面 else 块替换成下面任一种都可以，效果几乎一样）
@@ -1330,24 +1363,35 @@ index 0f59bf6..10d5d9f 100644
 -            R.id.menu_item_about -> {
 -                about_BMI_Dialog()
 -                return true
--            }
--            R.id.menu_item_wiki -> {
--                openWebpage(getString(R.string.wiki_url))
--                return true
--            }
--            R.id.menu_item_trend -> {
--                startActivity(Intent(this, TrendActivity::class.java))
--                return true
 +            // ── 【语言切换 · 考试可删】中文 ↔ 英文，切换后整页重建 ──
 +            R.id.menu_language -> {
 +                // toggleLanguage() 在 BaseActivity 里：保存选择 + recreate()
 +                toggleLanguage()
 +                true
              }
+-            R.id.menu_item_wiki -> {
+-                openWebpage(getString(R.string.wiki_url))
+-                return true
++
++            // ── 【AI 功能 · 考试可删】打开 AI 健康建议页 ──
++            R.id.menu_ai_advice -> {
++                // 不传数据：建议页自己按 Dates.today() 去数据库查今天的记录。
++                startActivity(Intent(this, AdviceActivity::class.java))
++                true
+             }
+-            R.id.menu_item_trend -> {
++
++            // ── 【图表 · 考试可删】打开最近 7 天步数折线图 ──
++            R.id.menu_trend -> {
++                // 同样不传数据：趋势页自己读库。
+                 startActivity(Intent(this, TrendActivity::class.java))
+-                return true
++                true
+             }
 -            else -> return super.onContextItemSelected(item)
 -        }
 -    }
--
+ 
 -    /**
 -     * 用系统浏览器打开一个网址。
 -     * ACTION_VIEW 表示“查看某样东西”，配合一个 Uri 就是“打开网页”。
@@ -1364,9 +1408,10 @@ index 0f59bf6..10d5d9f 100644
 -                R.string.no_browser,
 -                Snackbar.LENGTH_SHORT
 -            ).show()
--        }
--    }
- 
++            else -> super.onOptionsItemSelected(item)
+         }
+     }
+-
 -    /**
 -     * 弹出“关于 BMI”对话框。
 -     * 这里用 MaterialAlertDialogBuilder（Material 组件库的对话框）。
@@ -1382,14 +1427,9 @@ index 0f59bf6..10d5d9f 100644
 -                    getString(R.string.button_ok),
 -                    Toast.LENGTH_SHORT
 -                ).show()
-+            // ── 【AI 功能 · 考试可删】打开 AI 健康建议页 ──
-+            R.id.menu_ai_advice -> {
-+                // 不传数据：建议页自己按 Dates.today() 去数据库查今天的记录。
-+                startActivity(Intent(this, AdviceActivity::class.java))
-+                true
-             }
+-            }
 -            .show()
- 
+-
 -        /*
 -         * ── 【考点 / 备用方案】用系统自带 AlertDialog 代替 Material 对话框 ──
 -         * 如果考试环境没有 Material 依赖，或老师要求用最基础的 AlertDialog：
@@ -1405,9 +1445,7 @@ index 0f59bf6..10d5d9f 100644
 -         *   }
 -         * ────────────────────────────────────────────────────────────────────
 -         */
-+            else -> super.onOptionsItemSelected(item)
-+        }
-     }
+-    }
  }
 diff --git a/app/src/main/java/com/example/bmi/ReportActivity.kt b/app/src/main/java/com/example/bmi/ReportActivity.kt
 deleted file mode 100644
@@ -6601,10 +6639,10 @@ index 35e025c..0000000
 -</menu>
 diff --git a/app/src/main/res/menu/menu_main.xml b/app/src/main/res/menu/menu_main.xml
 new file mode 100644
-index 0000000..06d1e6b
+index 0000000..0674f6e
 --- /dev/null
 +++ b/app/src/main/res/menu/menu_main.xml
-@@ -0,0 +1,42 @@
+@@ -0,0 +1,49 @@
 +<?xml version="1.0" encoding="utf-8"?>
 +<!--
 +  ============================================================================
@@ -6621,8 +6659,9 @@ index 0000000..06d1e6b
 +
 +  【考试删除指引】见 docs/exam-guide.md
 +    · 不要求中英文切换 → 删掉 menu_language 这一项；
-+    · 不要求 AI        → 删掉 menu_ai_advice 这一项。
-+    两项都删掉后，这个文件就没有用了，可以整个删掉，
++    · 不要求 AI        → 删掉 menu_ai_advice 这一项；
++    · 不要求图表       → 删掉 menu_trend 这一项。
++    三项都删掉后，这个文件就没有用了，可以整个删掉，
 +    同时删掉 MainActivity 里的 onCreateOptionsMenu / onOptionsItemSelected。
 +
 +  【改题点 C11】想加新页面（统计 / 设置 / 关于）：在这里加一个 <item>，
@@ -6644,6 +6683,12 @@ index 0000000..06d1e6b
 +    <item
 +        android:id="@+id/menu_ai_advice"
 +        android:title="@string/menu_ai_advice"
++        app:showAsAction="never" />
++
++    <!-- 【图表 · 考试可删】点击后打开 TrendActivity，看最近 7 天的步数折线图。 -->
++    <item
++        android:id="@+id/menu_trend"
++        android:title="@string/menu_trend"
 +        app:showAsAction="never" />
 +
 +</menu>
@@ -6714,10 +6759,10 @@ index f78e8eb..30bc7ba 100644
          <item name="colorPrimary">@color/purple_200</item>
          <item name="colorPrimaryVariant">@color/purple_700</item>
 diff --git a/app/src/main/res/values-zh-rCN/strings.xml b/app/src/main/res/values-zh-rCN/strings.xml
-index dd0aa58..1d2104d 100644
+index dd0aa58..87988d8 100644
 --- a/app/src/main/res/values-zh-rCN/strings.xml
 +++ b/app/src/main/res/values-zh-rCN/strings.xml
-@@ -8,46 +8,54 @@
+@@ -8,46 +8,62 @@
      没有对应的再回落到 res/values/ 里的默认值。
      所以这里必须保持和 res/values/strings.xml 完全相同的 name（key），
      只是把 value 换成中文。
@@ -6789,6 +6834,14 @@ index dd0aa58..1d2104d 100644
 +    <!-- ==================== 选项菜单 ==================== -->
 +    <string name="menu_language">切换语言</string>
 +    <string name="menu_ai_advice">AI 健康建议</string>
++    <!-- 【图表 · 考试可删】菜单项文字：打开最近 7 天步数折线图。 -->
++    <string name="menu_trend">趋势图</string>
++
++    <!-- ==================== 趋势折线图页（考试可删） ==================== -->
++    <string name="trend_title">最近 7 天趋势</string>
++    <string name="trend_series_steps">步数</string>
++    <string name="trend_summary">最近 %1$d 天 · 平均 %2$d 步</string>
++    <string name="trend_empty">还没有记录。\n请先在主界面保存一条记录。</string>
 +
 +    <!-- ==================== AI 健康建议页（考试可删） ==================== -->
 +    <string name="ai_title">AI 健康建议</string>
@@ -6810,10 +6863,10 @@ index dd0aa58..1d2104d 100644
 +    <string name="wellness_history_steps">%1$d 步</string>
  </resources>
 diff --git a/app/src/main/res/values/strings.xml b/app/src/main/res/values/strings.xml
-index b9df712..e8faa68 100644
+index b9df712..e6dfa35 100644
 --- a/app/src/main/res/values/strings.xml
 +++ b/app/src/main/res/values/strings.xml
-@@ -6,67 +6,72 @@
+@@ -6,67 +6,80 @@
    【字符串资源 + 多语言机制（考试高频考点）】
      Android 不推荐把文字直接写死在代码里，而是放在 res/values/strings.xml，
      每个字符串给一个 name（key），代码里用 R.string.xxx 引用。
@@ -6922,6 +6975,14 @@ index b9df712..e8faa68 100644
 +    <string name="menu_language">Switch language</string>
 +    <!-- 【AI 功能 · 考试可删】菜单项文字：打开 AI 健康建议页。 -->
 +    <string name="menu_ai_advice">AI advice</string>
++    <!-- 【图表 · 考试可删】菜单项文字：打开最近 7 天步数折线图。 -->
++    <string name="menu_trend">Trend chart</string>
++
++    <!-- ==================== 趋势折线图页（考试可删） ==================== -->
++    <string name="trend_title">7-day trend</string>
++    <string name="trend_series_steps">Steps</string>
++    <string name="trend_summary">Last %1$d days · average %2$d steps</string>
++    <string name="trend_empty">No records yet.\nSave a record first.</string>
 +
 +    <!-- ==================== AI 健康建议页（考试可删） ==================== -->
 +    <string name="ai_title">AI health advice</string>
@@ -7086,7 +7147,7 @@ index 026d074..38551f0 100644
  }
 diff --git a/docs/adapt-to-other-topic.md b/docs/adapt-to-other-topic.md
 new file mode 100644
-index 0000000..c655ad0
+index 0000000..12761bc
 --- /dev/null
 +++ b/docs/adapt-to-other-topic.md
 @@ -0,0 +1,321 @@
@@ -7137,7 +7198,7 @@ index 0000000..c655ad0
 +| **C8** | 列表一行的布局 | `res/layout/item_wellness.xml` | `itemTitle`、`itemSubtitle` | C7（`SimpleAdapter` 的 id 数组） |
 +| **C9** | 发给 AI 的提示词 | `data/PromptBuilder.kt` | `systemPrompt()`、`userPrompt()`、`conditionLabel()` | C1、`PromptBuilderTest` |
 +| **C10** | AI 页顶部摘要 | `AdviceActivity.kt` | `ai_record_summary` 的三个参数、`conditionText()` | C3、C1 |
-+| **C11** | 有没有菜单、菜单里有什么 | `res/menu/menu_main.xml` + `MainActivity` | `menu_language`、`menu_ai_advice` | 删功能时见 `docs/exam-guide.md` |
++| **C11** | 有没有菜单、菜单里有什么 | `res/menu/menu_main.xml` + `MainActivity` | `menu_language`、`menu_ai_advice`、`menu_trend` | 删功能时见 `docs/exam-guide.md` |
 +
 +---
 +
@@ -7186,8 +7247,8 @@ index 0000000..c655ad0
 +| C2 | `WellnessDbHelper.kt` | `DATABASE_VERSION` 从 1 改成 2（表结构变了） |
 +| C3 | 两个 `strings.xml` | `wellness_steps_label` = “今日饮水量 / Water today”；`wellness_steps_hint` = “例如 1200”；`wellness_history_steps` = `%1$d ml` |
 +| C4 | `activity_main.xml` | `stepsET` 可以不改 id（省事），只改 `android:hint`；`maxLength` 从 7 调到 5 |
-+| C5 | `MainActivity.saveTodayRecord()` | 校验改成 `if (water == null \|\| water !in 0..20000)` |
-+| C6 | `MainActivity.saveTodayRecord()` | `steps = steps` → `waterMl = water` |
++| C5 | `MainActivity.saveTodayRecord()` | 校验改成 `if (waterMl == null \|\| waterMl !in 0..20000)` |
++| C6 | `MainActivity.saveTodayRecord()` | `steps = steps` → `waterMl = waterMl`（字段名替换） |
 +| C7 | `HistoryActivity.buildSubtitle()` | `getString(R.string.wellness_history_steps, record.waterMl)` |
 +| C9 | `PromptBuilder.userPrompt()` | `append("饮水量：")` / `append("Water: ")`，后面拼 `" ml"` |
 +| C10 | `AdviceActivity` | `ai_record_summary` 的第 3 个参数改成 `record.waterMl`，字符串里的 “steps” 改 “ml” |
@@ -7204,7 +7265,7 @@ index 0000000..c655ad0
 +)
 +
 +// C5 + C6
-+val waterMl = waterET.text.toString().trim().toIntOrNull()
++val waterMl = stepsET.text.toString().trim().toIntOrNull()
 +if (waterMl == null || waterMl !in 0..20_000) {
 +    Toast.makeText(this, R.string.wellness_steps_warning, Toast.LENGTH_SHORT).show()
 +    return
@@ -7413,28 +7474,30 @@ index 0000000..c655ad0
 +> 最后才碰 AI（C9/C10）。每一步都 Run 一次，比最后一起调试快得多。
 diff --git a/docs/exam-guide.md b/docs/exam-guide.md
 new file mode 100644
-index 0000000..d2f219d
+index 0000000..9c24eff
 --- /dev/null
 +++ b/docs/exam-guide.md
-@@ -0,0 +1,430 @@
-+# 考试删减指南：中英文切换 与 AI 健康建议
+@@ -0,0 +1,560 @@
++# 考试删减指南：中英文切换 / AI 健康建议 / 趋势折线图
 +
 +这份文档回答一个问题：**考试题目不需要某个功能时，应该删掉哪些文件、哪些代码。**
 +
-+当前分支的功能分三层：
++当前分支的功能分四层：
 +
 +| 层 | 功能 | 能不能删 |
 +| --- | --- | --- |
 +| 基础层 | 记录今天（状况 / 步数 / 备注）→ 存 SQLite；历史页查看 | 必须保留 |
 +| 可选层 A | App 内中英文切换（菜单里点一下，全 App 换语言） | 可整块删除 |
 +| 可选层 B | AI 健康建议（把今天的记录发给 DeepSeek，显示返回的建议） | 可整块删除 |
++| 可选层 C | 最近 7 天步数折线图（MPAndroidChart 的 `LineChart`） | 可整块删除 |
 +
-+两层可选功能在代码里都用标记注释标出来了。在 Android Studio 里按
-+`Ctrl + Shift + F` 全局搜索下面三个关键词，就能找到所有需要处理的位置：
++三层可选功能在代码里都用标记注释标出来了。在 Android Studio 里按
++`Ctrl + Shift + F` 全局搜索下面四个关键词，就能找到所有需要处理的位置：
 +
 +```
 +【语言切换 · 考试可删】
 +【AI 功能 · 考试可删】
++【图表 · 考试可删】
 +考试可删
 +```
 +
@@ -7447,14 +7510,16 @@ index 0000000..d2f219d
 +
 +| 老师的题目要求 | 按哪一节删 | 删完大概剩几个源文件 |
 +| --- | --- | --- |
-+| 只要记录 + 历史（最基础） | 第 1 节 + 第 2 节 | 6 个 Kotlin 文件 + 3 个布局 |
-+| 记录 + 历史，**不需要** App 内切换语言 | 第 1 节 | 9 个 Kotlin 文件 + 4 个布局 |
-+| 记录 + 历史 + AI，**不需要**切换语言 | 第 1 节里“保留 AI”的写法 | 10 个 Kotlin 文件 + 4 个布局 |
-+| 都要（当前版本） | 不删 | 12 个 Kotlin 文件 + 4 个布局 |
++| 只要记录 + 历史（最基础） | 第 1 + 2 + 3 节 | 5 个 Kotlin 文件 + 3 个布局 |
++| 记录 + 历史 + 图表 | 第 1 + 2 节 | 6 个 Kotlin 文件 + 4 个布局 |
++| 只不要 App 内切换语言 | 第 1 节 | 13 个 Kotlin 文件 + 5 个布局 |
++| 只不要 AI | 第 2 节 | 9 个 Kotlin 文件 + 5 个布局 |
++| 只不要图表 | 第 3 节 | 14 个 Kotlin 文件 + 4 个布局 |
++| 都要（当前版本） | 不删 | 15 个 Kotlin 文件 + 5 个布局 |
 +
 +“不需要切换语言”的意思是：老师只要求界面有中文和英文两套资源、
 +跟着手机系统语言自动变，而不要求 App 里自己点按钮切换。
-+这两种在 Android 里是两件不同的事，第 3 节专门解释。
++这两种在 Android 里是两件不同的事，第 4 节专门解释。
 +
 +---
 +
@@ -7464,20 +7529,20 @@ index 0000000..d2f219d
 +
 +| 文件 | 作用 | 删掉后会怎样 |
 +| --- | --- | --- |
-+| `app/src/main/java/com/example/bmi/BaseActivity.kt` | 在 `attachBaseContext` 里把 Context 的语言改成用户选的语言 | 三个 Activity 都要改回继承 `AppCompatActivity` |
++| `app/src/main/java/com/example/bmi/BaseActivity.kt` | 在 `attachBaseContext` 里把 Context 的语言改成用户选的语言 | 四个 Activity 都要改回继承 `AppCompatActivity` |
 +| `app/src/main/java/com/example/bmi/data/LanguageStore.kt` | 用 SharedPreferences 记住用户选了哪种语言 | 没人再读写这个偏好 |
 +| `app/src/main/java/com/example/bmi/data/AppLanguage.kt` | `ENGLISH` / `CHINESE` 枚举 | **AI 也在用它**，见 1.3 |
 +| `app/src/main/res/menu/menu_main.xml` 里的 `menu_language` 项 | 菜单入口 | 菜单里少一项 |
 +| `strings.xml` 里的 `menu_language` | 菜单文字 | 没人引用，可留可删 |
 +| `MainActivity` 里的 `menu_language` 分支 | 点击后 `toggleLanguage()` | 菜单项点了没反应 |
-+| 三个 Activity 里的 `title = getString(...)` | 让标题栏也跟着 App 内语言变 | 标题会跟随手机系统语言（默认就是这样，不算错） |
++| 四个 Activity 里的 `title = getString(...)` | 让标题栏也跟着 App 内语言变 | 标题会跟随手机系统语言（默认就是这样，不算错） |
 +
 +`values-zh-rCN/strings.xml` **不要删**：它提供中文文案，属于 Android 标准多语言机制，
 +不是“切换功能”的代码。删了中文手机也会显示英文。
 +
 +### 1.2 删除步骤（顺序照做，每步之后都能编译）
 +
-+**第 1 步：三个 Activity 改回普通 AppCompatActivity**
++**第 1 步：四个 Activity 改回普通 AppCompatActivity**
 +
 +`MainActivity.kt`
 +
@@ -7498,6 +7563,8 @@ index 0000000..d2f219d
 +
 +`AdviceActivity.kt`（如果保留 AI）也改成 `AppCompatActivity`，并按 1.3 补一个
 +`currentLanguage()`。
++
++`TrendActivity.kt`（如果保留图表）同样改成 `AppCompatActivity`，标题那一行可以直接删。
 +
 +**第 2 步：删菜单里的语言项**
 +
@@ -7532,7 +7599,7 @@ index 0000000..d2f219d
 +
 +`AppLanguage.kt` 先别删——AI 的 `PromptBuilder` 需要它。如果 AI 也删，再一起删。
 +
-+**第 4 步：删掉三个 Activity 里的标题设置（可选，但建议删干净）**
++**第 4 步：删掉四个 Activity 里的标题设置（可选，但建议删干净）**
 +
 +```kotlin
 +// 【语言切换 · 考试可删】标题跟着 App 内语言走（原因见 MainActivity 的说明）。
@@ -7540,7 +7607,8 @@ index 0000000..d2f219d
 +```
 +
 +HistoryActivity 里是 `title = getString(R.string.wellness_history_title)`，
-+AdviceActivity 里是 `title = getString(R.string.ai_title)`。
++AdviceActivity 里是 `title = getString(R.string.ai_title)`，
++TrendActivity 里是 `title = getString(R.string.trend_title)`。
 +
 +删掉后标题栏会显示 Manifest 里 `android:label` 指向的字符串，由系统按手机语言解析，
 +这是 Android 的默认行为，考试完全够用。
@@ -7734,9 +7802,110 @@ index 0000000..d2f219d
 +
 +---
 +
-+## 3. 版本 C：两个功能都不要（最基础版）
++## 3. 版本 C：不要趋势折线图
 +
-+按第 1 节做完，再按第 2 节做完，最后处理 `AppLanguage.kt`。
++### 3.1 图表功能涉及哪些文件
++
++| 位置 | 作用 |
++| --- | --- |
++| `app/src/main/java/com/example/bmi/TrendActivity.kt` | 趋势页：读最近 7 条记录 → 交给 `LineChart` 画折线 |
++| `app/src/main/res/layout/activity_trend.xml` | 趋势页布局（统计文字 + `LineChart` + 空状态） |
++| `res/menu/menu_main.xml` 的 `menu_trend` 项 | 菜单入口 |
++| `MainActivity.onOptionsItemSelected()` 的 `menu_trend` 分支 | 点击后跳转 |
++| `AndroidManifest.xml` 的 `.TrendActivity` 注册 | 不注册会 `ActivityNotFoundException` |
++| `app/build.gradle` 的 MPAndroidChart 依赖 | 图表库本体 |
++| `settings.gradle` 的 `maven { url 'https://jitpack.io' }` | MPAndroidChart 的下载仓库（只有它用 JitPack） |
++| 两个 `strings.xml` 的 `menu_trend` / `trend_*` | 文案，可留可删 |
++
++### 3.2 删除步骤（顺序照做）
++
++**第 1 步：删文件（2 个）**
++
++```
++app/src/main/java/com/example/bmi/TrendActivity.kt
++app/src/main/res/layout/activity_trend.xml
++```
++
++**第 2 步：删菜单项**
++
++`res/menu/menu_main.xml` 里删掉：
++
++```xml
++<!-- 【图表 · 考试可删】点击后打开 TrendActivity，看最近 7 天的步数折线图。 -->
++<item
++    android:id="@+id/menu_trend"
++    android:title="@string/menu_trend"
++    app:showAsAction="never" />
++```
++
++`MainActivity.onOptionsItemSelected()` 里删掉这一支：
++
++```kotlin
++// ── 【图表 · 考试可删】打开最近 7 天步数折线图 ──
++R.id.menu_trend -> {
++    // 同样不传数据：趋势页自己读库。
++    startActivity(Intent(this, TrendActivity::class.java))
++    true
++}
++```
++
++**第 3 步：删 Manifest 注册**
++
++```xml
++<!--
++  【图表 · 考试可删】最近 7 天步数折线图。
++  同样不对外开放，只能从主界面菜单进入；label 用 trend_title。
++-->
++<activity
++    android:name=".TrendActivity"
++    android:exported="false"
++    android:label="@string/trend_title" />
++```
++
++**第 4 步：删依赖和仓库**
++
++`app/build.gradle` 的 `dependencies` 里删掉：
++
++```gradle
++implementation 'com.github.PhilJay:MPAndroidChart:v3.1.0'
++```
++
++`settings.gradle` 的 `dependencyResolutionManagement` 里删掉：
++
++```gradle
++maven { url 'https://jitpack.io' }
++```
++
++> 顺序不能反：**先删代码，再删依赖**。反过来 `TrendActivity` 里的
++> `LineChart`、`Entry` 等类会全部变成 `Unresolved reference`。
++> 删完仓库后一定要重新 **Sync Project with Gradle Files**，
++> 让 Gradle 忘掉旧的依赖缓存。
++
++**第 5 步：清字符串（可选）**
++
++两个 `strings.xml` 里可以删掉 `menu_trend` 和 `trend_*` 开头的条目。
++留着不影响编译，只是没人引用。
++
++**第 6 步：编译**
++
++```bat
++gradlew.bat assembleDebug
++```
++
++### 3.3 删完的检查清单
++
++- [ ] 全局搜索 `TrendActivity`：只在注释里出现（或完全没有）。
++- [ ] 全局搜索 `MPAndroidChart`、`LineChart`：没有任何引用。
++- [ ] 全局搜索 `menu_trend`：菜单和 `MainActivity` 里都没有了。
++- [ ] `settings.gradle` 里没有 `jitpack.io`。
++- [ ] 打开 App：菜单里没有“趋势图”；保存、历史、AI（如果保留）都正常。
++- [ ] `gradlew.bat assembleDebug` 编译通过。
++
++---
++
++## 4. 版本 D：三个功能都不要（最基础版）
++
++按第 1 节、第 2 节、第 3 节做完，最后处理 `AppLanguage.kt`。
 +
 +因为 `AppLanguage` 只服务于“界面语言选择”和“AI 回答语言”，两个功能都没了，
 +它就没有使用者了，可以直接删：
@@ -7775,17 +7944,17 @@ index 0000000..d2f219d
 +
 +---
 +
-+## 4. 反向操作：点名要求加回来
++## 5. 反向操作：点名要求加回来
 +
-+如果考试题目正好要求“支持中英文切换”或“接入 AI”，不要从零写，按现在的
-+代码顺序抄，每一步都能单独验证：
++如果考试题目正好要求“支持中英文切换”“接入 AI”或“画趋势图”，不要从零写，
++按现在的代码顺序抄，每一步都能单独验证：
 +
 +**加语言切换（约 60 行）**
 +
 +1. `data/AppLanguage.kt`：两个枚举值 + `fromTag()`；
 +2. `data/LanguageStore.kt`：SharedPreferences 读写；
 +3. `BaseActivity.kt`：`attachBaseContext` 里换 Locale，`recreate()` 生效；
-+4. 三个 Activity 改成继承 `BaseActivity`；
++4. 四个 Activity 改成继承 `BaseActivity`；
 +5. 菜单项 + `toggleLanguage()`。
 +
 +**加 AI（约 300 行）**
@@ -7798,9 +7967,24 @@ index 0000000..d2f219d
 +6. Manifest 加 `INTERNET` 和页面注册；
 +7. `build.gradle` 注入 key、开 `buildConfig`、加协程依赖。
 +
++**加趋势折线图（约 120 行）**
++
++1. `settings.gradle` 加 `maven { url 'https://jitpack.io' }`；
++2. `app/build.gradle` 加 `implementation 'com.github.PhilJay:MPAndroidChart:v3.1.0'`，
++   然后 **Sync**（第一次会下载 aar，需要联网）；
++3. `TrendActivity.kt`：`allRecords().take(7).reversed()` → `Entry` →
++   `LineDataSet` → `LineData` → `chart.invalidate()`；
++4. `activity_trend.xml`：`<com.github.mikephil.charting.charts.LineChart>`
++   写完整类名，高度给固定的 `280dp`；
++5. 菜单项 + `MainActivity` 分支 + Manifest 注册 + `trend_*` 文案。
++
++完整代码直接抄本分支的 `TrendActivity.kt` / `activity_trend.xml`。
++如果机房装不了依赖，就在文档
++`docs/wellness-tracker.md` 的 7.4 节找“自己写自定义 View”的骨架。
++
 +---
 +
-+## 5. 删除时最容易犯的错
++## 6. 删除时最容易犯的错
 +
 +| 症状 | 原因 | 处理 |
 +| --- | --- | --- |
@@ -7813,10 +7997,16 @@ index 0000000..d2f219d
 +| 切语言后界面没变 | 忘了 `recreate()` | 见 `BaseActivity.switchLanguage()` |
 +| 编译报 `R.menu.menu_main` 找不到 | 删了 `menu_main.xml` 但 `onCreateOptionsMenu` 还在 | 两个一起删，或两个一起留 |
 +| 删完 App 白屏/闪退 | 删了 `activity_main.xml` 里的控件但代码还在 `findViewById` | 布局和 `findViewById` 必须成对 |
++| `Unresolved reference: LineChart` / `Entry` | 删了依赖但 `TrendActivity` 还在（或顺序反了） | 先删代码再删依赖；或先把依赖加回来 |
++| Sync 报 `Could not find com.github.PhilJay:MPAndroidChart` | `settings.gradle` 没加 JitPack，或校园网访问不了 JitPack | 补 `maven { url 'https://jitpack.io' }`；网络不通就改用自定义 View |
++| 趋势页一片空白 | `LineChart` 的高度写成 `wrap_content` | 改成固定高度 `280dp` |
++| 有数据但折线不刷新 | 忘了 `chart.invalidate()` | 设置完 `chart.data` 后调用一次 |
++| 趋势页滚动很别扭、滑不动 | 图表抢了页面的滚动手势 | `setScaleEnabled(false)` + `setPinchZoom(false)` |
++| 进趋势页闪退 `ActivityNotFoundException` | Manifest 没注册 `TrendActivity` | 补 `<activity android:name=".TrendActivity" ... />` |
 +
 +---
 +
-+## 6. 删完的统一自检
++## 7. 删完的统一自检
 +
 +```bat
 +gradlew.bat clean assembleDebug
@@ -7829,8 +8019,9 @@ index 0000000..d2f219d
 +1. 主界面 → 填步数 → 保存 → Toast 提示；
 +2. 打开历史 → 看到刚才那条记录；
 +3. 同一天再保存一次 → 历史里仍然一条；
-+4. 手机语言切中文 → 界面变中文；
-+5. 返回主界面 → 输入内容还在。
++4. 菜单点“趋势图” → 有数据时显示折线，没数据时显示提示；
++5. 手机语言切中文 → 界面变中文；
++6. 返回主界面 → 输入内容还在。
 +
 +如果删坏了想回退：
 +
@@ -7841,18 +8032,18 @@ index 0000000..d2f219d
 +
 +---
 +
-+## 7. 相关文档
++## 8. 相关文档
 +
 +- `README.md` — 项目简介、运行方式、工具链。
-+- `docs/wellness-tracker.md` — 每个文件的作用、SQLite 设计、patch 用法。
++- `docs/wellness-tracker.md` — 每个文件的作用、SQLite 设计、patch 用法、两种画图方案。
 +- `docs/llm-setup.md` — AI 部分的架构与 API key 配置（删 AI 时一起删）。
 +- `docs/exam-playbook.md` — 把这道题迁移到其它“每日记录类”题目的通用七步。
 diff --git a/docs/exam-playbook.md b/docs/exam-playbook.md
 new file mode 100644
-index 0000000..4126ecb
+index 0000000..79dec45
 --- /dev/null
 +++ b/docs/exam-playbook.md
-@@ -0,0 +1,580 @@
+@@ -0,0 +1,814 @@
 +# 考场通用教程：把 BMI 作业改成任意“每日记录类”App
 +
 +老师已经说了：考试题会和 BMI 作业“十分相似”。这句话的含金量很高——相似的不是
@@ -7878,9 +8069,10 @@ index 0000000..4126ecb
 +> `cityu_lab` 分支（你已提交的作业）里的代码，用来对照抄写；
 +> 当前分支只剩 `Wellness*` 和 `Dates`。
 +
-+> 额外参考：当前分支保留了**新写的**“App 内中英文切换”和“AI 健康建议”两块
-+> 可选功能。如果考题正好要求其中之一，直接照抄；如果考题用不上，
-+> 按 `docs/exam-guide.md` 的清单整块删除即可（本文不涉及这两块）。
++> 额外参考：当前分支保留了**新写的**“App 内中英文切换”“AI 健康建议”和
++> “最近 7 天趋势折线图”三块可选功能。如果考题正好要求其中之一，直接照抄；
++> 如果考题用不上，按 `docs/exam-guide.md` 的清单整块删除即可
++> （本文只在第 4 节“要图表时”讲图表，其余两块不展开）。
 +
 +---
 +
@@ -7921,7 +8113,8 @@ index 0000000..4126ecb
 +startActivity(HistoryActivity)
 +```
 +
-+三个页面/组件，两个数据文件，一个布局文件，就是全部。
++三个 Kotlin 文件（主界面、数据库助手、历史页）加一个数据类，
++两个布局文件（主界面、历史页），就是全部。
 +
 +---
 +
@@ -7937,8 +8130,10 @@ index 0000000..4126ecb
 +
 +**可以不管**：
 +
-+- 旧的 `ReportActivity`、`TrendActivity`、AI 相关类、旧布局、旧字符串。
-+  它们编译得过、界面上进不去，不会影响新功能。考试时间宝贵，不要做“大扫除”。
++- 旧的 `ReportActivity`、AI 相关类、旧布局、旧字符串。它们编译得过、界面上进不去，
++  不会影响新功能。考试时间宝贵，不要做“大扫除”。
++- 注意当前分支的 `TrendActivity` 是**新写的**趋势图页（可选 C），不是旧代码；
++  用不上就整块删，见 `docs/exam-guide.md` 第 3 节。
 +
 +**必须处理**：
 +
@@ -8324,10 +8519,85 @@ index 0000000..4126ecb
 +
 +### 要图表时
 +
-+- 题目说“查看历史”，列表就够，**不要主动加图表**；
-+- 真要求图表：引入 MPAndroidChart（`build.gradle` 里有注释示例），
-+  或照着原项目 `BmiTrendChartView` 改一个自定义 View；
-+- 时间不够就画“最近 7 天的柱状图”，比折线图好写。
++先判断：题目只说“查看历史”，列表就够，**不要主动加图表**。只有出现
++“趋势 / 变化 / 图表 / 曲线”这类字眼才做，优先做折线或柱状，不要做饼图。
++
++**做法一：MPAndroidChart（推荐，本项目的可选 C 就是这样做的）**
++
++1. `settings.gradle` 加仓库：
++
++```gradle
++maven { url 'https://jitpack.io' }
++```
++
++2. `app/build.gradle` 加依赖，然后 **Sync**：
++
++```gradle
++implementation 'com.github.PhilJay:MPAndroidChart:v3.1.0'
++```
++
++3. 布局里写**完整类名**，高度必须固定（`wrap_content` 会变成 0 高、一片空白）：
++
++```xml
++<com.github.mikephil.charting.charts.LineChart
++    android:id="@+id/trendChart"
++    android:layout_width="match_parent"
++    android:layout_height="280dp" />
++```
++
++4. Activity 里三行核心代码 + 坐标轴配置：
++
++```kotlin
++// 库里按日期倒序，画图要正序，所以 take(N) 之后 reversed()
++val records = db.allRecords().take(7).reversed()     // db = RecordDbHelper(this)
++val entries = records.mapIndexed { i, r -> Entry(i.toFloat(), r.amount.toFloat()) }
++
++val set = LineDataSet(entries, "Steps").apply {
++    color = Color.parseColor("#2E7D32")
++    setDrawValues(false)        // 点旁边不标数字
++    setDrawFilled(true)
++}
++
++chart.xAxis.apply {
++    position = XAxis.XAxisPosition.BOTTOM
++    granularity = 1f            // 一个点一个刻度
++    setDrawGridLines(false)
++    labelCount = records.size
++    valueFormatter = object : ValueFormatter() {
++        override fun getFormattedValue(value: Float): String {
++            val i = value.toInt()
++            return if (i in records.indices) records[i].date.takeLast(5) else ""
++        }
++    }
++}
++chart.axisRight.isEnabled = false
++chart.axisLeft.axisMinimum = 0f
++chart.description.isEnabled = false
++chart.data = LineData(set)
++chart.invalidate()              // 不调用不刷新
++```
++
++5. 三处外围照新增页面处理：Manifest 注册、菜单项、`strings.xml` 文案。
++
++完整带注释的版本见 `TrendActivity.kt` / `activity_trend.xml`。
++如果 JitPack 下载不下来（校园网常见），直接用做法二。
++
++**做法二：照 `BmiTrendChartView` 写自定义 View（零依赖）**
++
++原作业的趋势图是手写的，类在 `main` / `cityu_lab` 分支：
++
++```
++app/src/main/java/com/example/bmi/ui/trend/BmiTrendChartView.kt
++```
++
++不在那个分支也能看：`git show main:app/src/main/java/com/example/bmi/ui/trend/BmiTrendChartView.kt`。
++它只有四块：继承 `View` → `setData()` 存数据并 `invalidate()` → `onDraw()` 里
++把数值映射成坐标（x 按宽度均分，y = `bottom - 比例 * 高度`）→ 用 `Path` 连线、
++`drawCircle` 画点、`drawText` 写日期。可直接复制的骨架在
++`docs/wellness-tracker.md` 的 7.4 节，按题目改颜色和文案即可。
++
++**时间不够时**：把折线换成柱状（`canvas.drawRect`）更短；再退一步，用
++`TextView` 列出“日期 · 数值”也算展示了变化，比空着强。
 +
 +---
 +
@@ -8350,6 +8620,157 @@ index 0000000..4126ecb
 +
 +**不要改**：包名、`applicationId`、Gradle 版本、主题、`MainActivity` 的入口注册。
 +这些和题目无关，改了只会引入新问题。
++
++### 具体例子：把 Wellness 改成“睡眠记录（Sleep Log）”
++
++假设考题是：每天记录**睡眠时长（小时，可以有小数）**、**睡眠质量**（Good / Fair / Poor）
++和备注。我们保留类名 `WellnessRecord` / `WellnessDbHelper` 和控件 id 不动，
++只换字段名、类型和文案——这样除了下面 8 处，其它文件一行都不用改。
++
++先看新旧对照：
++
++| 原来 | 改成 |
++| --- | --- |
++| `WellnessRecord.condition: Int` | `quality: Int`（Spinner 序号 0/1/2） |
++| `WellnessRecord.steps: Int` | `hours: Double`（睡眠小时数） |
++| 库 `wellness.db` / 表 `wellness_records` | `sleep.db` / `sleep_records` |
++| 列 `condition` / `steps` | `quality` / `hours`（`REAL`） |
++| 历史行“日期 · 状况 / 8000 steps” | “日期 · 质量 / 7.5 hours” |
++
++第 1 处：**`strings.xml`（默认 + 中文各一份）**。key 不改，只改 value：
++
++```xml
++<string name="app_name">Sleep Log</string>
++<string name="wellness_condition_label">How did you sleep?</string>
++<string name="wellness_condition_good">Good</string>
++<string name="wellness_condition_fair">Fair</string>
++<string name="wellness_condition_poor">Poor</string>
++<string name="wellness_steps_label">Hours slept</string>
++<string name="wellness_steps_hint">e.g. 7.5</string>
++<string name="wellness_note_label">Notes (optional)</string>
++<string name="wellness_note_hint">Dreams, waking up, caffeine…</string>
++<string name="wellness_steps_warning">Please enter hours between 0 and 24.</string>
++
++<!-- 历史页：数字从“整数 + steps”改成“一位小数 + hours” -->
++<string name="wellness_history_summary">%1$d days recorded · average %2$.1f hours</string>
++<string name="wellness_history_steps">%1$.1f hours</string>
++```
++
++`wellness_condition` 数组不用改结构，三项仍然指向上面三个字符串。
++
++第 2 处：**`WellnessRecord.kt`**：
++
++```kotlin
++data class WellnessRecord(
++    val date: String,
++    val quality: Int,     // 原来是 condition
++    val hours: Double,    // 原来是 steps: Int
++    val note: String
++)
++```
++
++第 3 处：**`WellnessDbHelper.kt`**，按顺序改四小项：
++
++```kotlin
++// ① 常量
++const val DATABASE_NAME = "sleep.db"
++const val DATABASE_VERSION = 2          // 表结构变了必须 +1，否则旧库不重建
++const val TABLE_RECORDS = "sleep_records"
++const val COL_QUALITY = "quality"
++const val COL_HOURS = "hours"
++
++// ② 建表 SQL（hours 用 REAL 存小数）
++CREATE TABLE sleep_records (
++    date TEXT PRIMARY KEY NOT NULL,
++    quality INTEGER NOT NULL,
++    hours REAL NOT NULL,
++    note TEXT NOT NULL,
++    updated_at INTEGER NOT NULL
++)
++
++// ③ save()
++put(COL_QUALITY, record.quality)
++put(COL_HOURS, record.hours)
++
++// ④ allRecords()（findByDate() 里的列数组和构造方法也要同步改）
++arrayOf(COL_DATE, COL_QUALITY, COL_HOURS, COL_NOTE)
++...
++WellnessRecord(
++    date = c.getString(0),
++    quality = c.getInt(1),
++    hours = c.getDouble(2),     // 注意是 getDouble，不是 getInt
++    note = c.getString(3)
++)
++```
++
++第 4 处：**`activity_main.xml`**。id 和控件类型不变，只把步数输入框改成允许小数：
++
++```xml
++<EditText
++    android:id="@+id/stepsET"
++    ...
++    android:hint="@string/wellness_steps_hint"
++    android:inputType="numberDecimal" />
++```
++
++Spinner 的 `entries="@array/wellness_condition"` 不用动（文案已经在第 1 处换了）。
++`label` 文字来自 strings，所以也不用手改。
++
++第 5 处：**`MainActivity.saveTodayRecord()`**：小数解析 + 范围校验 + 新字段：
++
++```kotlin
++val hours = stepsET.text.toString().trim().toDoubleOrNull()
++if (hours == null || hours < 0.0 || hours > 24.0) {
++    Toast.makeText(this, R.string.wellness_steps_warning, Toast.LENGTH_SHORT).show()
++    return
++}
++
++val record = WellnessRecord(
++    date = Dates.today(),
++    quality = conditionSpinner.selectedItemPosition,
++    hours = hours,
++    note = noteET.text.toString().trim()
++)
++```
++
++`toDoubleOrNull()` 负责“转小数 + 校验”，空串和字母都会返回 null。
++变量名 `steps` 顺手改成 `hours` 即可，IDE 会提示所有引用点。
++
++第 6 处：**`HistoryActivity.kt`**：改翻译函数和行文字：
++
++```kotlin
++// conditionText(...) → qualityText(...)，内部还是 0/1/2 映射三个 string
++private fun qualityText(quality: Int): String = getString(
++    when (quality) {
++        0 -> R.string.wellness_condition_good
++        1 -> R.string.wellness_condition_fair
++        else -> R.string.wellness_condition_poor
++    }
++)
++
++// 统计：平均小时数仍然是 Double，直接交给 %2$.1f
++val averageHours = records.sumOf { it.hours } / records.size
++summary.text = getString(R.string.wellness_history_summary, records.size, averageHours)
++
++// 第二行：getString 的格式化参数换成 Double
++val hours = getString(R.string.wellness_history_steps, record.hours)
++```
++
++第 7 处：**`item_wellness.xml`**：本例不用改。仍然是“第一行日期 + 分类、
++第二行数值 + 备注”两行结构，`SimpleAdapter` 的 key 也没变。
++
++第 8 处：**`AndroidManifest.xml`**：本例不用改。没有新增页面，Activity 注册不动。
++
++**连带检查（不属于 8 处，但漏了会崩）**：
++
++- 表结构变了必须把 `DATABASE_VERSION` 从 1 改成 2，或者直接卸载 App / 清除 App 数据；
++- 如果保留趋势图（可选 C），`TrendActivity` 里 `it.steps` 要改成 `it.hours`，
++  `Entry` 的 y 用 `toFloat()`，统计文案从 `%2$d` 改成 `%2$.1f`；
++- 如果保留 AI（可选 B），`PromptBuilder` 和 `ai_record_summary` 里也提到了 steps，
++  搜索 `steps` 全部改一遍，否则提示词会把“小时”说成“步数”。
++
++改完按第 3 节的第 7 步自测：空输入、`7`、`7.5`、`25`（应被拦）、同一天存两次、
++杀掉重开、转屏。全部通过就说明 8 处都改对了。
 +
 +---
 +
@@ -8384,6 +8805,9 @@ index 0000000..4126ecb
 +| 字符串格式化崩溃 `MissingFormatArgumentException` | `getString` 传的参数个数和占位符不一致 | `%1$s` 对应 1 个参数，`%1$d` 对应整数 |
 +| 旋转屏幕后输入丢失 | 正常现象（除非用 `onSaveInstanceState`） | 本题不要求；别在 `onStart` 里用旧值覆盖 |
 +| 数据库里有数据但重启后没了 | 存到了内存/局部变量，没真正写库 | 确认调用的是 `db.save(...)` |
++| 趋势页一片空白 | `LineChart` 高度写成了 `wrap_content` | 给固定高度，如 `android:layout_height="280dp"` |
++| 有数据但折线不刷新 | 设置 `chart.data` 后没调用 `invalidate()` | 加一行 `chart.invalidate()` |
++| Sync 报找不到 `MPAndroidChart` | 没加 JitPack 仓库，或校园网访问不了 JitPack | `settings.gradle` 加 `maven { url 'https://jitpack.io' }`；或改用自定义 View |
 +
 +---
 +
@@ -8428,6 +8852,7 @@ index 0000000..4126ecb
 +[ ] Manifest 注册新 Activity
 +[ ] strings 默认 + 中文都加了
 +[ ] 删掉 layout-land 里的旧主布局
++[ ] （要图表时）JitPack 仓库 + 依赖 + 固定高度 + chart.invalidate()
 +[ ] 编译通过
 +[ ] 空输入 / 正常保存 / 看历史 / 重开 App / 旋转屏幕
 +```
@@ -8435,10 +8860,10 @@ index 0000000..4126ecb
 +把这张卡和 `patch/wellness-tracker.patch` 一起带到考场，就够用了。
 diff --git a/docs/from-scratch.md b/docs/from-scratch.md
 new file mode 100644
-index 0000000..9070f32
+index 0000000..e80a5ee
 --- /dev/null
 +++ b/docs/from-scratch.md
-@@ -0,0 +1,589 @@
+@@ -0,0 +1,885 @@
 +# 从零创建一个 Wellness Tracker（考试模拟手册）
 +
 +这份文档教你在一个**全新的空工程**里，按顺序把功能一块块加出来，最终到达
@@ -8449,70 +8874,91 @@ index 0000000..9070f32
 +
 +- `docs/adapt-to-other-topic.md` — 题目换了名字/字段时，改代码的哪一处、连带改哪里。
 +- `docs/exam-guide.md` — 考场不需要某个功能时，删哪些文件。
-+- `docs/wellness-tracker.md` — 每个文件的作用和 SQLite 设计。
++- `docs/wellness-tracker.md` — 每个文件的作用和 SQLite 设计（含两种画趋势图的写法，7.4 节）。
 +
-+**核心原则：一次只加一层，每层都编译并运行一次。** 考试现场最怕的不是写不出来，
-+而是写到一半编译不过、又不知道是哪一步引入的。
++> 本文只讲“基础功能 + 语言切换 + AI”的搭建顺序。第三块可选功能
++> “最近 7 天趋势折线图”依赖 MPAndroidChart，不是每题都需要，所以没有放进
++> 从零步骤；需要时按 `docs/wellness-tracker.md` 7.4 节加，或直接复制本分支的
++> `TrendActivity.kt` / `activity_trend.xml`。
++
++**核心原则：一次只加一层；编译点按层给，不是每节都给。**
++数据层（第 3 节）可以单独编译；从第 4 节起，`MainActivity`、`HistoryActivity`、`BaseActivity`、
++`AdviceActivity` 这四个文件互相引用，缺任何一个都会报“找不到”，所以**第 4–7 节一路复制、
++中途不编译也不运行，第一次编译放在第 7 节末尾（7.6）**。这也正好对上考试现场：题目要不要
++语言切换和 AI，决定第 6、7 节是留下还是按 `docs/exam-guide.md` 删掉，删完再编译，一次成型。
 +
 +---
 +
 +## 0. 开始前的准备
 +
++
++
 +### 0.1 包名（`applicationId` / `namespace` / `package`）
 +
 +本仓库用的是 `com.example.bmi`（沿用作业，题目不检查包名）。
 +
-+- **建议：新工程直接起名 `BMI`、包名 `com.example.bmi`。**
-+  这样所有文件的 `package com.example.bmi` 和 `R` 引用都能原样粘贴，零改动。
++- **建议：新工程直接起名** `BMI`**、包名** `com.example.bmi`**。**
++这样所有文件的 `package com.example.bmi` 和 `R` 引用都能原样粘贴，零改动。
 +- 如果起了别的包名（例如 `com.example.wellness`），粘贴代码前必须先改每个
-+  Kotlin 文件第一行的 `package`，并且 Android Studio 可能提示 `R` 找不到。
-+  改包名的正确姿势：右键包名 → **Refactor → Rename**，勾选
-+  `Search in comments and strings`，而不是手动一个个改。
++Kotlin 文件第一行的 `package`，并且 Android Studio 可能提示 `R` 找不到。
++改包名的正确姿势：右键包名 → **Refactor → Rename**，勾选
++`Search in comments and strings`，而不是手动一个个改。
++
++
 +
 +### 0.2 构建脚本语言：先看你的向导生成了什么
 +
 +不同版本的 Android Studio 新建工程时，生成的构建文件不一样：
 +
-+| 向导生成 | 说明 | 处理方式 |
-+| --- | --- | --- |
-+| `build.gradle` + `settings.gradle` | Groovy DSL，本仓库就是这种 | 直接粘贴仓库的构建文件（见 1.2） |
++
++| 向导生成                                                                     | 说明                       | 处理方式                                                                                  |
++| ------------------------------------------------------------------------ | ------------------------ | ------------------------------------------------------------------------------------- |
++| `build.gradle` + `settings.gradle`                                       | Groovy DSL，本仓库就是这种       | 直接粘贴仓库的构建文件（见 1.2）                                                                    |
 +| `build.gradle.kts` + `settings.gradle.kts` + `gradle/libs.versions.toml` | Kotlin DSL + 版本目录，较新版本默认 | 二选一：**推荐**删掉 `.kts` 和 `libs.versions.toml`，改用仓库的 Groovy 版本；或者保留 `.kts`，按下面 0.4 的对照表改写 |
++
 +
 +先打开工程根目录看一眼，确定属于哪种，再往下做。
 +
 +> 判断方法：Android Studio 左侧 Project 视图切到 **Project** 模式，
 +> 根目录有没有 `build.gradle.kts`。
 +
++
++
 +### 0.3 从 GitHub 网页复制代码的正确姿势
 +
 +考试时你只能看仓库（多半是网页版），所以复制这一步也有讲究：
 +
-+1. **点文件名 → 点右上角 `Raw`**，在纯文本页面 `Ctrl+A`、`Ctrl+C`。
-+   直接在代码高亮页面上拖选，容易把行号、折叠箭头一起复制进去。
++1. **点文件名 → 点右上角** `Raw`，在纯文本页面 `Ctrl+A`、`Ctrl+C`。
++  直接在代码高亮页面上拖选，容易把行号、折叠箭头一起复制进去。
 +2. 复制完先看**第一行**：`.kt` 文件必须从 `package com.example.bmi` 开始；
-+   `.xml` 文件必须从 `<?xml version="1.0" encoding="utf-8"?>` 开始。
++  `.xml` 文件必须从 `<?xml version="1.0" encoding="utf-8"?>` 开始。
 +   如果第一行是别的（比如网页标题），说明你复制多了。
-+3. **一次只复制一个文件**，粘进 Android Studio 后立刻编译一次。
-+   一次复制五个文件再编译，报错时很难判断是哪一个引入的。
++3. **一次只复制一个文件**，粘完先核对第一行。
++  第 4 节之前（数据层）每粘一个就编译一次，出错好定位；第 4 节起界面层的文件互相引用，
++  中途不编译，统一到 7.6（见本文开头的“核心原则”）。
 +4. 不要下载 ZIP 后整个覆盖到工程里：ZIP 里没有 `.idea` 和 `local.properties`，
-+   但会用仓库的 `settings.gradle`、主题名等覆盖你向导生成的配置，
++  但会用仓库的 `settings.gradle`、主题名等覆盖你向导生成的配置，
 +   容易出现“明明代码一样却跑不起来”。
 +5. 中文注释在网页上复制一般是正常的；如果粘进去变乱码，先把
-+   **File → File Encodings** 全部设为 UTF-8，再重新粘贴。
++  **File → Settings → Editor → File Encodings** 全部设为 UTF-8，再重新粘贴。
++
++
 +
 +### 0.4 如果坚持用 Kotlin DSL：对照表
 +
 +本仓库所有片段都是 Groovy。若你的工程是 `.kts`，按下表改：
 +
-+| Groovy（本仓库） | Kotlin DSL（`.kts`） |
-+| --- | --- |
++
++| Groovy（本仓库）                                                 | Kotlin DSL（`.kts`）                                           |
++| ----------------------------------------------------------- | ------------------------------------------------------------ |
 +| `id 'com.android.application' version '8.13.0' apply false` | `id("com.android.application") version "8.13.0" apply false` |
-+| `compileSdk = 36` | 同左（本来就是赋值语法） |
-+| `applicationId = "com.example.bmi"` | 同左 |
-+| `buildConfigField "String", "X", "\"v\""` | `buildConfigField("String", "X", "\"v\"")` |
-+| `buildFeatures { buildConfig = true }` | 同左 |
-+| `implementation 'androidx.core:core-ktx:1.13.1'` | `implementation("androidx.core:core-ktx:1.13.1")` |
-+| `sourceCompatibility = JavaVersion.VERSION_17` | 同左 |
++| `compileSdk = 36`                                           | 同左（本来就是赋值语法）                                                 |
++| `applicationId = "com.example.bmi"`                         | 同左                                                           |
++| `buildConfigField "String", "X", "\"v\""`                   | `buildConfigField("String", "X", "\"v\"")`                   |
++| `buildFeatures { buildConfig = true }`                      | 同左                                                           |
++| `implementation 'androidx.core:core-ktx:1.13.1'`            | `implementation("androidx.core:core-ktx:1.13.1")`            |
++| `sourceCompatibility = JavaVersion.VERSION_17`              | 同左                                                           |
++
 +
 +读 `local.properties` 那段，`.kts` 写法：
 +
@@ -8530,35 +8976,51 @@ index 0000000..9070f32
 +
 +---
 +
++
++
 +## 1. 新建工程并对齐构建配置
++
++
 +
 +### 1.1 新建
 +
 +1. **File → New → New Project**；
 +2. 模板选 **Empty Views Activity**（不是 “Empty Activity”，那个是 Compose）；
++  旧版 AS（2023.2.1 Iguana 之前）没有这个选项，那时的 `Empty Activity` 就是 XML 版，选它即可；
++   判断标准：建完后有 `res/layout/activity_main.xml`、`MainActivity` 继承 `AppCompatActivity` 就对了
 +3. 参数：
 +
-+| 项 | 建议值 | 说明 |
-+| --- | --- | --- |
-+| Name | `BMI` | 工程名，随意，不影响代码 |
-+| Package name | `com.example.bmi` | **建议照抄**，省去改包名 |
-+| Language | Kotlin | 本仓库是 Kotlin |
-+| Minimum SDK | API 21 | 仓库 `minSdk = 21`，选 21 或 24 都能跑 |
-+| Build configuration language | 能选 Groovy 就选 Groovy | 不能选就按 0.2/0.4 处理 |
 +
-+4. 等 Sync 完成，点 **Run**，确认能看到模板自带的 “Hello World!”。
-+   **这一步必须先通过**，否则后面出问题分不清是谁的锅。
++| 项                            | 建议值                 | 说明                             |
++| ---------------------------- | ------------------- | ------------------------------ |
++| Name                         | `BMI`               | 工程名，随意，不影响代码                   |
++| Package name                 | `com.example.bmi`   | **建议照抄**，省去改包名                 |
++| Language                     | Kotlin              | 本仓库是 Kotlin                    |
++| Minimum SDK                  | API 21              | 仓库 `minSdk = 21`，选 21 或 24 都能跑 |
++| Build configuration language | 能选 Groovy 就选 Groovy | 不能选就按 0.2/0.4 处理               |
++
++
++1. 等 Sync 完成，点 **Run**，确认能看到模板自带的 “Hello World!”。
++  **这一步必须先通过**，否则后面出问题分不清是谁的锅。
++
++
 +
 +### 1.2 对齐四个构建文件
 +
 +要让仓库的代码能直接粘贴，下面四个文件必须一起对齐（缺一个就会版本错配）：
 +
-+| 文件 | 作用 | 关键内容 |
-+| --- | --- | --- |
-+| `settings.gradle` | 仓库地址、模块列表、项目名 | `include ':app'` |
-+| `build.gradle`（项目级） | 插件版本 | AGP `8.13.0`、Kotlin `2.2.20` |
-+| `gradle/wrapper/gradle-wrapper.properties` | Gradle 版本 | `gradle-8.13-bin.zip` |
-+| `app/build.gradle`（模块级） | SDK 版本、依赖、BuildConfig | `compileSdk 36`、`targetSdk 34`、`minSdk 21`、Java 17 |
++
++| 文件                                         | 作用                    | 关键内容                                               |
++| ------------------------------------------ | --------------------- | -------------------------------------------------- |
++| `settings.gradle`                          | 仓库地址、模块列表、项目名         | `include ':app'`                                   |
++| `build.gradle`（根目录）                        | 插件版本                  | AGP `8.13.0`、Kotlin `2.2.20`                       |
++| `gradle/wrapper/gradle-wrapper.properties` | Gradle 版本             | `gradle-8.13-bin.zip`                              |
++| `app/build.gradle`（模块级）                    | SDK 版本、依赖、BuildConfig | `compileSdk 36`、`targetSdk 34`、`minSdk 21`、Java 17 |
++
++
++并且删掉向导生成的 `*.kts` 和 `gradle/libs.versions.toml`
++
++从github这个repo的Welfare分支来复制上传到assignment的app/build.gradle 不一样 这个文件必须从github进行复制
 +
 +为什么必须四个一起：**AGP 8.13 要求 Gradle ≥ 8.13、JDK ≥ 17、compileSdk 支持 36**。
 +只换 `app/build.gradle` 而不换 wrapper，会出现
@@ -8574,6 +9036,8 @@ index 0000000..9070f32
 +> 但如果你的向导工程用的是很新的 Gradle（例如 9.x），建议连这两个脚本一起从仓库复制，
 +> 保持与 `gradle-wrapper.properties` 配套。
 +
++
++
 +### 1.3 验收
 +
 +- [ ] Sync 成功；
@@ -8582,21 +9046,32 @@ index 0000000..9070f32
 +
 +---
 +
++
++
 +## 2. 资源层：先把“文字”准备好
 +
 +先做资源的好处：布局和代码引用 `@string/xxx` 时，不会一路红波浪线。
 +
 +### 2.1 三套资源
 +
-+| 仓库文件 | 你工程里的位置 | 内容 |
-+| --- | --- | --- |
-+| `app/src/main/res/values/strings.xml` | 覆盖同名文件 | 英文文案 + 状况数组 |
-+| `app/src/main/res/values-zh-rCN/strings.xml` | 新建目录 `values-zh-rCN`，放进去 | 中文文案，key 必须与英文完全一致 |
-+| `app/src/main/res/values/colors.xml`、`themes.xml`、`values-night/themes.xml` | 覆盖同名文件 | 主题 `Theme.Wellness` |
 +
-+`values-zh-rCN` 目录要手动建：右键 `res` → **New → Android Resource Directory** →
-+Resource type 选 `values`，Source set 选 `main`，然后在 Available qualifiers 里选
-+**Locale** → 语言 `zh`，Region `CN`。
++| 仓库文件                                                                        | 你工程里的位置                  | 内容                  |
++| --------------------------------------------------------------------------- | ------------------------ | ------------------- |
++| `app/src/main/res/values/strings.xml`                                       | 覆盖同名文件                   | 英文文案 + 状况数组         |
++| `app/src/main/res/values-zh-rCN/strings.xml`                                | 新建目录 `values-zh-rCN`，放进去 | 中文文案，key 必须与英文完全一致  |
++| `app/src/main/res/values/colors.xml`、`themes.xml`、`values-night/themes.xml` | 覆盖同名文件                   | 主题 `Theme.Wellness` |
++
++
++`values-zh-rCN` 目录要手动建。注意要建的是**文件**而不是空目录：右键 `res` →
++**New → Android Resource File**，File name 填 `strings`，Resource type 选 `values`，
++Source set 选 `main`，然后在 Available qualifiers 里点 **Locale** → 语言 `zh`、Region `CN`，
++确定，AS 会自动生成 `values-zh-rCN/strings.xml`。
++
++> 如果之前点过 “New → Android Resource Directory”，那只会建出一个**空的** `values-zh-rCN`
++> 目录（空目录在 Android 视图里不显示，文件资源管理器里才看得到，属正常现象）。
++> 补救：右键这个空目录 → **New → File**，命名 `strings.xml` 再粘贴内容，效果一样。
++
++
 +
 +### 2.2 主题必须一起换（容易被忽略）
 +
@@ -8605,9 +9080,15 @@ index 0000000..9070f32
 +主题文件里还引用了 `?attr/colorPrimaryVariant`（Material3 没有这个属性）。
 +所以：
 +
-+- **直接用仓库的 `values/themes.xml` + `values-night/themes.xml` + `colors.xml` 覆盖**；
++- **直接用仓库的** `values/themes.xml` **+** `values-night/themes.xml` **+** `colors.xml` **覆盖**；
 +- 打开 `AndroidManifest.xml`，把 `android:theme="@style/..."` 改成
-+  `@style/Theme.Wellness`（仓库里已经是这个名字）。
++`@style/Theme.Wellness`（仓库里已经是这个名字）。
++- 通用规则：`@style/` 后面到底填什么
++`@style/名字` 引用的就是 `res/values/themes.xml` 里 `<style name="名字">` 定义的那个名字。所以考试时判断方法只有一步：
++  1. 打开 `res/values/themes.xml`，找到 `<style name="...">`；
++  2. 把引号里的名字原样填到 `android:theme="@style/...">` 里。
++
++
 +
 +### 2.3 验收
 +
@@ -8617,6 +9098,8 @@ index 0000000..9070f32
 +
 +---
 +
++
++
 +## 3. 数据层：先做“能存”的部分
 +
 +顺序是 **数据类 → 日期工具 → 数据库助手**，每一层只依赖上一层。
@@ -8624,9 +9107,14 @@ index 0000000..9070f32
 +### 3.1 新建包与数据类
 +
 +1. 在 `app/src/main/java/com/example/bmi/` 下新建包 `data`
-+   （右键 `com.example.bmi` → New → Package）；
++  （右键 `com.example.bmi` → New → Package）；
 +2. 复制 `data/WellnessRecord.kt`；
 +3. 复制 `data/Dates.kt`。
++  1. 右键刚建好的 `data` → New → Kotlin Class/File；
++  2. 在弹窗里：Name 填 `WellnessRecord`，Kind 选 File（不是 Class！选 Class 会自动生成 `class WellnessRecord {}`，还要删）；
++  3. 可以在左上角把Android视图切换为project视图 从而避免创建到generated的java目录下
++
++
 +
 +### 3.2 数据库助手
 +
@@ -8653,32 +9141,46 @@ index 0000000..9070f32
 +query(TABLE_RECORDS, columns, null, null, null, null, "$COL_DATE DESC")
 +```
 +
++
++
 +### 3.3 验收
 +
 +- [ ] 编译通过；
 +- [ ] 没有 UI 变化（这是正常的，数据层还没有人调用）。
 +
++> 这里是**界面层之前最后一个编译点**：工程还是向导生成的 Hello World，数据层只是新增了
++> 三个文件、还没人调用。第 4 节把 `MainActivity` 换成正式版以后，红标会一路持续到第 7 节末，
++> 那是预期状态，不是操作失误。
++
 +---
 +
++
++
 +## 4. 主界面：输入 + 保存
++
++
 +
 +### 4.1 布局
 +
 +覆盖 `app/src/main/res/layout/activity_main.xml`（向导生成的 ConstraintLayout 版本整份替换）。
 +控件和 id 必须与代码一致：
 +
-+| id | 控件 | 作用 |
-+| --- | --- | --- |
-+| `dateTV` | TextView | 显示今天日期 |
-+| `conditionSpinner` | Spinner | 身体状况，`entries` 指向 `@array/wellness_condition` |
-+| `stepsET` | EditText（`inputType="number"`） | 步数 |
-+| `noteET` | EditText（多行） | 备注 |
-+| `saveBtn` | Button | 保存 |
-+| `historyBtn` | Button（描边样式） | 查看历史 |
++
++| id                 | 控件                             | 作用                                            |
++| ------------------ | ------------------------------ | --------------------------------------------- |
++| `dateTV`           | TextView                       | 显示今天日期                                        |
++| `conditionSpinner` | Spinner                        | 身体状况，`entries` 指向 `@array/wellness_condition` |
++| `stepsET`          | EditText（`inputType="number"`） | 步数                                            |
++| `noteET`           | EditText（多行）                   | 备注                                            |
++| `saveBtn`          | Button                         | 保存                                            |
++| `historyBtn`       | Button（描边样式）                   | 查看历史                                          |
++
++
++
 +
 +### 4.2 代码
 +
-+复制 `MainActivity.kt`。它的结构是：
++复制 `MainActivity.kt`。注意它是仓库的**最终版**（含可选 A/B 的代码），结构是：
 +
 +```
 +onCreate()
@@ -8698,27 +9200,78 @@ index 0000000..9070f32
 +onCreateOptionsMenu / onOptionsItemSelected   ← 可选 A/B 才需要，见第 6 节
 +```
 +
-+### 4.3 验收
++> **⚠️ 本步不要编译。** 仓库里的 `MainActivity.kt` 是最终版：原样复制后点 Build 会报一屏错，
++> 这是**预期状态**——它提前引用了第 5、6、7 节才创建的文件。**第一次编译放在 7.6。**
++>
++> 报错很长，但全部能对上号（这张表也用来确认“是缺文件，不是复制坏了”）：
++>
++>
++> | 报错里的符号                                                         | 缺的东西                                    | 哪一节才补     |
++> | -------------------------------------------------------------- | --------------------------------------- | --------- |
++> | `BaseActivity`、`toggleLanguage`、`'onCreate' overrides nothing` | `BaseActivity.kt`                       | 6.1 / 6.2 |
++> | `HistoryActivity`                                              | `HistoryActivity.kt`                    | 5.1       |
++> | `R.menu.menu_main`、`menu_language`、`menu_ai_advice`            | `res/menu/menu_main.xml`                | 6.3       |
++> | `AdviceActivity`                                               | `AdviceActivity.kt`                     | 7.5       |
++> | `title`、`findViewById`、`getString` 等一片红                        | 上面 `BaseActivity` 没解析出来导致的连锁错误，不是真的少了东西 | —         |
++>
++>
++> **做法：原样复制，不做减法，第 7 节末尾一次编译成型。**
++>
++> 1. 第 4 节照抄 `MainActivity.kt`，**报错先不管、不要点 Run、不要删任何一行**；
++> 2. 继续第 5 节（`HistoryActivity`）、第 6 节（`BaseActivity` + 菜单）、第 7 节（AI 页）；
++> 3. 到 7.6 再点 Build / Run，这一屏红会自己消失，一次编译通过。
++>
++> 代价是第 4–6 节中途不能运行、看不到界面，这是正常状态。好处是每份文件都和仓库一致，
++> 最后对 `git diff` 时不用回忆自己删过什么。
++>
++> **例外：如果你决定不要第 6、7 节的功能**（题目不要求语言切换 / AI），这条路走不通：
++> 照 `docs/exam-guide.md` 的删除清单把相关代码删掉，删完同样在 7.6 做首次编译。
++> 那是“按题目裁功能”，和这里的临时减法不是一回事。
 +
-+- [ ] 界面上能看到“今天：日期”、下拉框、两个输入框、两个按钮；
-+- [ ] 不填步数直接保存 → 出现“请输入有效的步数”；
-+- [ ] 填 8000 保存 → 出现“已保存今天的记录”；
-+- [ ] 点“查看历史” → 因为还没做历史页，先建一个空 Activity 占位，
-+      或者先跳过这一步（下一步马上做）。
++
++
++### 4.3 本步不验收
++
++这时工程里的 `MainActivity` 引用着还不存在的 `HistoryActivity`、`BaseActivity`、
++`AdviceActivity`，Android Studio 会整片标红。这是**预期状态**，不是复制坏了：
++
++- 不要点 Run，也不要按 `Alt+Enter` 让 IDE “自动修复”，更不要为了消红去删行；
++- 主界面的运行验收（日期显示、保存提示、Toast 文案）统一放在 **7.6**，那里是第一次编译点。
++
++本节只核对一件事：`activity_main.xml` 和 `MainActivity.kt` 都已经完整粘进来，第一行分别是
++`<?xml version="1.0" encoding="utf-8"?>` 和 `package com.example.bmi`。
 +
 +---
 +
++
++
 +## 5. 历史页：读库 + 列表
++
++
 +
 +### 5.1 三个文件
 +
-+| 仓库文件 | 作用 |
-+| --- | --- |
-+| `res/layout/activity_history.xml` | 页面骨架：统计文字、空状态文字、ListView |
-+| `res/layout/item_wellness.xml` | 列表“一行”的布局：`itemTitle` + `itemSubtitle` |
-+| `HistoryActivity.kt` | 查库、算平均、组装 Map、`SimpleAdapter` |
++
++| 仓库文件                              | 作用                                     |
++| --------------------------------- | -------------------------------------- |
++| `res/layout/activity_history.xml` | 页面骨架：统计文字、空状态文字、ListView               |
++| `res/layout/item_wellness.xml`    | 列表“一行”的布局：`itemTitle` + `itemSubtitle` |
++| `HistoryActivity.kt`              | 查库、算平均、组装 Map、`SimpleAdapter`          |
++
 +
 +`activity_history.xml` 的 id：`historySummary`、`historyEmpty`、`historyList`。
++
++刚开始创建activity history.xml有报错是因为还没有创建HistoryActivity.kt
++
++HistoryActivity.kt报错是因为没有创建BaseActivity，因为这个文件继承自这个BaseActivity
++
++> 创建方式：右键 `res/layout` → New → Layout Resource File
++
++> 本节仍然不编译（`BaseActivity`、`AdviceActivity` 还没创建，红标照旧）。要收的尾只有一个：
++> **在 Manifest 里注册** `HistoryActivity`（见 5.2）。漏了这一步，7.6 之后点“查看历史”会直接崩
++> （`ActivityNotFoundException`），而编译阶段不会给你任何提示。
++
++
 +
 +### 5.2 在 Manifest 里注册
 +
@@ -8731,16 +9284,19 @@ index 0000000..9070f32
 +
 +`exported="false"` 的含义：只允许本 App 内部跳转，不允许别的 App 直接启动它。
 +
-+### 5.3 验收
++### 5.3 本步不验收
 +
-+- [ ] 保存一条记录后打开历史 → 看到“日期 · 状况”“步数 · 备注”；
-+- [ ] 同一天再保存一次 → 仍然只有一条；
-+- [ ] 没有任何记录时 → 显示“暂无记录”。
++- [ ] 三个文件到位：`activity_history.xml`、`item_wellness.xml`、`HistoryActivity.kt`；
++- [ ] `HistoryActivity` 已在 Manifest 里注册（见 5.2）；
++- [ ] 历史页要用的文案 key 已在 `values/strings.xml` 里（`wellness_history_title`、
++  `wellness_history_empty`、`wellness_history_summary` 等），第 2 节整份覆盖时就已经带上了。
 +
-+> 到这里，**题目要求的基础功能已经全部完成**。后面的第 6、7 节是可选的加分项，
-+> 考试不需要就跳过，或者做完再按 `docs/exam-guide.md` 删掉。
++> 到这里，**题目要求的基础功能代码已经写完**，运行验收统一在 7.6。
++> 第 6、7 节是可选的加分项；不要就按 `docs/exam-guide.md` 删掉，删完同样在 7.6 编译。
 +
 +---
++
++
 +
 +## 6. 可选 A：App 内中英文切换
 +
@@ -8748,13 +9304,28 @@ index 0000000..9070f32
 +
 +### 6.1 三个文件
 +
-+| 文件 | 作用 |
-+| --- | --- |
-+| `data/AppLanguage.kt` | `ENGLISH("en")` / `CHINESE("zh")` + `fromTag()` |
-+| `data/LanguageStore.kt` | SharedPreferences 读写语言选择 |
-+| `BaseActivity.kt` | `attachBaseContext` 换 Locale；`switchLanguage()` 保存 + `recreate()` |
 +
-+### 6.2 三个 Activity 改成继承 BaseActivity
++| 文件                      | 作用                                                                |
++| ----------------------- | ----------------------------------------------------------------- |
++| `data/AppLanguage.kt`   | `ENGLISH("en")` / `CHINESE("zh")` + `fromTag()`                   |
++| `data/LanguageStore.kt` | SharedPreferences 读写语言选择                                          |
++| `BaseActivity.kt`       | `attachBaseContext` 换 Locale；`switchLanguage()` 保存 + `recreate()` |
++
++
++
++
++### 6.2 核对父类：三个 Activity 都继承 BaseActivity
++
++> **走“整份复制最终版”这条路时，这一步没有东西要改。** `MainActivity.kt` 和
++> `HistoryActivity.kt` 里本来写的就是 `class ... : BaseActivity()`，第 7 节的
++> `AdviceActivity.kt` 创建时也是这个父类。
++>
++> 只有两种情况才需要真的去改这一行：
++>
++> - 你按 `docs/exam-guide.md` 删过语言切换（那时父类是 `AppCompatActivity`），现在又想加回来；
++> - 你之前自己写过基础版的 `MainActivity`（父类是 `AppCompatActivity`）。
++>
++> 本节仍不编译：`AdviceActivity` 到第 7 节才有，`MainActivity` 的红标会一直留到 7.6。
 +
 +```kotlin
 +class MainActivity : BaseActivity() {
@@ -8762,12 +9333,31 @@ index 0000000..9070f32
 +class AdviceActivity : BaseActivity() {
 +```
 +
++> 如果你同时从最终版复制了 `TrendActivity.kt`（趋势图，可选 C），它的父类也要写成
++> `BaseActivity`，否则图表页的标题不会跟着 App 内语言变。
++
 +同时删掉 `import androidx.appcompat.app.AppCompatActivity`（`BaseActivity` 在同一个包，
 +不需要 import）。
 +
++**“改成继承 BaseActivity”到底改的是什么：** 只改类声明那一行的冒号后面，方法体一行都不用动。
++`BaseActivity` 自己就是 `open class BaseActivity : AppCompatActivity()`，所以换掉父类之后
++`setContentView()`、`findViewById()`、`title`、`getString()` 全都照旧可用，只是多了一层
++“每次创建页面前先把 Context 换成 App 内选择的语言”。这也是为什么第 5 节那 17 条红字，
++会在 `BaseActivity.kt` 出现之后自己消失。
++
 +### 6.3 菜单
 +
-+复制 `res/menu/menu_main.xml`，在 `MainActivity` 里加：
++本节要新建的只有一个文件：`res/menu/menu_main.xml`（你的工程里还没有 `menu` 目录）。
++
++1. 右键 `app/src/main/res` → **New → Android Resource File**，File name 填 `menu_main`，
++  Resource type 选 `Menu`。对话框里**没有 Source set 输入框是正常的**：在 `main` 的 `res`
++  上右键，源集就默认是 `main`；看 **Directory name** 显示 `menu`、**Root element** 显示
++  `menu` 即可。**Available qualifiers 留空**（选了任何限定符都会生成 `menu-xxx` 目录）。
++  另一种等价做法：先 New → Android Resource Directory 建 `menu` 目录，再在里面建 `menu_main.xml`；
++2. 把仓库的 `res/menu/menu_main.xml` 整份覆盖进去；
++3. `MainActivity` 里的两个菜单方法**已经随整份复制带过来了**，不用手敲。
++
++下面这段只是给你对照用的，确认文件末尾有这两个方法、id 名字对得上：
 +
 +```kotlin
 +override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -8784,9 +9374,14 @@ index 0000000..9070f32
 +}
 +```
 +
-+### 6.4 标题栏
++注意 `R.id.menu_language` / `R.id.menu_ai_advice` 里的 `R.id`：这两个 id 由
++`menu_main.xml` 里 `android:id="@+id/menu_language"` 生成，和 `strings.xml` 里的
++`R.string.menu_language` 是两个不同的东西，别混。
 +
-+在每个 Activity 的 `onCreate` 里加一行：
++### 6.4 核对标题行
++
++`MainActivity`、`HistoryActivity`（以及第 7 节的 `AdviceActivity`）的 `onCreate` 里
++都已经有这一行，复制时带过来了，不需要补：
 +
 +```kotlin
 +title = getString(R.string.app_name)     // 历史页用 wellness_history_title，AI 页用 ai_title
@@ -8795,14 +9390,21 @@ index 0000000..9070f32
 +原因：标题栏默认取 Manifest 的 `android:label`，那是“系统”按手机语言解析的，
 +App 内切换语言后不会自动跟着变。
 +
-+### 6.5 验收
++### 6.5 本步不验收
 +
-+- [ ] 菜单点“切换语言” → 整页变英文，标题也变；
-+- [ ] 再点一次 → 变回中文；
-+- [ ] 杀掉进程重开 → 保持上次的语言；
-+- [ ] 在系统设置里“清除数据” → 恢复跟随系统语言。
++- [ ] 三个文件到位：`data/AppLanguage.kt`、`data/LanguageStore.kt`、`BaseActivity.kt`；
++- [ ] 三个 Activity 的父类都是 `class XxxActivity : BaseActivity()`，且没有
++  `import androidx.appcompat.app.AppCompatActivity`（复制过来的文件本来就满足，核对即可）；
++- [ ] `res/menu/menu_main.xml` 已新建并粘好，`MainActivity` 里有 `onCreateOptionsMenu()`
++  和 `onOptionsItemSelected()` 两个方法。
++
++> 语言切换的运行验证（切英文、重启保持、清数据恢复系统语言）在 7.6 做。
++> 菜单里的 `menu_ai_advice` 依赖第 7 节的 `AdviceActivity`：不做 AI，就把
++> `menu_main.xml` 里的这一项、`onOptionsItemSelected()` 里的对应分支一起删掉。
 +
 +---
++
++
 +
 +## 7. 可选 B：AI 健康建议
 +
@@ -8816,7 +9418,7 @@ index 0000000..9070f32
 +deepseek.apiKey=sk-你的key
 +```
 +
-+2. `app/build.gradle` 里要有三块：
++1. `app/build.gradle` 里要有三块：
 +
 +```gradle
 +// ① android { } 外面：读 local.properties
@@ -8835,10 +9437,25 @@ index 0000000..9070f32
 +buildFeatures { buildConfig = true }
 +```
 +
-+3. 依赖（4 个）：`activity-ktx`、`lifecycle-viewmodel-ktx`、`lifecycle-livedata-ktx`、
-+   `kotlinx-coroutines-android`。
++1. 依赖（4 个）：`activity-ktx`、`lifecycle-viewmodel-ktx`、`lifecycle-livedata-ktx`、
++  `kotlinx-coroutines-android`。
++
++> `build.gradle` 改完要点一次 **Sync Now**（编辑器右上角的提示条，或大象图标）。不 Sync
++> 的话，7.6 编译会报找不到 `ViewModel`、`viewModelScope`、`LiveData`——不是代码写错，
++> 是依赖还没下载。
++
++
 +
 +### 7.2 Manifest
++
++两段内容，**放在不同层级**，这是 Manifest 的硬性结构要求：
++
++
++| 片段                                 | 必须放的位置                                             | 放错的后果                                                                                |
++| ---------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------ |
++| `<uses-permission ... />`          | `<manifest>` 的直接子元素，**在** `<application>` **之前**   | 写进 `<application>` 里会被当成非法子元素（`Element uses-permission is not allowed here`），权限也不会生效 |
++| `<activity ... />`（AdviceActivity） | `<application>` 的直接子元素，**和** `MainActivity` **平级** | 嵌在别的 `<activity>` 里会报 `Element activity is not allowed here`，那个页面也不会被注册              |
++
 +
 +```xml
 +<uses-permission android:name="android.permission.INTERNET" />
@@ -8849,33 +9466,112 @@ index 0000000..9070f32
 +    android:label="@string/ai_title" />
 +```
 +
++放到你文件里的样子（骨架，`…` 是你已有的内容）：
++
++```xml
++<manifest xmlns:android="http://schemas.android.com/apk/res/android">
++
++    <uses-permission android:name="android.permission.INTERNET" />   <!-- 新增：在 application 之前 -->
++
++    <application ...>                                                <!-- 只能有一个 -->
++        <activity ... />                                             <!-- HistoryActivity，已有 -->
++        <activity ... />                                             <!-- AdviceActivity，新增，与上面平级 -->
++        <activity android:name=".MainActivity" ...>                  <!-- 入口页，已有 -->
++            <intent-filter> ... </intent-filter>
++        </activity>
++    </application>
++
++</manifest>
++```
++
++三个 `<activity>` 谁写在前面都可以，但每个都必须直接写在 `<application>` 里，并且各自用
++`/>` 或 `</activity>` 正确结束。
++
 +漏掉 `INTERNET` 的典型现象：点开 AI 页立刻闪退（`SecurityException`）。
 +
 +### 7.3 从纯 Kotlin 开始（可以先不碰界面）
 +
 +1. `data/PromptBuilder.kt` —— 拼 system / user 提示词，不 import 任何 Android 类；
-+2. 复制 `app/src/test/java/com/example/bmi/PromptBuilderTest.kt`；
-+3. 跑 `gradlew.bat testDebugUnitTest`，7 个用例应当全绿。
++2. 复制 `app/src/test/java/com/example/bmi/PromptBuilderTest.kt`；！！！ 记得复制这个文件
++3. **先不要跑测试**：`testDebugUnitTest` 会连带编译主源码，而 `AdviceActivity` 还没建，
++  现在跑一定失败。测试放到 7.6 一起跑。
 +
-+这一步就能验证“语言 → 提示词”的逻辑对不对，不用等界面。
++这一步的意义是把“语言 → 提示词”的逻辑单独写出来，等 7.6 编译通过后，用那 7 个用例
++验证它，不用等界面。
 +
 +### 7.4 再接通网络
 +
-+| 顺序 | 文件 | 职责 |
-+| --- | --- | --- |
-+| 1 | `data/DeepSeekClient.kt` | `HttpURLConnection` 发 POST、解析 JSON |
-+| 2 | `data/WellnessAdviceRepository.kt` | `withContext(Dispatchers.IO)` + 统一异常 |
-+| 3 | `ui/advice/AdviceUiState.kt` | `Idle/Loading/Success/Error` + 错误原因 |
-+| 4 | `ui/advice/AdviceViewModel.kt` | `viewModelScope` 发请求、`LiveData`、`retry()` |
++
++| 顺序  | 文件                                 | 职责                                        |
++| --- | ---------------------------------- | ----------------------------------------- |
++| 1   | `data/DeepSeekClient.kt`           | `HttpURLConnection` 发 POST、解析 JSON        |
++| 2   | `data/WellnessAdviceRepository.kt` | `withContext(Dispatchers.IO)` + 统一异常      |
++| 3   | `ui/advice/AdviceUiState.kt`       | `Idle/Loading/Success/Error` + 错误原因       |
++| 4   | `ui/advice/AdviceViewModel.kt`     | `viewModelScope` 发请求、`LiveData`、`retry()` |
++
++
++**目录要自己建**：第 1、2 个放进已有的 `data` 包；第 3、4 个在 `com.example.bmi.ui.advice`
++包里，你的工程里应该还没有 `ui` 目录。
++
++- 建包：右键 `com.example.bmi` → **New → Package**，输入 `ui.advice`（一次建出两层）；
++- 建文件：右键刚建好的 `ui.advice` → **New → Kotlin Class/File** → 选 **File**，
++文件名 `AdviceUiState`、`AdviceViewModel`，然后整份覆盖。
++- 每个文件的第一行必须是 `package com.example.bmi.ui.advice`，与目录一致；不一致时
++Studio 会报 "Package name does not match directory"，`import com.example.bmi.ui.advice.*`
++也会全部失效。
++
++
 +
 +### 7.5 最后是页面
 +
-+| 文件 | 作用 |
-+| --- | --- |
-+| `res/layout/activity_advice.xml` | 摘要 + 转圈 + 建议文字 + 重试按钮 |
-+| `AdviceActivity.kt` | 查今天记录 → 发请求 → 按状态渲染 |
 +
-+### 7.6 验收
++| 文件                               | 作用                    |
++| -------------------------------- | --------------------- |
++| `res/layout/activity_advice.xml` | 摘要 + 转圈 + 建议文字 + 重试按钮 |
++| `AdviceActivity.kt`              | 查今天记录 → 发请求 → 按状态渲染   |
++
++
++
++
++### 7.6 首次编译 + 统一验收
++
++**走到这里，四个互相引用的文件才第一次凑齐。现在才点编译：**
++
++- 命令行：`gradlew.bat assembleDebug`
++- IDE：`Build → Make Project`（或直接 Run）
++
++那一屏红应当全部消失。如果还有错，回到 4.2 的表对照一下缺的是哪一节的文件，
++不要靠猜着删代码“消红”。
++
++> 跳过第 6、7 节的情况：按 `docs/exam-guide.md` 删完相关代码后，首次编译同样在这里做，
++> 验收只取下面“编译与安装”“主界面”“历史页”三组。
++
++**编译与安装**
++
++- [ ] `BUILD SUCCESSFUL`，没有 `Unresolved reference`；
++- [ ] `gradlew.bat testDebugUnitTest` → 7 个用例全绿（7.3 的提示词测试）；
++- [ ] 装到模拟器能启动，不闪退。
++
++**主界面（第 4 节）**
++
++- [ ] 能看到“今天：日期”、下拉框、两个输入框、两个按钮；
++- [ ] 不填步数直接保存 → 出现“请输入有效的步数”；
++- [ ] 填 8000 保存 → 出现“已保存今天的记录”。
++
++**历史页（第 5 节）**
++
++- [ ] 点“查看历史”能打开列表，看到“日期 · 状况”“步数 · 备注”；
++- [ ] 同一天再保存一次 → 仍然只有一条；
++- [ ] 没有任何记录时 → 显示“暂无记录”。
++
++**语言切换（第 6 节，可选）**
++
++- [ ] 菜单点“切换语言” → 整页变英文，标题也变；
++- [ ] 再点一次 → 变回中文；
++- [ ] 杀掉进程重开 → 保持上次的语言；
++- [ ] 系统设置里“清除数据” → 恢复跟随系统语言。
++
++**AI 建议（第 7 节，可选）**
 +
 +- [ ] 没有今天的记录时进 AI 页 → 提示“今天还没有记录”，不发请求；
 +- [ ] 有记录 → 转圈 → 出现 3 条建议；
@@ -8885,28 +9581,32 @@ index 0000000..9070f32
 +
 +---
 +
++
++
 +## 8. 和仓库逐文件对齐
 +
 +做完后，对着下表检查（左边是仓库，右边是你工程）：
 +
-+| 仓库路径 | 你工程里应当有 |
-+| --- | --- |
-+| `app/src/main/java/com/example/bmi/MainActivity.kt` | ✅ |
-+| `.../HistoryActivity.kt` | ✅ |
-+| `.../BaseActivity.kt`（可选） | ✅ 或按 `exam-guide.md` 删掉 |
-+| `.../AdviceActivity.kt`（可选） | ✅ 或删掉 |
-+| `.../data/Dates.kt`、`WellnessRecord.kt`、`WellnessDbHelper.kt` | ✅ |
-+| `.../data/AppLanguage.kt`、`LanguageStore.kt`（可选） | ✅ 或删掉 |
-+| `.../data/PromptBuilder.kt`、`DeepSeekClient.kt`、`WellnessAdviceRepository.kt`（可选） | ✅ 或删掉 |
-+| `.../ui/advice/`（可选） | 两文件，或整个目录删掉 |
-+| `res/layout/activity_main.xml`、`activity_history.xml`、`item_wellness.xml` | ✅ |
-+| `res/layout/activity_advice.xml`（可选） | ✅ 或删掉 |
-+| `res/menu/menu_main.xml`（可选） | ✅ 或删掉 |
-+| `res/values/strings.xml`、`values-zh-rCN/strings.xml` | ✅ 两套 |
-+| `res/values/themes.xml`、`values-night/themes.xml`、`colors.xml` | ✅ |
-+| `app/src/test/.../PromptBuilderTest.kt`（可选） | ✅ 或删掉 |
-+| `AndroidManifest.xml` | 注册了对应页面 +（AI 才有）INTERNET |
-+| `app/build.gradle`、`build.gradle`、`settings.gradle` | 与本仓库同版本 |
++
++| 仓库路径                                                                              | 你工程里应当有                  |
++| --------------------------------------------------------------------------------- | ------------------------ |
++| `app/src/main/java/com/example/bmi/MainActivity.kt`                               | ✅                        |
++| `.../HistoryActivity.kt`                                                          | ✅                        |
++| `.../BaseActivity.kt`（可选）                                                         | ✅ 或按 `exam-guide.md` 删掉  |
++| `.../AdviceActivity.kt`（可选）                                                       | ✅ 或删掉                    |
++| `.../data/Dates.kt`、`WellnessRecord.kt`、`WellnessDbHelper.kt`                     | ✅                        |
++| `.../data/AppLanguage.kt`、`LanguageStore.kt`（可选）                                  | ✅ 或删掉                    |
++| `.../data/PromptBuilder.kt`、`DeepSeekClient.kt`、`WellnessAdviceRepository.kt`（可选） | ✅ 或删掉                    |
++| `.../ui/advice/`（可选）                                                              | 两文件，或整个目录删掉              |
++| `res/layout/activity_main.xml`、`activity_history.xml`、`item_wellness.xml`         | ✅                        |
++| `res/layout/activity_advice.xml`（可选）                                              | ✅ 或删掉                    |
++| `res/menu/menu_main.xml`（可选）                                                      | ✅ 或删掉                    |
++| `res/values/strings.xml`、`values-zh-rCN/strings.xml`                              | ✅ 两套                     |
++| `res/values/themes.xml`、`values-night/themes.xml`、`colors.xml`                    | ✅                        |
++| `app/src/test/.../PromptBuilderTest.kt`（可选）                                       | ✅ 或删掉                    |
++| `AndroidManifest.xml`                                                             | 注册了对应页面 +（AI 才有）INTERNET |
++| `app/build.gradle`、`build.gradle`、`settings.gradle`                               | 与本仓库同版本                  |
++
 +
 +验证命令：
 +
@@ -8918,38 +9618,46 @@ index 0000000..9070f32
 +
 +---
 +
++
++
 +## 9. 版本与环境：会不会冲突，哪里要改
++
++
 +
 +### 9.1 结论：学校电脑（Android Studio 2025.2.1 Patch 1）上不需要改代码
 +
 +本项目就是按学校那台机器的工具链写的，**源码层面没有问题**，逐项对照：
 +
-+| 项目 | 本仓库 | 2025.2.1 Patch 1 是否支持 | 结论 |
-+| --- | --- | --- | --- |
-+| AGP | 8.13.0 | 支持（该版本支持 AGP 4.0 ~ 8.13） | 不用改 |
-+| Gradle | 8.13（wrapper 指定） | 会按 wrapper 自动下载 | 不用改 |
-+| Kotlin | 2.2.20 | 从 Maven 下载插件，与 IDE 版本无关 | 不用改 |
-+| JDK | 17 字节码，需要 JDK ≥ 17 | Studio 自带 JBR 21 | 不用改 |
-+| compileSdk | 36 | 该 Studio 默认装 36 | 不用改（前提是机器上装了 Platform 36） |
-+| targetSdk | 34 | 支持 | 不用改 |
-+| minSdk | 21 | 支持 | 不用改 |
-+| Material | 1.12.0 | 支持 | 不用改 |
-+| 语言 API | `Locale.forLanguageTag`（21+）、`createConfigurationContext`（17+） | 都低于 minSdk | 不用改 |
++
++| 项目         | 本仓库                                                            | 2025.2.1 Patch 1 是否支持   | 结论                        |
++| ---------- | -------------------------------------------------------------- | ----------------------- | ------------------------- |
++| AGP        | 8.13.0                                                         | 支持（最高到 AGP 8.13）        | 不用改                       |
++| Gradle     | 8.13（wrapper 指定）                                               | 会按 wrapper 自动下载         | 不用改                       |
++| Kotlin     | 2.2.20                                                         | 从 Maven 下载插件，与 IDE 版本无关 | 不用改                       |
++| JDK        | 17 字节码，需要 JDK ≥ 17                                             | Studio 自带 JBR 21        | 不用改                       |
++| compileSdk | 36                                                             | 该 Studio 默认装 36         | 不用改（前提是机器上装了 Platform 36） |
++| targetSdk  | 34                                                             | 支持                      | 不用改                       |
++| minSdk     | 21                                                             | 支持                      | 不用改                       |
++| Material   | 1.12.0                                                         | 支持                      | 不用改                       |
++| 语言 API     | `Locale.forLanguageTag`（21+）、`createConfigurationContext`（17+） | 都低于 minSdk              | 不用改                       |
++
 +
 +**学校机器上真正需要确认的只有三件事**（都不是代码问题）：
 +
 +1. **SDK Platform 36 已安装**。没装时 Sync 会报 `Failed to find target with hash string 'android-36'`，
-+   按提示点 Install，或用 SDK Manager 装。
++  按提示点 Install，或用 SDK Manager 装。
 +2. **首次 Sync 能联网**，或者 Gradle 缓存里已经有这些依赖（你交作业时用过同一套版本，
-+   缓存大概率是热的）。机房断网时可以在 Gradle 面板点 **Toggle Offline Mode**
++  缓存大概率是热的）。机房断网时可以在 Gradle 面板点 **Toggle Offline Mode**
 +   再 Sync，前提是之前成功下载过。
 +3. **AI 功能**（如果你保留了）：学校机器上没有 `local.properties` 的 key，
-+   AI 页会显示“没有配置 API key”，不会崩。想现场演示 AI，需要临时加 key 且
++  AI 页会显示“没有配置 API key”，不会崩。想现场演示 AI，需要临时加 key 且
 +   机房能访问 `api.deepseek.com`；否则就把 AI 那块删掉（`docs/exam-guide.md` 第 2 节），
 +   免得老师在断网环境里看到报错。
 +
 +> 一句话：**代码不用为学校版本做任何修改**；要改的只有“这台机器装没装 SDK 36”
 +> 和“有没有网/有没有 key”。
++
++
 +
 +### 9.2 你自己电脑上的差异：这些是操作层面的坑
 +
@@ -8957,19 +9665,23 @@ index 0000000..9070f32
 +最容易出问题的地方。**原则：本机为了让工程能跑，做什么临时改动都可以，但绝不提交、
 +绝不带到学校。**
 +
-+| 现象 | 原因 | 处理（不要改仓库里的版本号） |
-+| --- | --- | --- |
-+| Sync 报 `Dependency requires at least JVM runtime version 11. This build uses a Java 8 JVM` | IDE 的 Gradle JDK 指向了 JRE 8/11 | Settings → Build, Execution, Deployment → Build Tools → **Gradle → Gradle JDK** 选 17 或 21（本机实测：JBR 21 可用；只有 `jre` 没有 `jlink` 的 JDK 会报 `jlink.exe does not exist`，换完整 JDK） |
-+| Sync 报找不到 `android-36` | 本机 SDK 只装到 34/35 | SDK Manager 装 Platform 36 + Build-Tools |
-+| 打开工程时提示 “Android Gradle Plugin requires newer Studio” | 本机 Studio 比 2025.2.1 旧 | 只能用命令行 `gradlew.bat assembleDebug` 构建；**不要**为了能在 IDE 里打开而降 AGP 版本，否则改完忘了还原，考试就炸 |
-+| 打开工程时提示 “Upgrade AGP / Migrate to …” | 本机 Studio 比 2025.2.1 新 | 点 **Don't remind me / Cancel**；如果已经点了，用 `git checkout -- build.gradle app/build.gradle gradle/` 还原 |
-+| 向导生成 `build.gradle.kts` + `libs.versions.toml` | 新版模板默认 Kotlin DSL | 见 0.2/0.4；**不要把 `.kts` 片段和本仓库的 Groovy 混着粘** |
-+| 粘贴后一片红：`Unresolved reference: R` | 包名 / `namespace` 与新工程不一致 | 改 `namespace` 和每个文件的 `package`，或一开始就用 `com.example.bmi` |
-+| 中文注释变乱码 | 文件编码不是 UTF-8 | Settings → Editor → **File Encodings** 全部设 UTF-8；`gradle.properties` 已有 `-Dfile.encoding=UTF-8`，别删 |
-+| 用记事本改过文件后 `git apply` 失败/差异巨大 | 记事本把 LF 改成 CRLF 或加了 BOM | 用 Android Studio / VS Code 编辑；不要用记事本“另存为” |
-+| `local.properties` 出现在 `git status` 里 | 被手动 `git add -f` 过 | `git rm --cached local.properties`；`.gitignore` 里已有这一行 |
-+| 依赖下载卡住 | 本机访问 google()/mavenCentral() 慢 | `settings.gradle` 里已经准备好阿里云镜像，取消注释即可（本机改动，不要提交） |
-+| 模拟器跑不起来 | 镜像 API 太高或架构不匹配 | 用 API 33/34 的 x86_64 镜像；项目 minSdk 21，任何近期镜像都行 |
++
++| 现象                                                                                         | 原因                             | 处理（不要改仓库里的版本号）                                                                                                                                                            |
++| ------------------------------------------------------------------------------------------ | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
++| Sync 报 `Dependency requires at least JVM runtime version 11. This build uses a Java 8 JVM` | IDE 的 Gradle JDK 指向了 JRE 8/11  | Settings → Build, Execution, Deployment → Build Tools → **Gradle → Gradle JDK** 选 17 或 21（本机实测：JBR 21 可用；只有 `jre` 没有 `jlink` 的 JDK 会报 `jlink.exe does not exist`，换完整 JDK） |
++| Sync 报找不到 `android-36`                                                                     | 本机 SDK 只装到 34/35               | SDK Manager 装 Platform 36 + Build-Tools                                                                                                                                   |
++| 打开工程时提示 “Android Gradle Plugin requires newer Studio”                                      | 本机 Studio 比 2025.2.1 旧         | 只能用命令行 `gradlew.bat assembleDebug` 构建；**不要**为了能在 IDE 里打开而降 AGP 版本，否则改完忘了还原，考试就炸                                                                                           |
++| 打开工程时提示 “Upgrade AGP / Migrate to …”                                                       | 本机 Studio 比 2025.2.1 新         | 点 **Don't remind me / Cancel**；如果已经点了，用 `git checkout -- build.gradle app/build.gradle gradle/` 还原                                                                        |
++| 向导生成 `build.gradle.kts` + `libs.versions.toml`                                             | 新版模板默认 Kotlin DSL              | 见 0.2/0.4；**不要把** `.kts` **片段和本仓库的 Groovy 混着粘**                                                                                                                           |
++| 粘贴后一片红：`Unresolved reference: R`                                                           | 包名 / `namespace` 与新工程不一致       | 改 `namespace` 和每个文件的 `package`，或一开始就用 `com.example.bmi`                                                                                                                   |
++| 中文注释变乱码                                                                                    | 文件编码不是 UTF-8                   | Settings → Editor → **File Encodings** 全部设 UTF-8；`gradle.properties` 已有 `-Dfile.encoding=UTF-8`，别删                                                                        |
++| 用记事本改过文件后 `git apply` 失败/差异巨大                                                              | 记事本把 LF 改成 CRLF 或加了 BOM        | 用 Android Studio / VS Code 编辑；不要用记事本“另存为”                                                                                                                                 |
++| `local.properties` 出现在 `git status` 里                                                      | 被手动 `git add -f` 过             | `git rm --cached local.properties`；`.gitignore` 里已有这一行                                                                                                                    |
++| 依赖下载卡住                                                                                     | 本机访问 google()/mavenCentral() 慢 | `settings.gradle` 里已经准备好阿里云镜像，取消注释即可（本机改动，不要提交）                                                                                                                           |
++| 模拟器跑不起来                                                                                    | 镜像 API 太高或架构不匹配                | 用 API 33/34 的 x86_64 镜像；项目 minSdk 21，任何近期镜像都行                                                                                                                             |
++
++
++
 +
 +### 9.3 最容易“带错回学校”的 6 个改动
 +
@@ -8990,26 +9702,35 @@ index 0000000..9070f32
 +
 +---
 +
++
++
 +## 10. 考试时间分配建议（80 分钟版）
 +
-+| 时间 | 做什么 | 验收 |
-+| --- | --- | --- |
-+| 0–10 min | 新建工程、对齐四个构建文件、Sync | 能 Run 模板页 |
-+| 10–20 min | 资源：strings（中英）、themes、颜色 | 无红色报错 |
-+| 20–30 min | 数据层：Record、Dates、DbHelper | 编译通过 |
-+| 30–45 min | 主界面：布局 + 保存逻辑 | 能保存 + Toast |
-+| 45–55 min | 历史页：布局 + Adapter | 能看到记录 |
-+| 55–65 min | 按题目加/删可选功能（语言、AI） | 对应功能可用 |
-+| 65–75 min | 自测清单走一遍 | 全绿 |
-+| 75–80 min | 清理临时文件、确认没有提交 `.idea`/`local.properties` | `git status` 干净 |
 +
-+如果时间不够，**优先保证“能保存 + 能看历史”**，语言和 AI 都是加分项。
++| 时间        | 做什么                                      | 验收                   |
++| --------- | ---------------------------------------- | -------------------- |
++| 0–10 min  | 新建工程、对齐四个构建文件、Sync                       | 能 Run 模板页            |
++| 10–20 min | 资源：strings（中英）、themes、颜色                 | 无红色报错                |
++| 20–30 min | 数据层：Record、Dates、DbHelper                | 编译通过（界面层之前的最后一次单独编译） |
++| 30–45 min | 主界面 + 历史页：布局与代码全部复制，**不编译**              | 文件与仓库一致，红标属正常        |
++| 45–60 min | 可选功能：语言切换 + AI（按题目取舍）                    | 文件与 Manifest 到位      |
++| 60–72 min | 首次编译 + 自测清单（7.6）                         | 编译通过，各功能逐项打勾         |
++| 72–80 min | 清理临时文件、确认没有提交 `.idea`/`local.properties` | `git status` 干净      |
++
++
++如果时间不够，**优先保证“能保存 + 能看历史”**，语言和 AI 都是加分项；但注意：既然第 4–7 节
++是“复制完再统一编译”，中途砍功能要用 `docs/exam-guide.md` 的删除清单，不能只删文件不删引用。
 +
 +---
++
++
 +
 +## 11. 一页速查
 +
 +**建工程的顺序**：构建文件 → 资源 → 数据类 → 数据库 → 主界面 → 历史页 → 可选功能。
++
++**编译点只有两个**：第 3 节末（数据层，能单独跑）、第 7 节末（四个互相引用的文件到齐，见 7.6）。
++中间第 4–6 节只复制、不编译也不运行，那时的满屏红属于预期状态。
 +
 +**每个文件属于哪一层**：
 +
@@ -9028,8 +9749,9 @@ index 0000000..9070f32
 +
 +**出问题的第一反应**：先看 Build 面板的第一条 error，再全局搜索它提到的类名/资源名，
 +确认“定义还在不在、引用有没有漏改”，最后才怀疑版本。
+\ No newline at end of file
 diff --git a/docs/llm-setup.md b/docs/llm-setup.md
-index aeab845..9924d12 100644
+index aeab845..d643151 100644
 --- a/docs/llm-setup.md
 +++ b/docs/llm-setup.md
 @@ -1,32 +1,90 @@
@@ -9125,8 +9847,8 @@ index aeab845..9924d12 100644
 +两个容易踩的点：
 +
 +- **Activity 标题**由系统按 Manifest 的 `android:label` 解析，不会跟着
-+  `attachBaseContext` 变，所以三个 Activity 都在 `onCreate` 里写了
-+  `title = getString(...)`；
++  `attachBaseContext` 变，所以四个 Activity（Main / History / Advice / Trend）都在
++  `onCreate` 里写了 `title = getString(...)`；
 +- 已经显示的界面不会自动重画，必须 `recreate()`。
  
 -- Activity 不碰网络，只 `observe` `adviceState`；点击 Retry 调 `viewModel.retry()`。
@@ -9238,15 +9960,15 @@ index aeab845..9924d12 100644
 +```
  
 -运行：`gradlew.bat testDebugUnitTest`
-+注意：后者改的是系统记录的“按 App 语言”，和 App 自己写在
-+SharedPreferences 里的选择是两套机制；本项目用的是后者（自己的偏好），
-+所以 adb 那条命令主要用于验证资源，不会覆盖 App 内的选择。
++注意：adb 命令改的是系统记录的“按 App 语言”，和 App 自己写在
++SharedPreferences 里的偏好是两套机制；本项目用的是后者（自己的偏好），
++所以 adb 那条命令只用于验证资源，不会覆盖 App 内的选择。
 diff --git a/docs/wellness-tracker.md b/docs/wellness-tracker.md
 new file mode 100644
-index 0000000..f7c38b7
+index 0000000..27b35b4
 --- /dev/null
 +++ b/docs/wellness-tracker.md
-@@ -0,0 +1,433 @@
+@@ -0,0 +1,647 @@
 +# Wellness Tracker 改造说明（考试练习版）
 +
 +本分支 `wellness_tracker` 从 `cityu_lab` 的最新提交 `d43a3c9` 创建，把原来的
@@ -9269,13 +9991,15 @@ index 0000000..f7c38b7
 +| 查看历史记录 | “View history” 打开 `HistoryActivity`，按日期倒序列出全部记录 |
 +| （可选 A）中英文切换 | 菜单 “Switch language” → 保存选择 + `recreate()`，见 `docs/llm-setup.md` |
 +| （可选 B）AI 健康建议 | 菜单 “AI advice” → 取今天记录发 DeepSeek，显示 3 条建议 |
++| （可选 C）最近 7 天趋势折线图 | 菜单 “Trend chart” → `TrendActivity` 用 MPAndroidChart 的 `LineChart` 画最近 7 条记录的步数折线 |
 +
-+没有做的内容（刻意不做，属于冗余）：BMI 计算、趋势折线图、登录、云同步、
-+编辑/删除单条记录。旧 BMI 代码已经全部删除（见 4.3 节）。
++没有做的内容（刻意不做，属于冗余）：BMI 计算、登录、云同步、编辑/删除单条记录。
++旧 BMI 代码已经全部删除（见 4.3 节）；图表用的是新写的 `TrendActivity`，
++和旧代码无关。
 +
-+两块可选功能（语言切换、AI）都做成了“可以整块删除”的形式，代码里用
-+`【语言切换 · 考试可删】` / `【AI 功能 · 考试可删】` 标记，删除清单见
-+`docs/exam-guide.md`。基础功能不依赖它们，删掉照样能编译运行。
++三块可选功能（语言切换、AI、趋势图）都做成了“可以整块删除”的形式，代码里用
++`【语言切换 · 考试可删】` / `【AI 功能 · 考试可删】` / `【图表 · 考试可删】` 标记，
++删除清单见 `docs/exam-guide.md`。基础功能不依赖它们，删掉照样能编译运行。
 +
 +---
 +
@@ -9290,6 +10014,7 @@ index 0000000..f7c38b7
 +   - 备注可以留空，也可以写 `Slept well`；
 +   - 点 **Save today record**，底部出现 `Saved for today.`；
 +   - 点 **View history**，能看到 `日期 · 状况` 和 `步数 · 备注`；
++   - 点右上角菜单 **Trend chart**，能看到最近 7 天的步数折线图；
 +   - 再保存一次同一天的数据，历史里仍然只有一条（内容被更新）。
 +
 +数据库文件在设备上的位置：
@@ -9357,7 +10082,7 @@ index 0000000..f7c38b7
 +| `BaseActivity.kt`（可选 A） | 语言切换：`attachBaseContext` 里替换 Locale |
 +| `data/AppLanguage.kt`（可选 A/B） | `ENGLISH` / `CHINESE` 枚举 + `fromTag()` |
 +| `data/LanguageStore.kt`（可选 A） | SharedPreferences 记住用户选的语言 |
-+| `res/menu/menu_main.xml`（可选 A/B） | 右上角菜单：切换语言、AI 建议 |
++| `res/menu/menu_main.xml`（可选 A/B/C） | 右上角菜单：切换语言、AI 建议、趋势图 |
 +| `AdviceActivity.kt`（可选 B） | AI 页：取今天记录 → 请求 → 渲染状态 |
 +| `res/layout/activity_advice.xml`（可选 B） | AI 页布局（摘要 + 转圈 + 建议 + 重试） |
 +| `data/PromptBuilder.kt`（可选 B） | 拼提示词，纯 Kotlin，可单元测试 |
@@ -9366,17 +10091,20 @@ index 0000000..f7c38b7
 +| `ui/advice/AdviceUiState.kt`（可选 B） | 四种状态 + 错误原因枚举 |
 +| `ui/advice/AdviceViewModel.kt`（可选 B） | ViewModel + LiveData + 重试 |
 +| `app/src/test/.../PromptBuilderTest.kt`（可选 B） | 提示词单元测试（7 个用例） |
++| `TrendActivity.kt`（可选 C） | 趋势页：读最近 7 条记录 → 交给 `LineChart` 画折线 |
++| `res/layout/activity_trend.xml`（可选 C） | 趋势页布局（统计文字 + `LineChart` + 空状态） |
 +
 +### 4.2 修改文件
 +
 +| 文件 | 改了什么 |
 +| --- | --- |
-+| `app/src/main/java/com/example/bmi/MainActivity.kt` | 整体换成“选状况 + 填步数/备注 + 保存 + 查看历史”；再叠加两项：继承 `BaseActivity`（语言）+ 选项菜单（语言 / AI） |
++| `app/src/main/java/com/example/bmi/MainActivity.kt` | 整体换成“选状况 + 填步数/备注 + 保存 + 查看历史”；再叠加三项：继承 `BaseActivity`（语言）+ 选项菜单（语言 / AI / 趋势图） |
 +| `app/src/main/res/layout/activity_main.xml` | 整体换成纵向 `LinearLayout` + `ScrollView`，只保留本题需要的控件 |
-+| `app/src/main/AndroidManifest.xml` | 注册 `MainActivity`、`HistoryActivity`、`AdviceActivity`；只保留 AI 需要的 `INTERNET` 权限；主题改为 `Theme.Wellness` |
-+| `app/src/main/res/values/strings.xml` | wellness 文案 + 状况数组 + 菜单/AI 文案，`app_name` 改为 Wellness Tracker |
++| `app/src/main/AndroidManifest.xml` | 注册 `MainActivity`、`HistoryActivity`、`AdviceActivity`、`TrendActivity`；只保留 AI 需要的 `INTERNET` 权限；主题改为 `Theme.Wellness` |
++| `app/src/main/res/values/strings.xml` | wellness 文案 + 状况数组 + 菜单/AI/趋势图文案，`app_name` 改为 Wellness Tracker |
 +| `app/src/main/res/values-zh-rCN/strings.xml` | 同上，中文文案 |
-+| `app/build.gradle` | 只保留健康日志依赖；再为 AI 加回密钥注入、`buildConfig` 开关、ViewModel/协程依赖 |
++| `app/build.gradle` | 只保留健康日志依赖；再为 AI 加回密钥注入、`buildConfig` 开关、ViewModel/协程依赖；为趋势图加 MPAndroidChart |
++| `settings.gradle` | 为 MPAndroidChart 增加 JitPack 仓库（`https://jitpack.io`） |
 +| `app/src/main/res/values/themes.xml` | `Theme.BMI` 重命名为 `Theme.Wellness` |
 +| `app/src/main/res/values-night/themes.xml` | 同上，深色主题同步改名 |
 +| `README.md` | 改成健康日志的项目说明，保留工具链/网络/构建部分 |
@@ -9392,6 +10120,11 @@ index 0000000..f7c38b7
 +| 横屏旧主布局 | `layout-land/activity_main.xml` | Android 横屏时会优先加载它；不删会因找不到 `stepsET` 等控件而崩溃 |
 +| 菜单/图片 | `menu/menu_options.xml`、`menu/menu_context.xml`、`drawable/bot_*.png` | 旧主界面和报告页专用 |
 +
++> 说明：`activity_trend.xml` 后来以**新写的**趋势页布局重新加回（配合可选 C），
++> 内容和旧 BMI 版本完全不同；`layout-land/activity_trend.xml` 没有恢复，
++> 横屏时继续使用竖屏布局。旧的 `ui/trend/BmiTrendChartView.kt` 没有恢复，
++> 新的图表直接用 MPAndroidChart 的 `LineChart`，见 7.4 节。
++
 +> 首轮清理时还删掉了 `DeepSeekClient.kt`、`HealthAdviceRepository.kt`、
 +> `PromptBuilder.kt`、`AppLanguage.kt`、`ui/report/` 和 `docs/llm-setup.md`。
 +> 后来为了留作考试参考，又按 4.1 节的清单重新加回了**新写的**语言切换和 AI 代码
@@ -9406,6 +10139,7 @@ index 0000000..f7c38b7
 +├── HistoryActivity.kt       # 历史列表
 +├── BaseActivity.kt          # 【可选 A】语言切换
 +├── AdviceActivity.kt        # 【可选 B】AI 建议页
++├── TrendActivity.kt         # 【可选 C】趋势折线图页
 +├── data/
 +│   ├── Dates.kt             # 今天的日期
 +│   ├── WellnessRecord.kt    # 数据类
@@ -9418,8 +10152,8 @@ index 0000000..f7c38b7
 +└── ui/advice/               # 【可选 B】状态 + ViewModel
 +```
 +
-+删掉两个可选功能后，就回到只有 6 个 Kotlin 文件的最小版本，
-+清单见 `docs/exam-guide.md` 第 3 节。
++删掉三块可选功能后，就回到只有 5 个 Kotlin 文件的最小版本，
++清单见 `docs/exam-guide.md` 第 4 节。
 +
 +包名仍然是 `com.example.bmi`。改包名要动 `namespace`、`applicationId`、所有
 +`package` 声明和目录结构，既费时又容易出错，题目也不检查包名，所以保留不动。
@@ -9438,11 +10172,11 @@ index 0000000..f7c38b7
 +| “See BMI Report Now” 跳 `ReportActivity` | “Save today record” 直接存库 | 本题不需要“结果页”，保存就是最终动作 |
 +| `ReportActivity` 计算 BMI 并显示 | 无 | 少一个页面、少一次 Intent 传值 |
 +| `BmiDbHelper`（表 `bmi_records`） | `WellnessDbHelper`（表 `wellness_records`） | 结构照抄，只换表名和列 |
-+| `TrendActivity` 折线图 | `HistoryActivity` 列表 | 历史记录用 ListView 就够，不必画图 |
++| `TrendActivity` + `BmiTrendChartView` 折线图 | `TrendActivity` + `LineChart`（可选 C） | 页面职责相同，画图从 Canvas 手绘换成 MPAndroidChart |
 +| `BmiPreferences` 自动填充 | 无 | 题目没要求“记住上次输入”，删掉 |
 +| 选项菜单 / 上下文菜单 / 关于对话框 | 无 | 题目没要求，删掉 |
 +
-+一句话总结：**输入 → 校验 → 写库；另一个页面 → 读库 → 列表。**
++一句话总结：**输入 → 校验 → 写库；另一个页面 → 读库 → 列表（需要时再加图表）。**
 +BMI 作业里“算 BMI”这一步被删掉了，其余骨架几乎原样复用。
 +
 +---
@@ -9586,11 +10320,202 @@ index 0000000..f7c38b7
 +
 +### 7.4 “要画趋势图”
 +
-+原项目的 `BmiTrendChartView` 已经随旧代码一起删除，不能在当前分支直接复用。
-+考试最省事的做法是引入 MPAndroidChart（在 `app/build.gradle` 的
-+`dependencies` 里加一行依赖），用 `LineChart` + `LineDataSet`；
-+或者只显示“最近 7 天步数”的柱状图。
-+如果题目只说“查看历史”，列表就够，不要主动加图表。
++先判断要不要做：题目只说“查看历史”时，`HistoryActivity` 的列表已经够用，
++**不要主动加图表**。只有题目明确写“图表 / 趋势 / 变化曲线”时才做。
++
++本分支已经带了一个可以直接抄的示例：菜单 “Trend chart” → `TrendActivity`，
++用 MPAndroidChart 画最近 7 条记录的步数折线。两种做法都在下面。
++
++#### 方案一：MPAndroidChart（本项目采用，最省事）
++
++MPAndroidChart 是一个成熟的开源图表库，`LineChart`（折线）+ `LineDataSet`（一组点）
++两三个类就能出图，坐标轴、网格、缩放、点击高亮都由库负责。代价是多一个第三方依赖，
++第一次 Sync 需要能访问 JitPack。
++
++**第 1 步：仓库。** `settings.gradle` 的 `dependencyResolutionManagement` 里加：
++
++```gradle
++maven { url 'https://jitpack.io' }
++```
++
++不写这一行，Sync 会报 `Could not find com.github.PhilJay:MPAndroidChart:v3.1.0`。
++如果校园网访问不了 JitPack，可以换成阿里云镜像或直接用方案二。
++
++**第 2 步：依赖。** `app/build.gradle` 的 `dependencies` 里加：
++
++```gradle
++implementation 'com.github.PhilJay:MPAndroidChart:v3.1.0'
++```
++
++**第 3 步：布局。** 自定义控件在 XML 里要写**完整类名**，并且必须给固定高度
++（`LineChart` 不会像 `TextView` 那样自己撑开，`wrap_content` 会变成 0 高）：
++
++```xml
++<com.github.mikephil.charting.charts.LineChart
++    android:id="@+id/trendChart"
++    android:layout_width="match_parent"
++    android:layout_height="280dp" />
++```
++
++**第 4 步：喂数据。** 核心只有四行——把记录变成 `Entry(x, y)`，装进
++`LineDataSet`，再交给 `LineData`：
++
++```kotlin
++// 库里按日期倒序返回，折线要从早到晚，所以 take(7) 之后 reversed()
++val records = WellnessDbHelper(this).allRecords().take(7).reversed()
++val entries = records.mapIndexed { i, r -> Entry(i.toFloat(), r.steps.toFloat()) }
++
++val dataSet = LineDataSet(entries, "Steps").apply {
++    color = Color.parseColor("#2E7D32")
++    lineWidth = 2.5f
++    setCircleColor(color)
++    circleRadius = 4f
++    setDrawValues(false)      // 点旁边不标数字，7 个点会挤在一起
++    setDrawFilled(true)
++    fillAlpha = 40
++}
++
++chart.xAxis.apply {
++    position = XAxis.XAxisPosition.BOTTOM
++    granularity = 1f
++    setDrawGridLines(false)
++    labelCount = records.size
++    labelRotationAngle = -30f
++    valueFormatter = object : ValueFormatter() {
++        override fun getFormattedValue(value: Float): String {
++            val i = value.toInt()
++            return if (i in records.indices) records[i].date.takeLast(5) else ""
++        }
++    }
++}
++chart.axisRight.isEnabled = false
++chart.axisLeft.axisMinimum = 0f
++chart.description.isEnabled = false
++chart.legend.isEnabled = false
++chart.setScaleEnabled(false)   // 页面套在 ScrollView 里时关掉缩放，避免抢手势
++chart.data = LineData(dataSet)
++chart.invalidate()             // 数据变了必须调用，否则不刷新
++```
++
++完整带注释的版本见本分支的 `TrendActivity.kt` 和 `activity_trend.xml`。
++还要补三处（和新增页面一样）：Manifest 注册 `TrendActivity`、菜单里加一项、
++`strings.xml` 加 `trend_*` 文案。
++
++#### 方案二：照 `BmiTrendChartView` 自己写自定义 View（零依赖）
++
++原 BMI 作业的趋势图是手写的，类名 `BmiTrendChartView`，位置：
++
++```
++app/src/main/java/com/example/bmi/ui/trend/BmiTrendChartView.kt
++```
++
++它不在当前分支（当前分支的旧代码已清理），但可以从提交历史里直接看：
++
++```bat
++git show main:app/src/main/java/com/example/bmi/ui/trend/BmiTrendChartView.kt
++```
++
++或者切到 `main` / `cityu_lab` 分支用 Android Studio 打开。它的本质就是
++“继承 `View` + 重写 `onDraw` + 用 `Canvas` 和 `Paint` 画线”，一共四块：
++
++| 部分 | 作用 |
++| --- | --- |
++| 构造函数（`@JvmOverloads`） | 让 XML 里能直接写类名，并支持 `style` 属性 |
++| `setData(values, labels)` | 保存数据 + `invalidate()` 触发重绘 |
++| `onDraw(canvas)` | 把数值映射成坐标，画坐标轴、网格、折线、圆点、日期文字 |
++| 空数据分支 | 没有记录时画一行提示，而不是画一条空坐标轴 |
++
++最少可用的骨架（可以直接贴进新文件，按题目改颜色和文字即可）：
++
++```kotlin
++package com.example.bmi.ui.trend
++
++import android.content.Context
++import android.graphics.*
++import android.util.AttributeSet
++import android.view.View
++
++/** 最近 N 天折线图：只画一条线 + 日期标签，够考试用。 */
++class TrendChartView @JvmOverloads constructor(
++    context: Context,
++    attrs: AttributeSet? = null,
++    defStyleAttr: Int = 0
++) : View(context, attrs, defStyleAttr) {
++
++    private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
++        style = Paint.Style.STROKE
++        strokeWidth = 4f
++        color = Color.parseColor("#2E7D32")
++    }
++    private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
++        color = Color.parseColor("#2E7D32")
++    }
++    private val axisPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
++        strokeWidth = 2f
++        color = Color.LTGRAY
++    }
++    private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
++        textSize = 26f
++        color = Color.GRAY
++        textAlign = Paint.Align.CENTER
++    }
++
++    private var values: List<Int> = emptyList()
++    private var labels: List<String> = emptyList()
++
++    fun setData(values: List<Int>, labels: List<String>) {
++        this.values = values
++        this.labels = labels
++        invalidate()              // 关键：不调用就不会重绘
++    }
++
++    override fun onDraw(canvas: Canvas) {
++        super.onDraw(canvas)
++        if (values.isEmpty()) return
++
++        val left = 32f
++        val right = width - 32f
++        val top = 24f
++        val bottom = height - 48f
++        val maxValue = (values.maxOrNull() ?: 0).coerceAtLeast(1)
++
++        // 底线
++        canvas.drawLine(left, bottom, right, bottom, axisPaint)
++
++        val path = Path()
++        values.forEachIndexed { i, value ->
++            val x = if (values.size == 1) (left + right) / 2f
++                    else left + (right - left) * i / (values.size - 1)
++            val y = bottom - (bottom - top) * value / maxValue
++
++            if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
++            canvas.drawCircle(x, y, 5f, dotPaint)
++            canvas.drawText(labels.getOrElse(i) { "" }, x, bottom + 32f, labelPaint)
++        }
++        canvas.drawPath(path, linePaint)
++    }
++}
++```
++
++几点必须注意：
++
++- `setData()` 里一定要 `invalidate()`，否则数据变了画面不动；
++- `x` 的间隔按 `width` 算，不要写死像素，否则换屏幕会错位；
++- `y` 要反过来算：屏幕坐标向下为正，所以 `bottom - 比例 * 高度`；
++- 只有一个数据点时 `size - 1 == 0`，必须单独处理（上面用 `values.size == 1` 分支）；
++- 布局里同样要给固定高度：`android:layout_height="280dp"`；
++- 想画柱状图就把 `drawPath` 换成 `canvas.drawRect(...)`，其余结构不变。
++
++用的时候只要：
++
++```kotlin
++val chart: TrendChartView = findViewById(R.id.trendChart)
++chart.setData(records.map { it.steps }, records.map { it.date.takeLast(5) })
++```
++
++什么时候选哪个：**考试只剩十分钟 → 方案一抄 `TrendActivity`；机房装不了依赖 /
++题目不允许第三方库 → 方案二抄上面的骨架。** 两种做法都需要“读最近 N 条 →
++按时间正序 → 映射坐标”这三步，换库不换思路。
 +
 +---
 +
@@ -9656,7 +10581,7 @@ index 0000000..f7c38b7
 +
 +- [ ] 菜单点“切换语言”：界面立刻变英文，标题栏也变。
 +- [ ] 再点一次：变回中文。
-+- [ ] 切换后进历史页 / AI 页：语言保持一致。
++- [ ] 切换后进历史页 / AI 页 / 趋势页：语言保持一致。
 +- [ ] 杀掉 App 再打开：还是上次选的语言（SharedPreferences 生效）。
 +- [ ] 清除 App 数据后重开：跟随手机系统语言。
 +
@@ -9669,6 +10594,17 @@ index 0000000..f7c38b7
 +- [ ] 把 `local.properties` 的 key 清空后重编译：提示“没有配置 API key”。
 +- [ ] 转屏：不重复请求（ViewModel 存活，`hasRequested` 生效）。
 +
++**可选 C：趋势折线图**
++
++- [ ] 一条记录都没有时进趋势页：显示“还没有记录”，不画空坐标轴。
++- [ ] 有 2 条以上记录时：折线按日期从早到晚排列，点数和记录数一致。
++- [ ] 横轴日期显示成 `MM-DD`，不互相重叠（倾斜 -30°）。
++- [ ] 同一天保存两次：图上仍然只有一个点（覆盖，不是两条）。
++- [ ] 只有一条记录：点画在中间，不崩溃（`size - 1 == 0` 已单独处理）。
++- [ ] 步数全为 0：折线贴在底部，纵轴仍从 0 开始，不崩溃。
++- [ ] 退出再进、转屏：图表重新从数据库读数据，显示正常。
++- [ ] 趋势页上下滑动：页面能正常滚，不被图表抢走手势。
++
 +---
 +
 +## 10. 相关文档
@@ -9676,12 +10612,12 @@ index 0000000..f7c38b7
 +- `README.md`：项目简介、工具链、运行和 patch 用法。
 +- `docs/from-scratch.md`：从零建工程（考试模拟），含版本差异与踩坑清单。
 +- `docs/adapt-to-other-topic.md`：换题目时改哪里（C1–C11 改题点地图 + 三个示例）。
-+- `docs/exam-guide.md`：考试删减指南（不要语言切换 / 不要 AI 时删什么）。
++- `docs/exam-guide.md`：考试删减指南（不要语言切换 / 不要 AI / 不要图表时删什么）。
 +- `docs/llm-setup.md`：AI 与语言切换的实现细节、key 配置、单元测试。
 +- `docs/exam-playbook.md`：把这道题的做法迁移到其他“每日记录类”题目的通用教程。
 +- `patch/wellness-tracker.patch`：可直接应用到 `d43a3c9` 的补丁（包含旧代码删除）。
 diff --git "a/docs/\345\274\200\345\217\221\346\214\207\345\215\227.md" "b/docs/\345\274\200\345\217\221\346\214\207\345\215\227.md"
-index a94106f..daa99e1 100644
+index a94106f..3d5ab36 100644
 --- "a/docs/\345\274\200\345\217\221\346\214\207\345\215\227.md"
 +++ "b/docs/\345\274\200\345\217\221\346\214\207\345\215\227.md"
 @@ -3,6 +3,10 @@
@@ -9694,4 +10630,42 @@ index a94106f..daa99e1 100644
 +> 文中提到的 BMI 文件名仅用于对照原始作业，通用概念仍然适用。
  
  ---
+ 
+@@ -146,8 +150,10 @@ TrendActivity 读最近 30 天
+ 
+ > 常见坑：
+ > - 如果打开的是 `app` 那一层而不是项目根目录，会提示找不到项目——选外层。
+-> - 学校电脑 SDK 版本可能不同，如果报 `compileSdk 32` 相关错误，把
+->   `app/build.gradle` 里的 `compileSdk 32` / `targetSdk 32` 改成学校 SDK 有的版本即可。
++> - 本分支（cityu_lab）的 `app/build.gradle` 已经是 `compileSdk 36 / targetSdk 34`，
++>   正好对应学校的 Android Studio 2025.2.1，一般不用改。
++>   只有当你打开的是 `main` 分支（旧工具链 `compileSdk 32 / targetSdk 32`）时，
++>   才需要把这两个值改成 36 / 34。
+ > - AI 功能需要密钥，没有密钥不影响 App 运行，只是报告页 AI 区域会提示“未配置 API Key”。
+ 
+ ---
+@@ -158,7 +164,9 @@ TrendActivity 读最近 30 天
+ 
+ ### 步骤 1：新建空项目
+ 
+-- Android Studio → **New Project → Empty Activity**；
++- Android Studio → **New Project → Empty Views Activity**；
++  （新版 AS 里“带 XML 布局”的模板叫这个名字，`Empty Activity` 现在指 Compose 模板，别选；
++  2023.2.1 Iguana 之前的旧版本没有 “Empty Views Activity”，那时的 `Empty Activity` 就是 XML 版）
+ - 语言选 **Kotlin**，Minimum SDK 选 **21 或更高**；
+ - Package name 可写成 `com.example.bmi`。
+ 
+diff --git a/settings.gradle b/settings.gradle
+index e624ab7..1c013a6 100644
+--- a/settings.gradle
++++ b/settings.gradle
+@@ -26,6 +26,9 @@ dependencyResolutionManagement {
+         // maven { url 'https://maven.aliyun.com/repository/public' }
+         google()
+         mavenCentral()
++        // 【图表 · 考试可删】MPAndroidChart 只发布在 JitPack，不在 Maven Central。
++        // 不写这一行，Sync 会报 "Could not find com.github.PhilJay:MPAndroidChart"。
++        maven { url 'https://jitpack.io' }
+     }
+ }
  

@@ -1,14 +1,14 @@
 # Wellness Tracker（健康日志）
 
 一个 Android 考试练习项目：每天记录身体状况、步数和备注，保存到 SQLite，
-并在历史页按日期查看全部记录。在基础功能之上，还加了两块上课学过的内容：
-App 内中英文切换 和 AI 健康建议（DeepSeek）。
+并在历史页按日期查看全部记录。在基础功能之上，还加了三块上课学过的内容：
+App 内中英文切换、AI 健康建议（DeepSeek）和最近 7 天步数折线图（MPAndroidChart）。
 
 本项目从原始的 BMI 作业（`cityu_lab` 分支）改造而来，保留了学校电脑要求的
 工具链配置，源码已经清理成只包含健康日志功能；BMI 相关代码仍然是删除状态。
 改造过程、逐文件讲解、可迁移到同类题目的考场教程见文末文档。
 
-两块可选功能都可以整块删除，删除清单见 [`docs/exam-guide.md`](docs/exam-guide.md)。
+三块可选功能都可以整块删除，删除清单见 [`docs/exam-guide.md`](docs/exam-guide.md)。
 
 ## 功能
 
@@ -35,6 +35,13 @@ App 内中英文切换 和 AI 健康建议（DeepSeek）。
 - 回答语言跟随界面语言：中文界面拿到中文建议，英文界面拿到英文建议
 - 失败时显示原因（没配 key / 网络错误 / 接口错误）并支持重试
 
+**可选功能 C：最近 7 天趋势折线图**
+
+- 右上角菜单 → “Trend chart / 趋势图”
+- 读取最近 7 条记录，按日期从早到晚画一条步数折线（MPAndroidChart 的 `LineChart`）
+- 顶部显示“最近 N 天 · 平均 X 步”；没有记录时显示空状态，不画空坐标轴
+- 只依赖 MPAndroidChart（JitPack 仓库），不联网、不需要额外权限
+
 ## 代码结构
 
 ```
@@ -43,6 +50,7 @@ app/src/main/java/com/example/bmi/
 ├── HistoryActivity.kt           # 历史页：读库、空状态、ListView
 ├── BaseActivity.kt              # 【可选 A】语言切换：attachBaseContext
 ├── AdviceActivity.kt            # 【可选 B】AI 页：取记录、请求、渲染状态
+├── TrendActivity.kt             # 【可选 C】趋势页：读最近 7 条 → LineChart
 ├── data/
 │   ├── WellnessRecord.kt        # 数据类：日期/状况/步数/备注
 │   ├── WellnessDbHelper.kt      # SQLite：建表、保存、读取
@@ -102,9 +110,10 @@ deepseek.apiKey=sk-你的key
 
 | 题目要求 | 操作 |
 | --- | --- |
-| 只要记录 + 历史 | 按 `docs/exam-guide.md` 第 1、2 节删除 |
+| 只要记录 + 历史 | 按 `docs/exam-guide.md` 第 1、2、3 节删除 |
 | 不要 App 内切换语言 | 按 `docs/exam-guide.md` 第 1 节删除 |
 | 不要 AI | 按 `docs/exam-guide.md` 第 2 节删除 |
+| 不要图表 | 按 `docs/exam-guide.md` 第 3 节删除 |
 | 都要 | 直接用当前版本 |
 
 建议先 `git checkout -b exam-minimal` 再动手，删坏了 `git checkout -- .` 就能恢复。
@@ -158,7 +167,7 @@ git apply patch/wellness-tracker.patch
 - [`docs/adapt-to-other-topic.md`](docs/adapt-to-other-topic.md)
   —— **改题点地图**：题目换成喝水/心情/记账时，改哪一处、连带改哪里，含三个完整示例。
 - [`docs/exam-guide.md`](docs/exam-guide.md)
-  —— **考试删减指南**：不要中英文切换 / 不要 AI 时，具体删哪些文件、哪些代码。
+  —— **考试删减指南**：不要中英文切换 / 不要 AI / 不要图表时，具体删哪些文件、哪些代码。
 - [`docs/wellness-tracker.md`](docs/wellness-tracker.md)
   —— 本次改造的逐文件说明、数据库设计、patch 用法、自测清单。
 - [`docs/llm-setup.md`](docs/llm-setup.md)

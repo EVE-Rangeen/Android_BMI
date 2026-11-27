@@ -8,7 +8,12 @@
 
 - `docs/adapt-to-other-topic.md` — 题目换了名字/字段时，改代码的哪一处、连带改哪里。
 - `docs/exam-guide.md` — 考场不需要某个功能时，删哪些文件。
-- `docs/wellness-tracker.md` — 每个文件的作用和 SQLite 设计。
+- `docs/wellness-tracker.md` — 每个文件的作用和 SQLite 设计（含两种画趋势图的写法，7.4 节）。
+
+> 本文只讲“基础功能 + 语言切换 + AI”的搭建顺序。第三块可选功能
+> “最近 7 天趋势折线图”依赖 MPAndroidChart，不是每题都需要，所以没有放进
+> 从零步骤；需要时按 `docs/wellness-tracker.md` 7.4 节加，或直接复制本分支的
+> `TrendActivity.kt` / `activity_trend.xml`。
 
 **核心原则：一次只加一层；编译点按层给，不是每节都给。**
 数据层（第 3 节）可以单独编译；从第 4 节起，`MainActivity`、`HistoryActivity`、`BaseActivity`、
@@ -461,6 +466,9 @@ class MainActivity : BaseActivity() {
 class HistoryActivity : BaseActivity() {
 class AdviceActivity : BaseActivity() {
 ```
+
+> 如果你同时从最终版复制了 `TrendActivity.kt`（趋势图，可选 C），它的父类也要写成
+> `BaseActivity`，否则图表页的标题不会跟着 App 内语言变。
 
 同时删掉 `import androidx.appcompat.app.AppCompatActivity`（`BaseActivity` 在同一个包，
 不需要 import）。

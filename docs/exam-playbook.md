@@ -23,9 +23,10 @@ BMI 作业把这套骨架完整演示了一遍。考试无论换成健康日志�
 > `cityu_lab` 分支（你已提交的作业）里的代码，用来对照抄写；
 > 当前分支只剩 `Wellness*` 和 `Dates`。
 
-> 额外参考：当前分支保留了**新写的**“App 内中英文切换”和“AI 健康建议”两块
-> 可选功能。如果考题正好要求其中之一，直接照抄；如果考题用不上，
-> 按 `docs/exam-guide.md` 的清单整块删除即可（本文不涉及这两块）。
+> 额外参考：当前分支保留了**新写的**“App 内中英文切换”“AI 健康建议”和
+> “最近 7 天趋势折线图”三块可选功能。如果考题正好要求其中之一，直接照抄；
+> 如果考题用不上，按 `docs/exam-guide.md` 的清单整块删除即可
+> （本文只在第 4 节“要图表时”讲图表，其余两块不展开）。
 
 ---
 
@@ -83,8 +84,10 @@ startActivity(HistoryActivity)
 
 **可以不管**：
 
-- 旧的 `ReportActivity`、`TrendActivity`、AI 相关类、旧布局、旧字符串。
-  它们编译得过、界面上进不去，不会影响新功能。考试时间宝贵，不要做“大扫除”。
+- 旧的 `ReportActivity`、AI 相关类、旧布局、旧字符串。它们编译得过、界面上进不去，
+  不会影响新功能。考试时间宝贵，不要做“大扫除”。
+- 注意当前分支的 `TrendActivity` 是**新写的**趋势图页（可选 C），不是旧代码；
+  用不上就整块删，见 `docs/exam-guide.md` 第 3 节。
 
 **必须处理**：
 
@@ -470,10 +473,85 @@ date TEXT NOT NULL
 
 ### 要图表时
 
-- 题目说“查看历史”，列表就够，**不要主动加图表**；
-- 真要求图表：引入 MPAndroidChart（`build.gradle` 里有注释示例），
-  或照着原项目 `BmiTrendChartView` 改一个自定义 View；
-- 时间不够就画“最近 7 天的柱状图”，比折线图好写。
+先判断：题目只说“查看历史”，列表就够，**不要主动加图表**。只有出现
+“趋势 / 变化 / 图表 / 曲线”这类字眼才做，优先做折线或柱状，不要做饼图。
+
+**做法一：MPAndroidChart（推荐，本项目的可选 C 就是这样做的）**
+
+1. `settings.gradle` 加仓库：
+
+```gradle
+maven { url 'https://jitpack.io' }
+```
+
+2. `app/build.gradle` 加依赖，然后 **Sync**：
+
+```gradle
+implementation 'com.github.PhilJay:MPAndroidChart:v3.1.0'
+```
+
+3. 布局里写**完整类名**，高度必须固定（`wrap_content` 会变成 0 高、一片空白）：
+
+```xml
+<com.github.mikephil.charting.charts.LineChart
+    android:id="@+id/trendChart"
+    android:layout_width="match_parent"
+    android:layout_height="280dp" />
+```
+
+4. Activity 里三行核心代码 + 坐标轴配置：
+
+```kotlin
+// 库里按日期倒序，画图要正序，所以 take(N) 之后 reversed()
+val records = db.allRecords().take(7).reversed()     // db = RecordDbHelper(this)
+val entries = records.mapIndexed { i, r -> Entry(i.toFloat(), r.amount.toFloat()) }
+
+val set = LineDataSet(entries, "Steps").apply {
+    color = Color.parseColor("#2E7D32")
+    setDrawValues(false)        // 点旁边不标数字
+    setDrawFilled(true)
+}
+
+chart.xAxis.apply {
+    position = XAxis.XAxisPosition.BOTTOM
+    granularity = 1f            // 一个点一个刻度
+    setDrawGridLines(false)
+    labelCount = records.size
+    valueFormatter = object : ValueFormatter() {
+        override fun getFormattedValue(value: Float): String {
+            val i = value.toInt()
+            return if (i in records.indices) records[i].date.takeLast(5) else ""
+        }
+    }
+}
+chart.axisRight.isEnabled = false
+chart.axisLeft.axisMinimum = 0f
+chart.description.isEnabled = false
+chart.data = LineData(set)
+chart.invalidate()              // 不调用不刷新
+```
+
+5. 三处外围照新增页面处理：Manifest 注册、菜单项、`strings.xml` 文案。
+
+完整带注释的版本见 `TrendActivity.kt` / `activity_trend.xml`。
+如果 JitPack 下载不下来（校园网常见），直接用做法二。
+
+**做法二：照 `BmiTrendChartView` 写自定义 View（零依赖）**
+
+原作业的趋势图是手写的，类在 `main` / `cityu_lab` 分支：
+
+```
+app/src/main/java/com/example/bmi/ui/trend/BmiTrendChartView.kt
+```
+
+不在那个分支也能看：`git show main:app/src/main/java/com/example/bmi/ui/trend/BmiTrendChartView.kt`。
+它只有四块：继承 `View` → `setData()` 存数据并 `invalidate()` → `onDraw()` 里
+把数值映射成坐标（x 按宽度均分，y = `bottom - 比例 * 高度`）→ 用 `Path` 连线、
+`drawCircle` 画点、`drawText` 写日期。可直接复制的骨架在
+`docs/wellness-tracker.md` 的 7.4 节，按题目改颜色和文案即可。
+
+**时间不够时**：把折线换成柱状（`canvas.drawRect`）更短；再退一步，用
+`TextView` 列出“日期 · 数值”也算展示了变化，比空着强。
 
 ---
 
@@ -496,6 +574,157 @@ date TEXT NOT NULL
 
 **不要改**：包名、`applicationId`、Gradle 版本、主题、`MainActivity` 的入口注册。
 这些和题目无关，改了只会引入新问题。
+
+### 具体例子：把 Wellness 改成“睡眠记录（Sleep Log）”
+
+假设考题是：每天记录**睡眠时长（小时，可以有小数）**、**睡眠质量**（Good / Fair / Poor）
+和备注。我们保留类名 `WellnessRecord` / `WellnessDbHelper` 和控件 id 不动，
+只换字段名、类型和文案——这样除了下面 8 处，其它文件一行都不用改。
+
+先看新旧对照：
+
+| 原来 | 改成 |
+| --- | --- |
+| `WellnessRecord.condition: Int` | `quality: Int`（Spinner 序号 0/1/2） |
+| `WellnessRecord.steps: Int` | `hours: Double`（睡眠小时数） |
+| 库 `wellness.db` / 表 `wellness_records` | `sleep.db` / `sleep_records` |
+| 列 `condition` / `steps` | `quality` / `hours`（`REAL`） |
+| 历史行“日期 · 状况 / 8000 steps” | “日期 · 质量 / 7.5 hours” |
+
+第 1 处：**`strings.xml`（默认 + 中文各一份）**。key 不改，只改 value：
+
+```xml
+<string name="app_name">Sleep Log</string>
+<string name="wellness_condition_label">How did you sleep?</string>
+<string name="wellness_condition_good">Good</string>
+<string name="wellness_condition_fair">Fair</string>
+<string name="wellness_condition_poor">Poor</string>
+<string name="wellness_steps_label">Hours slept</string>
+<string name="wellness_steps_hint">e.g. 7.5</string>
+<string name="wellness_note_label">Notes (optional)</string>
+<string name="wellness_note_hint">Dreams, waking up, caffeine…</string>
+<string name="wellness_steps_warning">Please enter hours between 0 and 24.</string>
+
+<!-- 历史页：数字从“整数 + steps”改成“一位小数 + hours” -->
+<string name="wellness_history_summary">%1$d days recorded · average %2$.1f hours</string>
+<string name="wellness_history_steps">%1$.1f hours</string>
+```
+
+`wellness_condition` 数组不用改结构，三项仍然指向上面三个字符串。
+
+第 2 处：**`WellnessRecord.kt`**：
+
+```kotlin
+data class WellnessRecord(
+    val date: String,
+    val quality: Int,     // 原来是 condition
+    val hours: Double,    // 原来是 steps: Int
+    val note: String
+)
+```
+
+第 3 处：**`WellnessDbHelper.kt`**，按顺序改四小项：
+
+```kotlin
+// ① 常量
+const val DATABASE_NAME = "sleep.db"
+const val DATABASE_VERSION = 2          // 表结构变了必须 +1，否则旧库不重建
+const val TABLE_RECORDS = "sleep_records"
+const val COL_QUALITY = "quality"
+const val COL_HOURS = "hours"
+
+// ② 建表 SQL（hours 用 REAL 存小数）
+CREATE TABLE sleep_records (
+    date TEXT PRIMARY KEY NOT NULL,
+    quality INTEGER NOT NULL,
+    hours REAL NOT NULL,
+    note TEXT NOT NULL,
+    updated_at INTEGER NOT NULL
+)
+
+// ③ save()
+put(COL_QUALITY, record.quality)
+put(COL_HOURS, record.hours)
+
+// ④ allRecords()（findByDate() 里的列数组和构造方法也要同步改）
+arrayOf(COL_DATE, COL_QUALITY, COL_HOURS, COL_NOTE)
+...
+WellnessRecord(
+    date = c.getString(0),
+    quality = c.getInt(1),
+    hours = c.getDouble(2),     // 注意是 getDouble，不是 getInt
+    note = c.getString(3)
+)
+```
+
+第 4 处：**`activity_main.xml`**。id 和控件类型不变，只把步数输入框改成允许小数：
+
+```xml
+<EditText
+    android:id="@+id/stepsET"
+    ...
+    android:hint="@string/wellness_steps_hint"
+    android:inputType="numberDecimal" />
+```
+
+Spinner 的 `entries="@array/wellness_condition"` 不用动（文案已经在第 1 处换了）。
+`label` 文字来自 strings，所以也不用手改。
+
+第 5 处：**`MainActivity.saveTodayRecord()`**：小数解析 + 范围校验 + 新字段：
+
+```kotlin
+val hours = stepsET.text.toString().trim().toDoubleOrNull()
+if (hours == null || hours < 0.0 || hours > 24.0) {
+    Toast.makeText(this, R.string.wellness_steps_warning, Toast.LENGTH_SHORT).show()
+    return
+}
+
+val record = WellnessRecord(
+    date = Dates.today(),
+    quality = conditionSpinner.selectedItemPosition,
+    hours = hours,
+    note = noteET.text.toString().trim()
+)
+```
+
+`toDoubleOrNull()` 负责“转小数 + 校验”，空串和字母都会返回 null。
+变量名 `steps` 顺手改成 `hours` 即可，IDE 会提示所有引用点。
+
+第 6 处：**`HistoryActivity.kt`**：改翻译函数和行文字：
+
+```kotlin
+// conditionText(...) → qualityText(...)，内部还是 0/1/2 映射三个 string
+private fun qualityText(quality: Int): String = getString(
+    when (quality) {
+        0 -> R.string.wellness_condition_good
+        1 -> R.string.wellness_condition_fair
+        else -> R.string.wellness_condition_poor
+    }
+)
+
+// 统计：平均小时数仍然是 Double，直接交给 %2$.1f
+val averageHours = records.sumOf { it.hours } / records.size
+summary.text = getString(R.string.wellness_history_summary, records.size, averageHours)
+
+// 第二行：getString 的格式化参数换成 Double
+val hours = getString(R.string.wellness_history_steps, record.hours)
+```
+
+第 7 处：**`item_wellness.xml`**：本例不用改。仍然是“第一行日期 + 分类、
+第二行数值 + 备注”两行结构，`SimpleAdapter` 的 key 也没变。
+
+第 8 处：**`AndroidManifest.xml`**：本例不用改。没有新增页面，Activity 注册不动。
+
+**连带检查（不属于 8 处，但漏了会崩）**：
+
+- 表结构变了必须把 `DATABASE_VERSION` 从 1 改成 2，或者直接卸载 App / 清除 App 数据；
+- 如果保留趋势图（可选 C），`TrendActivity` 里 `it.steps` 要改成 `it.hours`，
+  `Entry` 的 y 用 `toFloat()`，统计文案从 `%2$d` 改成 `%2$.1f`；
+- 如果保留 AI（可选 B），`PromptBuilder` 和 `ai_record_summary` 里也提到了 steps，
+  搜索 `steps` 全部改一遍，否则提示词会把“小时”说成“步数”。
+
+改完按第 3 节的第 7 步自测：空输入、`7`、`7.5`、`25`（应被拦）、同一天存两次、
+杀掉重开、转屏。全部通过就说明 8 处都改对了。
 
 ---
 
@@ -530,6 +759,9 @@ date TEXT NOT NULL
 | 字符串格式化崩溃 `MissingFormatArgumentException` | `getString` 传的参数个数和占位符不一致 | `%1$s` 对应 1 个参数，`%1$d` 对应整数 |
 | 旋转屏幕后输入丢失 | 正常现象（除非用 `onSaveInstanceState`） | 本题不要求；别在 `onStart` 里用旧值覆盖 |
 | 数据库里有数据但重启后没了 | 存到了内存/局部变量，没真正写库 | 确认调用的是 `db.save(...)` |
+| 趋势页一片空白 | `LineChart` 高度写成了 `wrap_content` | 给固定高度，如 `android:layout_height="280dp"` |
+| 有数据但折线不刷新 | 设置 `chart.data` 后没调用 `invalidate()` | 加一行 `chart.invalidate()` |
+| Sync 报找不到 `MPAndroidChart` | 没加 JitPack 仓库，或校园网访问不了 JitPack | `settings.gradle` 加 `maven { url 'https://jitpack.io' }`；或改用自定义 View |
 
 ---
 
@@ -574,6 +806,7 @@ date TEXT NOT NULL
 [ ] Manifest 注册新 Activity
 [ ] strings 默认 + 中文都加了
 [ ] 删掉 layout-land 里的旧主布局
+[ ] （要图表时）JitPack 仓库 + 依赖 + 固定高度 + chart.invalidate()
 [ ] 编译通过
 [ ] 空输入 / 正常保存 / 看历史 / 重开 App / 旋转屏幕
 ```

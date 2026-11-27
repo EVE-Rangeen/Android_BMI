@@ -45,7 +45,7 @@
 | **C8** | 列表一行的布局 | `res/layout/item_wellness.xml` | `itemTitle`、`itemSubtitle` | C7（`SimpleAdapter` 的 id 数组） |
 | **C9** | 发给 AI 的提示词 | `data/PromptBuilder.kt` | `systemPrompt()`、`userPrompt()`、`conditionLabel()` | C1、`PromptBuilderTest` |
 | **C10** | AI 页顶部摘要 | `AdviceActivity.kt` | `ai_record_summary` 的三个参数、`conditionText()` | C3、C1 |
-| **C11** | 有没有菜单、菜单里有什么 | `res/menu/menu_main.xml` + `MainActivity` | `menu_language`、`menu_ai_advice` | 删功能时见 `docs/exam-guide.md` |
+| **C11** | 有没有菜单、菜单里有什么 | `res/menu/menu_main.xml` + `MainActivity` | `menu_language`、`menu_ai_advice`、`menu_trend` | 删功能时见 `docs/exam-guide.md` |
 
 ---
 

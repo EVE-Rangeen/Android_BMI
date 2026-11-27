@@ -1,21 +1,23 @@
-# 考试删减指南：中英文切换 与 AI 健康建议
+# 考试删减指南：中英文切换 / AI 健康建议 / 趋势折线图
 
 这份文档回答一个问题：**考试题目不需要某个功能时，应该删掉哪些文件、哪些代码。**
 
-当前分支的功能分三层：
+当前分支的功能分四层：
 
 | 层 | 功能 | 能不能删 |
 | --- | --- | --- |
 | 基础层 | 记录今天（状况 / 步数 / 备注）→ 存 SQLite；历史页查看 | 必须保留 |
 | 可选层 A | App 内中英文切换（菜单里点一下，全 App 换语言） | 可整块删除 |
 | 可选层 B | AI 健康建议（把今天的记录发给 DeepSeek，显示返回的建议） | 可整块删除 |
+| 可选层 C | 最近 7 天步数折线图（MPAndroidChart 的 `LineChart`） | 可整块删除 |
 
-两层可选功能在代码里都用标记注释标出来了。在 Android Studio 里按
-`Ctrl + Shift + F` 全局搜索下面三个关键词，就能找到所有需要处理的位置：
+三层可选功能在代码里都用标记注释标出来了。在 Android Studio 里按
+`Ctrl + Shift + F` 全局搜索下面四个关键词，就能找到所有需要处理的位置：
 
 ```
 【语言切换 · 考试可删】
 【AI 功能 · 考试可删】
+【图表 · 考试可删】
 考试可删
 ```
 
@@ -28,14 +30,16 @@
 
 | 老师的题目要求 | 按哪一节删 | 删完大概剩几个源文件 |
 | --- | --- | --- |
-| 只要记录 + 历史（最基础） | 第 1 节 + 第 2 节 | 5 个 Kotlin 文件 + 3 个布局 |
-| 记录 + 历史 + AI，**不需要** App 内切换语言 | 第 1 节（保留 AI） | 12 个 Kotlin 文件 + 4 个布局 |
-| 记录 + 历史 + 语言切换，**不需要** AI | 第 2 节 | 8 个 Kotlin 文件 + 3 个布局 |
-| 都要（当前版本） | 不删 | 14 个 Kotlin 文件 + 4 个布局 |
+| 只要记录 + 历史（最基础） | 第 1 + 2 + 3 节 | 5 个 Kotlin 文件 + 3 个布局 |
+| 记录 + 历史 + 图表 | 第 1 + 2 节 | 6 个 Kotlin 文件 + 4 个布局 |
+| 只不要 App 内切换语言 | 第 1 节 | 13 个 Kotlin 文件 + 5 个布局 |
+| 只不要 AI | 第 2 节 | 9 个 Kotlin 文件 + 5 个布局 |
+| 只不要图表 | 第 3 节 | 14 个 Kotlin 文件 + 4 个布局 |
+| 都要（当前版本） | 不删 | 15 个 Kotlin 文件 + 5 个布局 |
 
 “不需要切换语言”的意思是：老师只要求界面有中文和英文两套资源、
 跟着手机系统语言自动变，而不要求 App 里自己点按钮切换。
-这两种在 Android 里是两件不同的事，第 3 节专门解释。
+这两种在 Android 里是两件不同的事，第 4 节专门解释。
 
 ---
 
@@ -45,20 +49,20 @@
 
 | 文件 | 作用 | 删掉后会怎样 |
 | --- | --- | --- |
-| `app/src/main/java/com/example/bmi/BaseActivity.kt` | 在 `attachBaseContext` 里把 Context 的语言改成用户选的语言 | 三个 Activity 都要改回继承 `AppCompatActivity` |
+| `app/src/main/java/com/example/bmi/BaseActivity.kt` | 在 `attachBaseContext` 里把 Context 的语言改成用户选的语言 | 四个 Activity 都要改回继承 `AppCompatActivity` |
 | `app/src/main/java/com/example/bmi/data/LanguageStore.kt` | 用 SharedPreferences 记住用户选了哪种语言 | 没人再读写这个偏好 |
 | `app/src/main/java/com/example/bmi/data/AppLanguage.kt` | `ENGLISH` / `CHINESE` 枚举 | **AI 也在用它**，见 1.3 |
 | `app/src/main/res/menu/menu_main.xml` 里的 `menu_language` 项 | 菜单入口 | 菜单里少一项 |
 | `strings.xml` 里的 `menu_language` | 菜单文字 | 没人引用，可留可删 |
 | `MainActivity` 里的 `menu_language` 分支 | 点击后 `toggleLanguage()` | 菜单项点了没反应 |
-| 三个 Activity 里的 `title = getString(...)` | 让标题栏也跟着 App 内语言变 | 标题会跟随手机系统语言（默认就是这样，不算错） |
+| 四个 Activity 里的 `title = getString(...)` | 让标题栏也跟着 App 内语言变 | 标题会跟随手机系统语言（默认就是这样，不算错） |
 
 `values-zh-rCN/strings.xml` **不要删**：它提供中文文案，属于 Android 标准多语言机制，
 不是“切换功能”的代码。删了中文手机也会显示英文。
 
 ### 1.2 删除步骤（顺序照做，每步之后都能编译）
 
-**第 1 步：三个 Activity 改回普通 AppCompatActivity**
+**第 1 步：四个 Activity 改回普通 AppCompatActivity**
 
 `MainActivity.kt`
 
@@ -79,6 +83,8 @@ import androidx.appcompat.app.AppCompatActivity
 
 `AdviceActivity.kt`（如果保留 AI）也改成 `AppCompatActivity`，并按 1.3 补一个
 `currentLanguage()`。
+
+`TrendActivity.kt`（如果保留图表）同样改成 `AppCompatActivity`，标题那一行可以直接删。
 
 **第 2 步：删菜单里的语言项**
 
@@ -113,7 +119,7 @@ app/src/main/java/com/example/bmi/data/LanguageStore.kt
 
 `AppLanguage.kt` 先别删——AI 的 `PromptBuilder` 需要它。如果 AI 也删，再一起删。
 
-**第 4 步：删掉三个 Activity 里的标题设置（可选，但建议删干净）**
+**第 4 步：删掉四个 Activity 里的标题设置（可选，但建议删干净）**
 
 ```kotlin
 // 【语言切换 · 考试可删】标题跟着 App 内语言走（原因见 MainActivity 的说明）。
@@ -121,7 +127,8 @@ title = getString(R.string.app_name)
 ```
 
 HistoryActivity 里是 `title = getString(R.string.wellness_history_title)`，
-AdviceActivity 里是 `title = getString(R.string.ai_title)`。
+AdviceActivity 里是 `title = getString(R.string.ai_title)`，
+TrendActivity 里是 `title = getString(R.string.trend_title)`。
 
 删掉后标题栏会显示 Manifest 里 `android:label` 指向的字符串，由系统按手机语言解析，
 这是 Android 的默认行为，考试完全够用。
@@ -315,9 +322,110 @@ gradlew.bat testDebugUnitTest
 
 ---
 
-## 3. 版本 C：两个功能都不要（最基础版）
+## 3. 版本 C：不要趋势折线图
 
-按第 1 节做完，再按第 2 节做完，最后处理 `AppLanguage.kt`。
+### 3.1 图表功能涉及哪些文件
+
+| 位置 | 作用 |
+| --- | --- |
+| `app/src/main/java/com/example/bmi/TrendActivity.kt` | 趋势页：读最近 7 条记录 → 交给 `LineChart` 画折线 |
+| `app/src/main/res/layout/activity_trend.xml` | 趋势页布局（统计文字 + `LineChart` + 空状态） |
+| `res/menu/menu_main.xml` 的 `menu_trend` 项 | 菜单入口 |
+| `MainActivity.onOptionsItemSelected()` 的 `menu_trend` 分支 | 点击后跳转 |
+| `AndroidManifest.xml` 的 `.TrendActivity` 注册 | 不注册会 `ActivityNotFoundException` |
+| `app/build.gradle` 的 MPAndroidChart 依赖 | 图表库本体 |
+| `settings.gradle` 的 `maven { url 'https://jitpack.io' }` | MPAndroidChart 的下载仓库（只有它用 JitPack） |
+| 两个 `strings.xml` 的 `menu_trend` / `trend_*` | 文案，可留可删 |
+
+### 3.2 删除步骤（顺序照做）
+
+**第 1 步：删文件（2 个）**
+
+```
+app/src/main/java/com/example/bmi/TrendActivity.kt
+app/src/main/res/layout/activity_trend.xml
+```
+
+**第 2 步：删菜单项**
+
+`res/menu/menu_main.xml` 里删掉：
+
+```xml
+<!-- 【图表 · 考试可删】点击后打开 TrendActivity，看最近 7 天的步数折线图。 -->
+<item
+    android:id="@+id/menu_trend"
+    android:title="@string/menu_trend"
+    app:showAsAction="never" />
+```
+
+`MainActivity.onOptionsItemSelected()` 里删掉这一支：
+
+```kotlin
+// ── 【图表 · 考试可删】打开最近 7 天步数折线图 ──
+R.id.menu_trend -> {
+    // 同样不传数据：趋势页自己读库。
+    startActivity(Intent(this, TrendActivity::class.java))
+    true
+}
+```
+
+**第 3 步：删 Manifest 注册**
+
+```xml
+<!--
+  【图表 · 考试可删】最近 7 天步数折线图。
+  同样不对外开放，只能从主界面菜单进入；label 用 trend_title。
+-->
+<activity
+    android:name=".TrendActivity"
+    android:exported="false"
+    android:label="@string/trend_title" />
+```
+
+**第 4 步：删依赖和仓库**
+
+`app/build.gradle` 的 `dependencies` 里删掉：
+
+```gradle
+implementation 'com.github.PhilJay:MPAndroidChart:v3.1.0'
+```
+
+`settings.gradle` 的 `dependencyResolutionManagement` 里删掉：
+
+```gradle
+maven { url 'https://jitpack.io' }
+```
+
+> 顺序不能反：**先删代码，再删依赖**。反过来 `TrendActivity` 里的
+> `LineChart`、`Entry` 等类会全部变成 `Unresolved reference`。
+> 删完仓库后一定要重新 **Sync Project with Gradle Files**，
+> 让 Gradle 忘掉旧的依赖缓存。
+
+**第 5 步：清字符串（可选）**
+
+两个 `strings.xml` 里可以删掉 `menu_trend` 和 `trend_*` 开头的条目。
+留着不影响编译，只是没人引用。
+
+**第 6 步：编译**
+
+```bat
+gradlew.bat assembleDebug
+```
+
+### 3.3 删完的检查清单
+
+- [ ] 全局搜索 `TrendActivity`：只在注释里出现（或完全没有）。
+- [ ] 全局搜索 `MPAndroidChart`、`LineChart`：没有任何引用。
+- [ ] 全局搜索 `menu_trend`：菜单和 `MainActivity` 里都没有了。
+- [ ] `settings.gradle` 里没有 `jitpack.io`。
+- [ ] 打开 App：菜单里没有“趋势图”；保存、历史、AI（如果保留）都正常。
+- [ ] `gradlew.bat assembleDebug` 编译通过。
+
+---
+
+## 4. 版本 D：三个功能都不要（最基础版）
+
+按第 1 节、第 2 节、第 3 节做完，最后处理 `AppLanguage.kt`。
 
 因为 `AppLanguage` 只服务于“界面语言选择”和“AI 回答语言”，两个功能都没了，
 它就没有使用者了，可以直接删：
@@ -356,17 +464,17 @@ core-ktx / appcompat / material / 测试依赖的状态。
 
 ---
 
-## 4. 反向操作：点名要求加回来
+## 5. 反向操作：点名要求加回来
 
-如果考试题目正好要求“支持中英文切换”或“接入 AI”，不要从零写，按现在的
-代码顺序抄，每一步都能单独验证：
+如果考试题目正好要求“支持中英文切换”“接入 AI”或“画趋势图”，不要从零写，
+按现在的代码顺序抄，每一步都能单独验证：
 
 **加语言切换（约 60 行）**
 
 1. `data/AppLanguage.kt`：两个枚举值 + `fromTag()`；
 2. `data/LanguageStore.kt`：SharedPreferences 读写；
 3. `BaseActivity.kt`：`attachBaseContext` 里换 Locale，`recreate()` 生效；
-4. 三个 Activity 改成继承 `BaseActivity`；
+4. 四个 Activity 改成继承 `BaseActivity`；
 5. 菜单项 + `toggleLanguage()`。
 
 **加 AI（约 300 行）**
@@ -379,9 +487,24 @@ core-ktx / appcompat / material / 测试依赖的状态。
 6. Manifest 加 `INTERNET` 和页面注册；
 7. `build.gradle` 注入 key、开 `buildConfig`、加协程依赖。
 
+**加趋势折线图（约 120 行）**
+
+1. `settings.gradle` 加 `maven { url 'https://jitpack.io' }`；
+2. `app/build.gradle` 加 `implementation 'com.github.PhilJay:MPAndroidChart:v3.1.0'`，
+   然后 **Sync**（第一次会下载 aar，需要联网）；
+3. `TrendActivity.kt`：`allRecords().take(7).reversed()` → `Entry` →
+   `LineDataSet` → `LineData` → `chart.invalidate()`；
+4. `activity_trend.xml`：`<com.github.mikephil.charting.charts.LineChart>`
+   写完整类名，高度给固定的 `280dp`；
+5. 菜单项 + `MainActivity` 分支 + Manifest 注册 + `trend_*` 文案。
+
+完整代码直接抄本分支的 `TrendActivity.kt` / `activity_trend.xml`。
+如果机房装不了依赖，就在文档
+`docs/wellness-tracker.md` 的 7.4 节找“自己写自定义 View”的骨架。
+
 ---
 
-## 5. 删除时最容易犯的错
+## 6. 删除时最容易犯的错
 
 | 症状 | 原因 | 处理 |
 | --- | --- | --- |
@@ -394,10 +517,16 @@ core-ktx / appcompat / material / 测试依赖的状态。
 | 切语言后界面没变 | 忘了 `recreate()` | 见 `BaseActivity.switchLanguage()` |
 | 编译报 `R.menu.menu_main` 找不到 | 删了 `menu_main.xml` 但 `onCreateOptionsMenu` 还在 | 两个一起删，或两个一起留 |
 | 删完 App 白屏/闪退 | 删了 `activity_main.xml` 里的控件但代码还在 `findViewById` | 布局和 `findViewById` 必须成对 |
+| `Unresolved reference: LineChart` / `Entry` | 删了依赖但 `TrendActivity` 还在（或顺序反了） | 先删代码再删依赖；或先把依赖加回来 |
+| Sync 报 `Could not find com.github.PhilJay:MPAndroidChart` | `settings.gradle` 没加 JitPack，或校园网访问不了 JitPack | 补 `maven { url 'https://jitpack.io' }`；网络不通就改用自定义 View |
+| 趋势页一片空白 | `LineChart` 的高度写成 `wrap_content` | 改成固定高度 `280dp` |
+| 有数据但折线不刷新 | 忘了 `chart.invalidate()` | 设置完 `chart.data` 后调用一次 |
+| 趋势页滚动很别扭、滑不动 | 图表抢了页面的滚动手势 | `setScaleEnabled(false)` + `setPinchZoom(false)` |
+| 进趋势页闪退 `ActivityNotFoundException` | Manifest 没注册 `TrendActivity` | 补 `<activity android:name=".TrendActivity" ... />` |
 
 ---
 
-## 6. 删完的统一自检
+## 7. 删完的统一自检
 
 ```bat
 gradlew.bat clean assembleDebug
@@ -410,8 +539,9 @@ gradlew.bat testDebugUnitTest
 1. 主界面 → 填步数 → 保存 → Toast 提示；
 2. 打开历史 → 看到刚才那条记录；
 3. 同一天再保存一次 → 历史里仍然一条；
-4. 手机语言切中文 → 界面变中文；
-5. 返回主界面 → 输入内容还在。
+4. 菜单点“趋势图” → 有数据时显示折线，没数据时显示提示；
+5. 手机语言切中文 → 界面变中文；
+6. 返回主界面 → 输入内容还在。
 
 如果删坏了想回退：
 
@@ -422,9 +552,9 @@ git clean -fd app/src      # 清理新建的未跟踪文件
 
 ---
 
-## 7. 相关文档
+## 8. 相关文档
 
 - `README.md` — 项目简介、运行方式、工具链。
-- `docs/wellness-tracker.md` — 每个文件的作用、SQLite 设计、patch 用法。
+- `docs/wellness-tracker.md` — 每个文件的作用、SQLite 设计、patch 用法、两种画图方案。
 - `docs/llm-setup.md` — AI 部分的架构与 API key 配置（删 AI 时一起删）。
 - `docs/exam-playbook.md` — 把这道题迁移到其它“每日记录类”题目的通用七步。

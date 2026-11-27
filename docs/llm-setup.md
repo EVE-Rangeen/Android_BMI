@@ -75,8 +75,8 @@ override fun attachBaseContext(newBase: Context) {
 两个容易踩的点：
 
 - **Activity 标题**由系统按 Manifest 的 `android:label` 解析，不会跟着
-  `attachBaseContext` 变，所以三个 Activity 都在 `onCreate` 里写了
-  `title = getString(...)`；
+  `attachBaseContext` 变，所以四个 Activity（Main / History / Advice / Trend）都在
+  `onCreate` 里写了 `title = getString(...)`；
 - 已经显示的界面不会自动重画，必须 `recreate()`。
 
 AI 的回答语言与界面语言一致：`AdviceActivity` 用
