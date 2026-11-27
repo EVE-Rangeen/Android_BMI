@@ -169,7 +169,7 @@ app/src/main/java/com/example/bmi/
 └── ui/advice/               # 【可选 B】状态 + ViewModel
 ```
 
-删掉两个可选功能后，就回到只有 6 个 Kotlin 文件的最小版本，
+删掉两个可选功能后，就回到只有 5 个 Kotlin 文件的最小版本，
 清单见 `docs/exam-guide.md` 第 3 节。
 
 包名仍然是 `com.example.bmi`。改包名要动 `namespace`、`applicationId`、所有

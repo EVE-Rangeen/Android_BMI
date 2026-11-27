@@ -66,7 +66,8 @@ db.save(record)
 startActivity(HistoryActivity)
 ```
 
-三个页面/组件，两个数据文件，一个布局文件，就是全部。
+三个 Kotlin 文件（主界面、数据库助手、历史页）加一个数据类，
+两个布局文件（主界面、历史页），就是全部。
 
 ---
 

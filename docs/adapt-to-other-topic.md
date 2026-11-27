@@ -94,8 +94,8 @@ C1 字段  ──► C2 数据库列 ──► C3 文案 ──► C4 布局控�
 | C2 | `WellnessDbHelper.kt` | `DATABASE_VERSION` 从 1 改成 2（表结构变了） |
 | C3 | 两个 `strings.xml` | `wellness_steps_label` = “今日饮水量 / Water today”；`wellness_steps_hint` = “例如 1200”；`wellness_history_steps` = `%1$d ml` |
 | C4 | `activity_main.xml` | `stepsET` 可以不改 id（省事），只改 `android:hint`；`maxLength` 从 7 调到 5 |
-| C5 | `MainActivity.saveTodayRecord()` | 校验改成 `if (water == null \|\| water !in 0..20000)` |
-| C6 | `MainActivity.saveTodayRecord()` | `steps = steps` → `waterMl = water` |
+| C5 | `MainActivity.saveTodayRecord()` | 校验改成 `if (waterMl == null \|\| waterMl !in 0..20000)` |
+| C6 | `MainActivity.saveTodayRecord()` | `steps = steps` → `waterMl = waterMl`（字段名替换） |
 | C7 | `HistoryActivity.buildSubtitle()` | `getString(R.string.wellness_history_steps, record.waterMl)` |
 | C9 | `PromptBuilder.userPrompt()` | `append("饮水量：")` / `append("Water: ")`，后面拼 `" ml"` |
 | C10 | `AdviceActivity` | `ai_record_summary` 的第 3 个参数改成 `record.waterMl`，字符串里的 “steps” 改 “ml” |
@@ -112,7 +112,7 @@ data class WellnessRecord(
 )
 
 // C5 + C6
-val waterMl = waterET.text.toString().trim().toIntOrNull()
+val waterMl = stepsET.text.toString().trim().toIntOrNull()
 if (waterMl == null || waterMl !in 0..20_000) {
     Toast.makeText(this, R.string.wellness_steps_warning, Toast.LENGTH_SHORT).show()
     return

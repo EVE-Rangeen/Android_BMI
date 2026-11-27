@@ -63,7 +63,7 @@ app/src/main/java/com/example/bmi/
 
 | 组件 | 版本 | 说明 |
 | --- | --- | --- |
-| Android Studio | 2025.2.1（Otter）Patch 1 | 支持 AGP 4.0 ~ 8.13 |
+| Android Studio | 2025.2.1（Otter）Patch 1 | 最高支持到 AGP 8.13 |
 | Android Gradle Plugin | 8.13.0 | 该 Studio 版本支持的最高 AGP |
 | Gradle | 8.13 | AGP 8.13 要求的 Gradle |
 | Kotlin | 2.2.20 | |
@@ -79,7 +79,7 @@ app/src/main/java/com/example/bmi/
    （不要选里面的 `app` 目录）。
 3. 首次打开会自动下载 Gradle 8.13 和所有依赖，需要联网，请耐心等待。
 4. 如果提示缺少 SDK 组件（例如 *Android SDK Platform 36*、
-   *Build-Tools 35.0.0*），直接点 **Install** 让它自动安装。
+   *Build-Tools 36.x*），直接点 **Install** 让它自动安装。
 5. Gradle Sync 结束后，选中 `app` 运行配置，点 **Run** 即可。
 
 `local.properties`（本机 SDK 路径）和 `.idea/`（IDE 配置）都没有提交到仓库，

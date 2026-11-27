@@ -163,6 +163,6 @@ adb shell cmd locale set-app-locales com.example.bmi --locales zh-CN
 adb shell cmd locale set-app-locales com.example.bmi --locales en-US
 ```
 
-注意：后者改的是系统记录的“按 App 语言”，和 App 自己写在
-SharedPreferences 里的选择是两套机制；本项目用的是后者（自己的偏好），
-所以 adb 那条命令主要用于验证资源，不会覆盖 App 内的选择。
+注意：adb 命令改的是系统记录的“按 App 语言”，和 App 自己写在
+SharedPreferences 里的偏好是两套机制；本项目用的是后者（自己的偏好），
+所以 adb 那条命令只用于验证资源，不会覆盖 App 内的选择。
